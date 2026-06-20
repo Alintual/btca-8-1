@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.22:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.22:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.24:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.24:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -136,7 +136,7 @@
     root.innerHTML =
       '<main class="btca-about-screen">' +
       '<header class="btca-screen-header">' +
-      '<button class="btca-back-button" type="button" data-btca-back>Назад</button>' +
+      '<button class="btca-back-button" type="button" data-btca-back aria-label="Назад">‹</button>' +
       '<strong>О проекте</strong>' +
       '<span aria-hidden="true"></span>' +
       "</header>" +
@@ -159,9 +159,6 @@
 
   function closePwa() {
     window.close();
-    window.setTimeout(function () {
-      window.location.href = "about:blank";
-    }, 120);
   }
 
   function renderInstalledHome() {

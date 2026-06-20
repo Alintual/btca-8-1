@@ -33,6 +33,10 @@ body {
   -webkit-user-select: none;
 }
 
+.orientation-lock {
+  display: none;
+}
+
 button,
 a {
   font: inherit;
@@ -371,11 +375,14 @@ code {
 
 .btca-back-button {
   justify-self: start;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
   border: 0;
   color: #ffffff;
   background: transparent;
-  font-size: 17px;
-  text-decoration: underline;
+  font-size: 38px;
+  line-height: 1;
 }
 
 .btca-about-content {
@@ -545,6 +552,45 @@ code {
   text-align: center;
 }
 
+@media (orientation: landscape) {
+  body:not(.btca-allow-landscape) #root {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  body:not(.btca-allow-landscape) .orientation-lock {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+    color: #ffffff;
+    background: #1a4854;
+    text-align: center;
+  }
+
+  .orientation-lock__card {
+    display: grid;
+    gap: 10px;
+    max-width: 420px;
+  }
+
+  .orientation-lock__title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .orientation-lock__text {
+    margin: 0;
+    color: #dcecef;
+    font-size: 17px;
+    line-height: 1.45;
+  }
+}
+
 @media (max-width: 420px) {
   .home__hero {
     height: 382px;
@@ -622,6 +668,12 @@ code {
         </footer>
       </main>
     </div>
+    <div class="orientation-lock" aria-hidden="true">
+      <div class="orientation-lock__card">
+        <p class="orientation-lock__title">Поверните устройство</p>
+        <p class="orientation-lock__text">Основные экраны БТКА работают в книжной ориентации.</p>
+      </div>
+    </div>
     <script>
       (function () {
         var button = document.getElementById("btca-static-ios");
@@ -643,8 +695,8 @@ code {
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.22:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.22:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.24:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.24:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -778,7 +830,7 @@ code {
     root.innerHTML =
       '<main class="btca-about-screen">' +
       '<header class="btca-screen-header">' +
-      '<button class="btca-back-button" type="button" data-btca-back>Назад</button>' +
+      '<button class="btca-back-button" type="button" data-btca-back aria-label="Назад">‹</button>' +
       '<strong>О проекте</strong>' +
       '<span aria-hidden="true"></span>' +
       "</header>" +
@@ -801,9 +853,6 @@ code {
 
   function closePwa() {
     window.close();
-    window.setTimeout(function () {
-      window.location.href = "about:blank";
-    }, 120);
   }
 
   function renderInstalledHome() {
