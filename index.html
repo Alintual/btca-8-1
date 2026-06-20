@@ -564,17 +564,26 @@ body.btca-force-portrait:not(.btca-allow-landscape) {
 
 body.btca-force-portrait:not(.btca-allow-landscape) #root {
   position: fixed;
-  top: 0;
-  left: var(--btca-viewport-width);
   width: var(--btca-viewport-height);
   height: var(--btca-viewport-width);
   max-width: var(--btca-viewport-height);
   max-height: var(--btca-viewport-width);
   overflow-x: hidden;
   overflow-y: auto;
-  transform: rotate(90deg);
   transform-origin: top left;
   -webkit-overflow-scrolling: touch;
+}
+
+body.btca-force-portrait.btca-landscape-right:not(.btca-allow-landscape) #root {
+  top: var(--btca-viewport-height);
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+body.btca-force-portrait.btca-landscape-left:not(.btca-allow-landscape) #root {
+  top: 0;
+  left: var(--btca-viewport-width);
+  transform: rotate(90deg);
 }
 
 @media (max-width: 420px) {
@@ -675,8 +684,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.29:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.29:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.30:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.30:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -763,7 +772,17 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
 
     document.documentElement.style.setProperty("--btca-viewport-width", width + "px");
     document.documentElement.style.setProperty("--btca-viewport-height", height + "px");
-    document.body.classList.toggle("btca-force-portrait", width > height);
+    var isLandscape = width > height;
+    var angle = 0;
+    if (screen && screen.orientation && typeof screen.orientation.angle === "number") {
+      angle = screen.orientation.angle;
+    } else if (typeof window.orientation === "number") {
+      angle = window.orientation;
+    }
+
+    document.body.classList.toggle("btca-force-portrait", isLandscape);
+    document.body.classList.toggle("btca-landscape-left", isLandscape && (angle === -90 || angle === 270));
+    document.body.classList.toggle("btca-landscape-right", isLandscape && !(angle === -90 || angle === 270));
   }
 
   function syncPortraitMode() {

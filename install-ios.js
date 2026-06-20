@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.29:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.29:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.30:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.30:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -89,7 +89,17 @@
 
     document.documentElement.style.setProperty("--btca-viewport-width", width + "px");
     document.documentElement.style.setProperty("--btca-viewport-height", height + "px");
-    document.body.classList.toggle("btca-force-portrait", width > height);
+    var isLandscape = width > height;
+    var angle = 0;
+    if (screen && screen.orientation && typeof screen.orientation.angle === "number") {
+      angle = screen.orientation.angle;
+    } else if (typeof window.orientation === "number") {
+      angle = window.orientation;
+    }
+
+    document.body.classList.toggle("btca-force-portrait", isLandscape);
+    document.body.classList.toggle("btca-landscape-left", isLandscape && (angle === -90 || angle === 270));
+    document.body.classList.toggle("btca-landscape-right", isLandscape && !(angle === -90 || angle === 270));
   }
 
   function syncPortraitMode() {
