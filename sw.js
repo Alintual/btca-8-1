@@ -1,12 +1,12 @@
-const CACHE_VERSION = "btca-web-8.1.21";
+const CACHE_VERSION = "btca-web-8.1.22";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const CORE_ASSETS = [
   "/",
-  "/icons/btca-apple-touch-icon.png?v=8.1.21",
-  "/icons/btca-icon-192.png?v=8.1.21",
-  "/icons/btca-icon-512.png?v=8.1.21",
+  "/icons/btca-apple-touch-icon.png?v=8.1.22",
+  "/icons/btca-icon-192.png?v=8.1.22",
+  "/icons/btca-icon-512.png?v=8.1.22",
   "/offline/app-shell.json",
   "/offline/media/manifest.json",
   "/install-ios.js",

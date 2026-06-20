@@ -7,8 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="БТКА 8.1" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="/icons/btca-apple-touch-icon.png?v=8.1.21" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/btca-icon-192.png?v=8.1.21" />
+    <link rel="apple-touch-icon" href="/icons/btca-apple-touch-icon.png?v=8.1.22" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/btca-icon-192.png?v=8.1.22" />
     <style>
 :root {
   color: #ffffff;
@@ -547,16 +547,16 @@ code {
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.21:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.21:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.22:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.22:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
 
   var CORE_ASSETS = [
     "/",
-    "/icons/btca-apple-touch-icon.png?v=8.1.21",
-    "/icons/btca-icon-192.png?v=8.1.21",
-    "/icons/btca-icon-512.png?v=8.1.21",
+    "/icons/btca-apple-touch-icon.png?v=8.1.22",
+    "/icons/btca-icon-192.png?v=8.1.22",
+    "/icons/btca-icon-512.png?v=8.1.22",
     "/offline/app-shell.json",
     "/offline/media/manifest.json",
     "/vendor/zip.min.js",
@@ -907,7 +907,7 @@ code {
     if (!els.button) return;
     window.__BTCA_IOS_INSTALLER_READY__ = true;
     els.button.addEventListener("click", prepareOffline);
-    if (isStandalone() && hasPreparedMediaState()) {
+    if (isStandalone()) {
       renderInstalledHome();
     }
   }

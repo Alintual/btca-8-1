@@ -1,16 +1,16 @@
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.21:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.21:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.22:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.22:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
 
   var CORE_ASSETS = [
     "/",
-    "/icons/btca-apple-touch-icon.png?v=8.1.21",
-    "/icons/btca-icon-192.png?v=8.1.21",
-    "/icons/btca-icon-512.png?v=8.1.21",
+    "/icons/btca-apple-touch-icon.png?v=8.1.22",
+    "/icons/btca-icon-192.png?v=8.1.22",
+    "/icons/btca-icon-512.png?v=8.1.22",
     "/offline/app-shell.json",
     "/offline/media/manifest.json",
     "/vendor/zip.min.js",
@@ -361,7 +361,7 @@
     if (!els.button) return;
     window.__BTCA_IOS_INSTALLER_READY__ = true;
     els.button.addEventListener("click", prepareOffline);
-    if (isStandalone() && hasPreparedMediaState()) {
+    if (isStandalone()) {
       renderInstalledHome();
     }
   }
