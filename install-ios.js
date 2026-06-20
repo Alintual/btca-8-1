@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.26:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.26:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.27:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.27:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -70,6 +70,15 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function lockPortraitOrientation() {
+    var orientation = screen && screen.orientation;
+    if (!orientation || !orientation.lock) return;
+    try {
+      var result = orientation.lock("portrait-primary");
+      if (result && result.catch) result.catch(function () {});
+    } catch (_) {}
   }
 
   function setPanel(html) {
@@ -408,6 +417,9 @@
     var els = getEls();
     if (!els.button) return;
     window.__BTCA_IOS_INSTALLER_READY__ = true;
+    lockPortraitOrientation();
+    window.addEventListener("orientationchange", lockPortraitOrientation);
+    window.addEventListener("resize", lockPortraitOrientation);
     els.button.addEventListener("click", prepareOffline);
     if (isStandalone()) {
       renderInstalledHome();
