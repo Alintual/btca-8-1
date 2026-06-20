@@ -7,6 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="БТКА 8.1" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/icons/btca-apple-touch-icon.png?v=8.1.21" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/btca-icon-192.png?v=8.1.21" />
     <style>
 :root {
   color: #ffffff;
@@ -278,6 +280,54 @@ code {
   cursor: not-allowed;
 }
 
+.btca-installed-mode .home__hero {
+  height: 424px;
+}
+
+.btca-work-menu {
+  margin-top: -118px;
+}
+
+.btca-work-menu__item {
+  min-height: 58px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.btca-work-menu__item span {
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.btca-work-menu__item--level1 {
+  border-color: #0ab10a;
+}
+
+.btca-work-menu__item--level2 {
+  border-color: #bb20e8;
+}
+
+.btca-work-menu__item--about {
+  width: 47.5%;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.btca-work-menu__close {
+  justify-self: center;
+  margin-top: 2px;
+  padding: 6px 8px;
+  border: 0;
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+  font-size: 17px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.btca-work-menu__close:active {
+  opacity: 0.75;
+}
+
 .ios-panel {
   display: grid;
   gap: 10px;
@@ -497,13 +547,16 @@ code {
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.20:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.20:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.21:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.21:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
 
   var CORE_ASSETS = [
     "/",
+    "/icons/btca-apple-touch-icon.png?v=8.1.21",
+    "/icons/btca-icon-192.png?v=8.1.21",
+    "/icons/btca-icon-512.png?v=8.1.21",
     "/offline/app-shell.json",
     "/offline/media/manifest.json",
     "/vendor/zip.min.js",
@@ -528,6 +581,17 @@ code {
 
   function isStandalone() {
     return window.matchMedia("(display-mode: standalone)").matches || Boolean(navigator.standalone);
+  }
+
+  function hasPreparedMediaState() {
+    try {
+      var raw = localStorage.getItem(MEDIA_STATE_KEY);
+      if (!raw) return false;
+      var state = JSON.parse(raw);
+      return Boolean(state && state.version && state.files);
+    } catch (_) {
+      return false;
+    }
   }
 
   function setPanel(html) {
@@ -573,6 +637,55 @@ code {
       '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
       '<p class="hint">' + escapeHtml(hint) + "</p>"
     );
+    if (isStandalone()) {
+      window.setTimeout(renderInstalledHome, 500);
+    }
+  }
+
+  function showWorkNotice(title) {
+    setPanel(
+      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong></div>" +
+      '<p class="hint">Раздел будет подключён следующим шагом переноса Android-версии.</p>'
+    );
+  }
+
+  function renderInstalledHome() {
+    var intro = document.querySelector(".home__intro");
+    var menu = document.querySelector(".platform-menu");
+    var panel = getEls().panel;
+    var footer = document.querySelector(".footer");
+
+    document.body.classList.add("btca-installed-mode");
+
+    if (intro) intro.setAttribute("hidden", "hidden");
+    if (panel) {
+      panel.className = "ios-panel";
+      panel.innerHTML = "";
+    }
+    if (menu) {
+      menu.className = "platform-menu btca-work-menu";
+      menu.setAttribute("aria-label", "Главное меню БТКА");
+      menu.innerHTML =
+        '<button class="platform-button btca-work-menu__item btca-work-menu__item--level1" type="button" data-btca-route="level1"><span>Уровень 1 — Начальный</span></button>' +
+        '<button class="platform-button btca-work-menu__item btca-work-menu__item--level2" type="button" data-btca-route="level2"><span>Уровень 2 — Базовый</span></button>' +
+        '<button class="platform-button btca-work-menu__item btca-work-menu__item--about" type="button" data-btca-route="about"><span>О проекте</span></button>' +
+        '<button class="btca-work-menu__close" type="button" data-btca-route="close">Закрыть</button>';
+      menu.addEventListener("click", function (event) {
+        var target = event.target && event.target.closest ? event.target.closest("[data-btca-route]") : null;
+        if (!target) return;
+        var route = target.getAttribute("data-btca-route");
+        if (route === "close") {
+          showWorkNotice("Закрыть");
+          return;
+        }
+        if (route === "level1") showWorkNotice("Уровень 1 — Начальный");
+        if (route === "level2") showWorkNotice("Уровень 2 — Базовый");
+        if (route === "about") showWorkNotice("О проекте");
+      });
+    }
+    if (footer) {
+      footer.innerHTML = "<span>BTCA-mobile v.8.1 © 2026 Alint&apos;s R.lab</span>";
+    }
   }
 
   function renderError(error) {
@@ -794,6 +907,9 @@ code {
     if (!els.button) return;
     window.__BTCA_IOS_INSTALLER_READY__ = true;
     els.button.addEventListener("click", prepareOffline);
+    if (isStandalone() && hasPreparedMediaState()) {
+      renderInstalledHome();
+    }
   }
 
   if (document.readyState === "loading") {
