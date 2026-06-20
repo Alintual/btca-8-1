@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.34:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.34:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.35:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.35:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -29,13 +29,7 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var level1ActiveSheet = "forma";
-  var LEVEL1_SHEETS = [
-    { key: "forma", label: "Форма", title: "Форма ввода", emoji: "📊", status: "Упр. 1 - активно!", statusTone: "active" },
-    { key: "baza", label: "База", title: "База данных", emoji: "", status: "пуста", statusTone: "active" },
-    { key: "nav", label: "Упражнения", title: "Упражнения", emoji: "🔎", status: "Упр. 1 - активно!", statusTone: "active" },
-    { key: "polez", label: "Полезности", title: "Полезности", emoji: "📚", status: "Справочное пособие", statusTone: "muted" },
-  ];
+  var LEVEL1_MODULE_VERSION = "8.1.35";
 
   var CORE_ASSETS = [
     "/",
@@ -45,6 +39,12 @@
     "/offline/app-shell.json",
     "/offline/media/manifest.json",
     "/vendor/zip.min.js",
+    "/level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
+    "/level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
+    "/level1/data/forma_exercise_list.json",
+    "/level1/data/polezCatalog.json",
+    "/level1/data/polezLinks.json",
+    "/level1/data/polezDescriptions.json",
   ];
 
   function getEls() {
@@ -216,81 +216,26 @@
     }
   }
 
-  function level1SheetByKey(key) {
-    return LEVEL1_SHEETS.filter(function (sheet) { return sheet.key === key; })[0] || LEVEL1_SHEETS[0];
+  function loadLevel1Script(src) {
+    return new Promise(function (resolve, reject) {
+      if (document.querySelector('script[src="' + src + '"]')) {
+        resolve();
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = src;
+      script.onload = function () { resolve(); };
+      script.onerror = function () { reject(new Error("Не удалось загрузить " + src)); };
+      document.head.appendChild(script);
+    });
   }
 
-  function renderLevel1TitleBar() {
-    var titlebar = document.querySelector("[data-btca-level1-titlebar]");
-    if (!titlebar) return;
-    var sheet = level1SheetByKey(level1ActiveSheet);
-    titlebar.innerHTML =
-      '<div class="btca-level1-titlebar__row">' +
-      '<div class="btca-level1-titlebar__title-group">' +
-      '<span class="btca-level1-titlebar__title">' + escapeHtml(sheet.title) + "</span>" +
-      (sheet.emoji ? '<span class="btca-level1-titlebar__emoji" aria-hidden="true">' + sheet.emoji + "</span>" : "") +
-      "</div>" +
-      '<span class="btca-level1-titlebar__spacer"></span>' +
-      '<span class="btca-level1-titlebar__status' + (sheet.statusTone === "muted" ? " btca-level1-titlebar__status--muted" : "") + '">' + escapeHtml(sheet.status) + "</span>" +
-      "</div>";
-  }
-
-  function renderLevel1Content() {
-    var content = document.querySelector("[data-btca-level1-content]");
-    if (!content) return;
-    if (level1ActiveSheet === "forma") {
-      content.innerHTML =
-        '<section class="btca-level1-card" aria-label="Форма ввода">' +
-        '<div class="btca-level1-card__row"><span>Дата</span><span class="btca-level1-field">' + new Date().toLocaleDateString("ru-RU") + "</span></div>" +
-        '<div class="btca-level1-card__row"><span>Упр.</span><span class="btca-level1-field">1</span></div>' +
-        '<div class="btca-level1-card__row"><span>Задача</span><span class="btca-level1-field">—</span></div>' +
-        "</section>";
-      return;
-    }
-    if (level1ActiveSheet === "baza") {
-      content.innerHTML =
-        '<section class="btca-level1-card" aria-label="База данных">' +
-        '<div class="btca-level1-card__row"><span>База</span><span class="btca-level1-field">пуста</span></div>' +
-        "</section>";
-      return;
-    }
-    if (level1ActiveSheet === "nav") {
-      content.innerHTML =
-        '<section class="btca-level1-card" aria-label="Упражнения">' +
-        '<div class="btca-level1-card__row"><span>Раздел</span><span class="btca-level1-field">Упражнения</span></div>' +
-        '<div class="btca-level1-card__row"><span>Упр.</span><span class="btca-level1-field">1</span></div>' +
-        "</section>";
-      return;
-    }
-    content.innerHTML =
-      '<section class="btca-level1-card" aria-label="Полезности">' +
-      '<div class="btca-level1-card__row"><span>Каталог</span><span class="btca-level1-field">Справочное пособие</span></div>' +
-      "</section>";
-  }
-
-  function setLevel1Sheet(key) {
-    level1ActiveSheet = key;
-    renderLevel1TitleBar();
-    renderLevel1Content();
-    renderLevel1SheetMenu(false);
-  }
-
-  function renderLevel1SheetMenu(open) {
-    var layer = document.querySelector("[data-btca-level1-menu-layer]");
-    if (!layer) return;
-    if (!open) {
-      layer.setAttribute("hidden", "hidden");
-      return;
-    }
-    layer.removeAttribute("hidden");
-    layer.innerHTML =
-      '<button class="btca-level1-menu-backdrop" type="button" data-btca-level1-menu-close aria-label="Закрыть меню"></button>' +
-      '<nav class="btca-level1-sheet-menu" aria-label="Меню листов">' +
-      LEVEL1_SHEETS.map(function (sheet) {
-        var active = sheet.key === level1ActiveSheet;
-        return '<button class="btca-level1-sheet-menu__item' + (active ? " btca-level1-sheet-menu__item--active" : "") + '" type="button" data-btca-level1-sheet="' + sheet.key + '">' + escapeHtml(sheet.label) + "</button>";
-      }).join("") +
-      "</nav>";
+  function ensureLevel1Module() {
+    if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1_DB) return Promise.resolve();
+    var v = LEVEL1_MODULE_VERSION;
+    return loadLevel1Script("/level1/level1-db.js?v=" + v).then(function () {
+      return loadLevel1Script("/level1/level1-app.js?v=" + v);
+    });
   }
 
   function renderLevel1Screen() {
@@ -307,39 +252,35 @@
       '<button class="btca-level1-menu-button" type="button" data-btca-level1-menu aria-label="Меню листов"><span></span><span></span><span></span></button>' +
       "</header>" +
       '<section class="btca-level1-titlebar" data-btca-level1-titlebar></section>' +
-      '<section class="btca-level1-content" data-btca-level1-content></section>' +
+      '<section class="btca-level1-content" data-btca-level1-content>' +
+      '<p class="btca-l1-loading">Загрузка Уровня 1…</p></section>' +
       '<div class="btca-level1-menu-layer" data-btca-level1-menu-layer hidden></div>' +
+      '<div class="btca-level1-menu-layer" data-btca-level1-picker hidden></div>' +
       "</main>";
 
-    renderLevel1TitleBar();
-    renderLevel1Content();
-
     var back = document.querySelector("[data-btca-level1-back]");
-    var menuButton = document.querySelector("[data-btca-level1-menu]");
-    var menuLayer = document.querySelector("[data-btca-level1-menu-layer]");
     if (back) {
       back.addEventListener("click", function () {
+        if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1.unmount) window.BTCA_LEVEL1.unmount();
         root.innerHTML = installedHomeSnapshot;
         installedHomeSnapshot = "";
-        document.body.classList.remove("btca-level1-mode");
+        document.body.classList.remove("btca-level1-mode", "btca-allow-landscape");
         renderInstalledHome();
       });
     }
-    if (menuButton) {
-      menuButton.addEventListener("click", function () { renderLevel1SheetMenu(true); });
-    }
-    if (menuLayer) {
-      menuLayer.addEventListener("click", function (event) {
-        var close = event.target && event.target.closest ? event.target.closest("[data-btca-level1-menu-close]") : null;
-        if (close) {
-          renderLevel1SheetMenu(false);
-          return;
-        }
-        var item = event.target && event.target.closest ? event.target.closest("[data-btca-level1-sheet]") : null;
-        if (item) setLevel1Sheet(item.getAttribute("data-btca-level1-sheet"));
-      });
-    }
-    syncPortraitMode();
+
+    ensureLevel1Module().then(function () {
+      var main = root.querySelector(".btca-level1-screen");
+      if (!main || !window.BTCA_LEVEL1) return;
+      return window.BTCA_LEVEL1.mount(main);
+    }).catch(function (error) {
+      var content = root.querySelector("[data-btca-level1-content]");
+      if (content) {
+        content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
+      }
+    }).then(function () {
+      syncPortraitMode();
+    });
   }
 
   function handleAppNavigation(event) {

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.34";
+const CACHE_VERSION = "btca-web-8.1.35";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
@@ -10,7 +10,13 @@ const CORE_ASSETS = [
   "/offline/app-shell.json",
   "/offline/media/manifest.json",
   "/install-ios.js",
-  "/vendor/zip.min.js"
+  "/vendor/zip.min.js",
+  "/level1/level1-db.js",
+  "/level1/level1-app.js",
+  "/level1/data/forma_exercise_list.json",
+  "/level1/data/polezCatalog.json",
+  "/level1/data/polezLinks.json",
+  "/level1/data/polezDescriptions.json",
 ];
 
 self.addEventListener("install", (event) => {
