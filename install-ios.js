@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.28:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.28:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.29:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.29:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -79,6 +79,24 @@
       var result = orientation.lock("portrait-primary");
       if (result && result.catch) result.catch(function () {});
     } catch (_) {}
+  }
+
+  function updateForcedPortraitLayout() {
+    var viewport = window.visualViewport;
+    var width = Math.round((viewport && viewport.width) || window.innerWidth || document.documentElement.clientWidth || 0);
+    var height = Math.round((viewport && viewport.height) || window.innerHeight || document.documentElement.clientHeight || 0);
+    if (!width || !height) return;
+
+    document.documentElement.style.setProperty("--btca-viewport-width", width + "px");
+    document.documentElement.style.setProperty("--btca-viewport-height", height + "px");
+    document.body.classList.toggle("btca-force-portrait", width > height);
+  }
+
+  function syncPortraitMode() {
+    lockPortraitOrientation();
+    updateForcedPortraitLayout();
+    window.setTimeout(updateForcedPortraitLayout, 80);
+    window.setTimeout(updateForcedPortraitLayout, 260);
   }
 
   function setPanel(html) {
@@ -417,9 +435,13 @@
     var els = getEls();
     if (!els.button) return;
     window.__BTCA_IOS_INSTALLER_READY__ = true;
-    lockPortraitOrientation();
-    window.addEventListener("orientationchange", lockPortraitOrientation);
-    window.addEventListener("resize", lockPortraitOrientation);
+    syncPortraitMode();
+    window.addEventListener("orientationchange", syncPortraitMode);
+    window.addEventListener("resize", syncPortraitMode);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncPortraitMode);
+      window.visualViewport.addEventListener("scroll", syncPortraitMode);
+    }
     els.button.addEventListener("click", prepareOffline);
     if (isStandalone()) {
       renderInstalledHome();
