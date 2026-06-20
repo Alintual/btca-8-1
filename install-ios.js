@@ -5,6 +5,30 @@
   var MEDIA_CACHE = "btca-web-8.1.22:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+  var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
+  var ABOUT_MAIN_TEXT = "Настоящее Приложение разработано для локальной установки (развёртывания) на смартфоне или планшете с операционными системами Android или iOS и рассчитано для обучения и тренировки учеников с уровнями подготовки «Уровень 1 — Начальный» и «Уровень 2 — Базовый» (Комплект 1).";
+  var ABOUT_POST_TEXT =
+    "*****\n" +
+    "БТКА, это — учебно-тренировочный программный комплекс, предназначенный для комплексного обучения игре на русском бильярде, выработки и закрепления практических навыков ведения бильярдной игры в Пирамиду, как самостоятельно, так и с тренером, с применением современных методик и технологий.\n" +
+    "Тренировочный комплекс БТКА в сочетании с уникальной Методологией обучения составляют общую Систему тренировок БТКА школы русского бильярда «Абриколь» г. Красноярск.\n" +
+    '<a href="https://cloud.mail.ru/public/sujN/mpE8mr6aW">Методика обучения</a>\n\n' +
+    "На сегодняшний день комплекс БТКА включает в себя два комплекта Приложений (программ), каждый из которых адаптирован к определённому уровню подготовки учеников:\n" +
+    "Комплект 1 – для «Уровень 1 — Начальный» и «Уровень 2 — Базовый»;\n" +
+    "Комплект 2 – для «Уровень 3 — Продвинутый».\n" +
+    "Все Приложения функционируют без использования сети Интернет.\n" +
+    "Каждое Приложение:\n" +
+    "•  Содержит специфический (соответствующий уровню подготовки) набор упражнений, задач и тестов (в графическом виде), ранжированных по принципу - \"от простого к сложному\", и сгруппированных в тематические разделы по видам тренировок;\n" +
+    "•  Включает необходимые инструкции, методическую и справочную информацию;\n" +
+    "•  Обеспечивает возможность ввода, хранения и обработки результатов прогресса выполнения учеником практических заданий для последующего статистического анализа с использованием локальной Базы данных (БД);\n" +
+    "•  Имеет весь необходимый функционал и автоматизацию, а также интуитивно-понятный интерфейс, что способствует осуществлению полноценного, эффективного тренировочного процесса в комфортных условиях.\n" +
+    "Основные характеристики:\n" +
+    "•  *Уровень 1 — Начальный* Упражнений – 15, Задач – 59, Полезностей – 9.\n" +
+    "•  *Уровень 2 — Базовый* Упражнений – 40, Задач – 263, Полезностей – 15.\n" +
+    "•  *Уровень 3 — Продвинутый* Упражнений – более 150, Задач – более 700,\n" +
+    "Полезности – интеллектуальная поисковая система по Базе знаний: 18 основополагающих документов, 114 рисунков и видео и более 370 тематических материалов.\n\n" +
+    "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
+    "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
+  var installedHomeSnapshot = "";
 
   var CORE_ASSETS = [
     "/",
@@ -66,6 +90,13 @@
       .replace(/"/g, "&quot;");
   }
 
+  function renderRichText(value) {
+    return escapeHtml(value)
+      .replace(/&lt;a href=&quot;([^&]+)&quot;&gt;([\s\S]*?)&lt;\/a&gt;/g, '<a href="$1" target="_blank" rel="noopener">$2</a>')
+      .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>");
+  }
+
   function renderProgress(title, percent, message) {
     setPanel(
       '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + Math.round(percent) + "%</span></div>" +
@@ -96,11 +127,41 @@
     }
   }
 
-  function showWorkNotice(title) {
-    setPanel(
-      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong></div>" +
-      '<p class="hint">Раздел будет подключён следующим шагом переноса Android-версии.</p>'
-    );
+  function renderAboutScreen() {
+    var root = document.getElementById("root");
+    if (!root) return;
+    installedHomeSnapshot = installedHomeSnapshot || root.innerHTML;
+    document.body.classList.add("btca-screen-mode");
+    document.body.classList.remove("btca-installed-mode");
+    root.innerHTML =
+      '<main class="btca-about-screen">' +
+      '<header class="btca-screen-header">' +
+      '<button class="btca-back-button" type="button" data-btca-back>Назад</button>' +
+      '<strong>О проекте</strong>' +
+      '<span aria-hidden="true"></span>' +
+      "</header>" +
+      '<section class="btca-about-content">' +
+      '<h1>' + escapeHtml(ABOUT_HEADING) + "</h1>" +
+      '<p>' + renderRichText(ABOUT_MAIN_TEXT.trim()) + "</p>" +
+      '<div class="btca-about-spacer"></div>' +
+      '<p>' + renderRichText(ABOUT_POST_TEXT.trim()) + "</p>" +
+      "</section>" +
+      "</main>";
+    var back = document.querySelector("[data-btca-back]");
+    if (back) {
+      back.addEventListener("click", function () {
+        root.innerHTML = installedHomeSnapshot;
+        installedHomeSnapshot = "";
+        renderInstalledHome();
+      });
+    }
+  }
+
+  function closePwa() {
+    window.close();
+    window.setTimeout(function () {
+      window.location.href = "about:blank";
+    }, 120);
   }
 
   function renderInstalledHome() {
@@ -110,6 +171,7 @@
     var footer = document.querySelector(".footer");
 
     document.body.classList.add("btca-installed-mode");
+    document.body.classList.remove("btca-screen-mode");
 
     if (intro) intro.setAttribute("hidden", "hidden");
     if (panel) {
@@ -129,12 +191,10 @@
         if (!target) return;
         var route = target.getAttribute("data-btca-route");
         if (route === "close") {
-          showWorkNotice("Закрыть");
+          closePwa();
           return;
         }
-        if (route === "level1") showWorkNotice("Уровень 1 — Начальный");
-        if (route === "level2") showWorkNotice("Уровень 2 — Базовый");
-        if (route === "about") showWorkNotice("О проекте");
+        if (route === "about") renderAboutScreen();
       });
     }
     if (footer) {
