@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.42:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.42:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.43:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.43:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -33,13 +33,15 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.42";
+  var LEVEL1_MODULE_VERSION = "8.1.43";
 
   var CORE_REL_PATHS = [
     "",
     "icons/btca-apple-touch-icon.png",
     "icons/btca-icon-192.png",
     "icons/btca-icon-512.png",
+    "branding/up.png",
+    "branding/baza.png",
     "offline/app-shell.json",
     "offline/media/manifest.json",
     "vendor/zip.min.js",

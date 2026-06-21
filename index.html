@@ -535,9 +535,12 @@ body.btca-boot-mode #root {
 
 .btca-level1-screen {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: #1f4f5c;
   color: #ffffff;
 }
@@ -586,6 +589,8 @@ body.btca-boot-mode #root {
 
 .btca-level1-titlebar {
   position: relative;
+  z-index: 15;
+  flex-shrink: 0;
   min-height: 46px;
   padding: 8px max(4px, env(safe-area-inset-right)) 8px max(4px, env(safe-area-inset-left));
   border-bottom: 2px solid #0ab10a;
@@ -621,6 +626,71 @@ body.btca-boot-mode #root {
   flex-shrink: 0;
   font-size: 20px;
   line-height: 20px;
+}
+
+.btca-level1-titlebar__emoji--forma {
+  margin-top: 3px;
+}
+
+.btca-level1-titlebar__emoji--nav {
+  margin-top: 4px;
+}
+
+.btca-level1-titlebar__emoji--polez {
+  margin-top: 2px;
+}
+
+.btca-level1-titlebar__baza-fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 56px;
+  color: #00ffff;
+  font-size: 17px;
+  line-height: 26px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.btca-level1-titlebar__row--baza {
+  position: relative;
+  z-index: 1;
+}
+
+.btca-level1-titlebar__title-group--baza {
+  height: 28px;
+  overflow: visible;
+}
+
+.btca-level1-titlebar__baza-icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin-top: 4px;
+}
+
+.btca-level1-baza-menu {
+  position: absolute;
+  top: 0;
+  right: 17px;
+  bottom: 0;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  width: 38px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+}
+
+.btca-level1-baza-menu span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
 }
 
 .btca-level1-titlebar__spacer {
@@ -667,7 +737,47 @@ body.btca-boot-mode #root {
   display: flex;
   gap: 8px;
   align-items: flex-end;
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+
+.btca-l1-toolbar-top {
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.btca-l1-toolbar-second {
+  margin-top: 8px;
+}
+
+.btca-l1-toolbar--period {
+  flex-wrap: wrap;
+}
+
+.btca-l1-primary-col {
+  flex: 1;
+  min-width: 0;
+  max-width: 72%;
+}
+
+.btca-l1-trailing-wrap {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.btca-l1-trailing-slot {
+  flex-shrink: 0;
+  display: flex;
+  width: 112px;
+  justify-content: center;
+  align-items: center;
+}
+
+.btca-l1-period-col {
+  flex: 1;
+  min-width: 0;
+  max-width: calc(50% - 4px);
 }
 
 .btca-l1-toolbar--baza {
@@ -686,26 +796,72 @@ body.btca-boot-mode #root {
 }
 
 .btca-l1-field-label {
+  display: block;
+  margin-bottom: 4px;
   color: rgba(255, 255, 255, 0.9);
   font-size: 17px;
-  line-height: 22px;
+  line-height: 26px;
 }
 
 .btca-l1-face {
   display: inline-flex;
-  min-height: 44px;
+  width: 100%;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
+  padding: 0 12px;
   border: 1px solid rgba(17, 24, 39, 0.18);
   border-radius: 12px;
   color: #111827;
   background: #ffffff;
   font-size: 17px;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 26px;
   touch-action: manipulation;
+}
+
+.btca-l1-face__text {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btca-l1-face--filter {
+  position: relative;
+  justify-content: center;
+  padding-right: 36px;
+  padding-left: 4px;
+}
+
+.btca-l1-face--section {
+  width: 324px;
+  max-width: 100%;
+  padding-left: 36px;
+  padding-right: 36px;
+}
+
+.btca-l1-face__chevron {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  color: rgba(17, 24, 39, 0.95);
+  font-size: 16px;
+  line-height: 20px;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.btca-l1-date-face {
+  gap: 8px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.btca-l1-date-face__icon {
+  flex-shrink: 0;
+  font-size: 20px;
+  line-height: 1;
 }
 
 .btca-l1-face--wide {
@@ -717,87 +873,192 @@ body.btca-boot-mode #root {
 }
 
 .btca-l1-save {
-  min-width: 112px;
-  min-height: 44px;
-  padding: 8px 14px;
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
   border: 1px solid rgba(17, 24, 39, 0.18);
   border-radius: 12px;
-  color: #111827;
+  color: #000000;
   background: #d0e0e3;
   font-size: 17px;
   font-weight: 600;
+  line-height: 26px;
   touch-action: manipulation;
 }
 
+.btca-l1-save__icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+}
+
+.btca-l1-save__icon--disabled {
+  opacity: 0.55;
+}
+
+.btca-l1-save__label {
+  margin-left: -4px;
+}
+
+.btca-l1-save__label--disabled {
+  color: rgba(17, 24, 39, 0.55);
+}
+
 .btca-l1-save--disabled {
-  opacity: 0.58;
+  border-color: rgba(17, 24, 39, 0.12);
   background: #e2ecee;
 }
 
 .btca-l1-exercise-row {
-  display: grid;
-  grid-template-columns: 1fr 44px;
-  gap: 6px;
-  align-items: stretch;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: space-between;
 }
 
-.btca-l1-desc-arrow,
+.btca-l1-exercise-col {
+  flex: 1;
+  min-width: 0;
+  max-width: 72%;
+}
+
+.btca-l1-exercise-col--polez {
+  max-width: 100%;
+}
+
+.btca-l1-task-col {
+  max-width: 72%;
+}
+
+.btca-l1-nav-section {
+  width: 324px;
+  max-width: 100%;
+}
+
 .btca-l1-green-arrow {
-  display: grid;
-  width: 44px;
-  min-height: 44px;
-  place-content: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
   border: 0;
-  border-radius: 12px;
-  color: #0ab10a;
   background: transparent;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1;
-  transform: rotate(90deg);
   touch-action: manipulation;
 }
 
-.btca-l1-desc-arrow--disabled {
+.btca-l1-green-arrow__img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  transform: rotate(90deg);
+  filter: brightness(0) saturate(100%) invert(46%) sepia(98%) saturate(1200%) hue-rotate(89deg) brightness(102%) contrast(97%);
+}
+
+.btca-l1-green-arrow--disabled .btca-l1-green-arrow__img {
   opacity: 0.35;
+  filter: brightness(0) saturate(100%) invert(15%) sepia(5%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
 
 .btca-l1-banner {
-  margin: 4px 0 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+  padding: 0 4px;
+  color: rgba(255, 255, 255, 0.92);
   font-size: 17px;
-  line-height: 22px;
+  line-height: 26px;
   text-align: center;
+}
+
+.btca-l1-forma,
+.btca-l1-baza,
+.btca-l1-nav,
+.btca-l1-polez {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.btca-l1-table-area {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 240px;
+  margin-top: 4px;
 }
 
 .btca-l1-table-wrap {
-  overflow: auto;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   border: 1px solid rgba(17, 24, 39, 0.55);
-  border-radius: 12px;
   background: #a2c4c9;
 }
 
-.btca-l1-table {
+.btca-l1-table-head {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.6);
+  background: #a2c4c9;
+}
+
+.btca-l1-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.btca-l1-table-row {
+  display: flex;
   width: 100%;
-  border-collapse: collapse;
+  min-height: 40px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.6);
+}
+
+.btca-l1-table-cell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-right: 1px solid rgba(17, 24, 39, 0.6);
+}
+
+.btca-l1-col--task {
+  flex: 0.65;
+  min-width: 36px;
+}
+
+.btca-l1-col--req,
+.btca-l1-col--ok {
+  flex: 1.15;
+}
+
+.btca-l1-col--pct {
+  flex: 0.55;
+  min-width: 36px;
+  border-right: 0;
+}
+
+.btca-l1-th,
+.btca-l1-td {
   color: #111827;
-  font-size: 15px;
-}
-
-.btca-l1-table th,
-.btca-l1-table td {
-  padding: 8px 6px;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.12);
+  font-size: 17px;
+  line-height: 26px;
   text-align: center;
-  vertical-align: middle;
 }
 
-.btca-l1-table th {
-  background: rgba(255, 255, 255, 0.72);
+.btca-l1-th {
   font-weight: 400;
+}
+
+.btca-l1-td--task {
+  font-weight: 600;
+}
+
+.btca-l1-td--muted {
+  color: rgba(17, 24, 39, 0.45);
 }
 
 .btca-l1-table__row--even {
@@ -808,19 +1069,27 @@ body.btca-boot-mode #root {
   background: rgba(255, 255, 255, 0.35);
 }
 
-.btca-l1-table__row--unused {
+.btca-l1-table__row--unused,
+.btca-l1-table-cell--unused {
   background: #c4d9dc;
+}
+
+.btca-l1-table-cell--invalid {
+  border: 2px solid rgba(239, 68, 68, 0.95);
 }
 
 .btca-l1-ok-input {
   width: 100%;
-  min-height: 36px;
-  padding: 4px 6px;
+  height: 100%;
+  min-height: 34px;
+  padding: 0 2px;
   border: 1px solid rgba(17, 24, 39, 0.25);
-  border-radius: 8px;
+  border-radius: 0;
   color: #111827;
   background: #ffffff;
-  font-size: 16px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 26px;
   text-align: center;
 }
 
@@ -874,33 +1143,66 @@ body.btca-boot-mode #root {
 .btca-l1-nav-cards,
 .btca-l1-polez-cards {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   margin-top: 8px;
 }
 
 .btca-l1-nav-card,
 .btca-l1-polez-card {
   position: relative;
+  overflow: visible;
+}
+
+.btca-l1-nav-card-inner {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.btca-l1-nav-card-top {
+  display: flex;
+  justify-content: flex-end;
+  overflow: visible;
+}
+
+.btca-l1-nav-card-frame {
+  z-index: 2;
+  margin-top: 9px;
 }
 
 .btca-l1-pick {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  height: 40px;
   min-height: 40px;
-  padding: 6px 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 12px;
   border: 1px solid rgba(17, 24, 39, 0.18);
-  border-radius: 12px;
-  color: #111827;
+  border-radius: 10px 10px 0 0;
+  color: #000000;
   background: #d0e0e3;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
+  line-height: 26px;
+  transform: translate(-10px, 9px);
   touch-action: manipulation;
 }
 
+.btca-l1-pick__icon {
+  font-size: 20px;
+  line-height: 22px;
+}
+
 .btca-l1-pick--consumed {
+  border-color: rgba(17, 24, 39, 0.12);
   background: #e2ecee;
+}
+
+.btca-l1-pick--consumed .btca-l1-pick__text {
+  color: rgba(17, 24, 39, 0.55);
 }
 
 .btca-l1-card-image-btn {
@@ -981,11 +1283,37 @@ body.btca-boot-mode #root {
   box-shadow: 0 2px 8px rgba(26, 79, 92, 0.35);
 }
 
-.btca-level1-picker--date {
-  width: min(320px, calc(100vw - 16px));
-  margin: 0 auto;
-  left: 0;
-  right: 0;
+.btca-level1-picker--anchored {
+  z-index: 80;
+  border: 1px solid rgba(17, 24, 39, 0.6);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+}
+
+.btca-level1-picker--anchored .btca-level1-picker__item {
+  border: 0;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 0;
+  color: #111827;
+  background: transparent;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.btca-level1-picker--anchored .btca-level1-picker__item--active {
+  background: rgba(162, 196, 201, 0.35);
+}
+
+.btca-level1-picker--anchored.btca-level1-picker--date {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.btca-level1-picker--anchored.btca-level1-picker--date .btca-level1-picker__title {
+  color: #111827;
 }
 
 .btca-level1-picker__title {
@@ -1098,17 +1426,47 @@ body.btca-boot-mode #root {
 
 .btca-l1-data-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
-  color: #ffffff;
-  font-size: 14px;
+  color: #111827;
+  font-size: 17px;
+  line-height: 26px;
+}
+
+.btca-l1-data-col--date {
+  width: 18%;
+}
+
+.btca-l1-data-col--exercise {
+  width: 18%;
+}
+
+.btca-l1-data-col--task {
+  width: 10%;
+}
+
+.btca-l1-data-col--req {
+  width: 13%;
+}
+
+.btca-l1-data-col--ok {
+  width: 16%;
+}
+
+.btca-l1-data-col--pct {
+  width: 10%;
+}
+
+.btca-l1-data-col--sets {
+  width: 15%;
 }
 
 .btca-l1-data-table th,
 .btca-l1-data-table td {
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.2);
   text-align: center;
-  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .btca-l1-about-body {
@@ -1130,9 +1488,10 @@ body.btca-boot-mode #root {
 }
 
 .btca-level1-content {
+  flex: 1;
   width: 100%;
-  min-height: calc(100vh - 94px);
-  padding: 10px max(4px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+  min-height: 0;
+  padding: 2px max(4px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
   background: #1f4f5c;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
@@ -1463,8 +1822,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.42:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.42:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.43:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.43:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -1494,13 +1853,15 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.42";
+  var LEVEL1_MODULE_VERSION = "8.1.43";
 
   var CORE_REL_PATHS = [
     "",
     "icons/btca-apple-touch-icon.png",
     "icons/btca-icon-192.png",
     "icons/btca-icon-512.png",
+    "branding/up.png",
+    "branding/baza.png",
     "offline/app-shell.json",
     "offline/media/manifest.json",
     "vendor/zip.min.js",
