@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.37:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.37:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.38:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.38:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var OFFLINE_PREPARE_URL = "https://alintual.github.io/btca-8-1/";
@@ -31,7 +31,7 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.37";
+  var LEVEL1_MODULE_VERSION = "8.1.38";
 
   var CORE_REL_PATHS = [
     "",
@@ -41,7 +41,6 @@
     "offline/app-shell.json",
     "offline/media/manifest.json",
     "vendor/zip.min.js",
-    "branding/splash.gif",
     "level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/data/forma_exercise_list.json",
@@ -188,9 +187,6 @@
     var pct = Math.max(0, Math.min(100, Math.round(percent)));
     setPanel(
       '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + pct + "%</span></div>" +
-      '<div class="ios-panel__splash-wrap">' +
-      '<img class="ios-panel__splash-gif" src="' + assetPath("branding/splash.gif") + '" alt="Загрузка приложения">' +
-      '<div class="ios-panel__splash-pct" aria-live="polite">' + pct + "<span>%</span></div></div>" +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
       '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>"
     );
@@ -209,9 +205,6 @@
       : "Offline-пакет подготовлен. В Safari нажмите «Поделиться» и выберите «На экран Домой».";
     setPanel(
       '<div class="ios-panel__header"><strong>iOS/iPadOS</strong><span>100%</span></div>' +
-      '<div class="ios-panel__splash-wrap">' +
-      '<img class="ios-panel__splash-gif" src="' + assetPath("branding/splash.gif") + '" alt="">' +
-      '<div class="ios-panel__splash-pct" aria-live="polite">100<span>%</span></div></div>' +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:100%"></div></div>' +
       '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
       '<p class="hint">' + escapeHtml(hint) + "</p>"
@@ -252,42 +245,70 @@
     }
   }
 
+  function level1ModuleReady() {
+    return Boolean(window.BTCA_LEVEL1_DB && window.BTCA_LEVEL1 && window.BTCA_LEVEL1.boot);
+  }
+
   function loadLevel1Script(src) {
     return new Promise(function (resolve, reject) {
-      if (src.indexOf("level1-db") >= 0 && window.BTCA_LEVEL1_DB) {
+      var isDb = src.indexOf("level1-db") >= 0;
+      var isApp = src.indexOf("level1-app") >= 0;
+
+      if (isDb && window.BTCA_LEVEL1_DB) {
         resolve();
         return;
       }
-      if (src.indexOf("level1-app") >= 0 && window.BTCA_LEVEL1 && window.BTCA_LEVEL1.boot) {
+      if (isApp && window.BTCA_LEVEL1 && window.BTCA_LEVEL1.boot) {
         resolve();
         return;
       }
-      if (document.querySelector('script[src="' + src + '"]')) {
-        resolve();
-        return;
+
+      var existing = document.querySelector('script[src="' + src + '"]');
+      if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
       }
+
       var script = document.createElement("script");
       script.src = src;
-      script.onload = function () { resolve(); };
+      script.onload = function () {
+        if (isDb && !window.BTCA_LEVEL1_DB) {
+          reject(new Error("level1-db.js выполнен, но BTCA_LEVEL1_DB не найден"));
+          return;
+        }
+        if (isApp && (!window.BTCA_LEVEL1 || !window.BTCA_LEVEL1.boot)) {
+          reject(new Error("level1-app.js выполнен, но BTCA_LEVEL1.boot не найден"));
+          return;
+        }
+        resolve();
+      };
       script.onerror = function () { reject(new Error("Не удалось загрузить " + src)); };
       document.head.appendChild(script);
     });
   }
 
   function ensureLevel1Module() {
-    if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1_DB) return Promise.resolve();
+    if (level1ModuleReady()) return Promise.resolve();
     var v = LEVEL1_MODULE_VERSION;
     return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v)).then(function () {
       return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v));
+    }).then(function () {
+      if (!level1ModuleReady()) {
+        throw new Error("Модуль Уровня 1 не инициализирован");
+      }
     });
   }
 
   function bootLevel1Module() {
     return ensureLevel1Module().then(function () {
-      if (!window.BTCA_LEVEL1 || !window.BTCA_LEVEL1.boot) {
-        throw new Error("Модуль Уровня 1 не инициализирован");
-      }
       return window.BTCA_LEVEL1.boot();
+    });
+  }
+
+  function preloadLevel1ModuleSilently() {
+    return ensureLevel1Module().then(function () {
+      return window.BTCA_LEVEL1.boot();
+    }).catch(function (error) {
+      console.warn("BTCA Level 1 preload failed", error);
     });
   }
 
@@ -329,9 +350,16 @@
     }
 
     var main = root.querySelector(".btca-level1-screen");
-    if (!main || !window.BTCA_LEVEL1) return;
-    window.BTCA_LEVEL1.mount(main).catch(function (error) {
-      var content = root.querySelector("[data-btca-level1-content]");
+    if (!main) return;
+
+    var content = root.querySelector("[data-btca-level1-content]");
+    if (content) {
+      content.innerHTML = '<p class="prepare-status prepare-status--running">Загрузка Уровня 1…</p>';
+    }
+
+    bootLevel1Module().then(function () {
+      return window.BTCA_LEVEL1.mount(main);
+    }).catch(function (error) {
       if (content) {
         content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
       }
@@ -617,19 +645,16 @@
       })
       .then(function (mediaReady) {
         if (mediaReady) {
-          report(90, "Материалы уже распакованы");
+          report(95, "Материалы уже распакованы");
           return;
         }
         report(15, "Загрузка и распаковка ZIP-архивов...");
-        return prepareMediaArchives(report, 15, 92);
-      })
-      .then(function () {
-        report(93, "Инициализация Уровня 1...");
-        return bootLevel1Module();
+        return prepareMediaArchives(report, 15, 95);
       })
       .then(function () {
         report(100, "Готово");
         renderReady();
+        preloadLevel1ModuleSilently();
       })
       .catch(renderError)
       .then(function () {
@@ -655,6 +680,10 @@
       return bootLevel1Module().then(function () {
         window.__BTCA_APP_BOOT_READY__ = true;
         renderInstalledHome();
+      }).catch(function () {
+        window.__BTCA_APP_BOOT_READY__ = true;
+        renderInstalledHome();
+        preloadLevel1ModuleSilently();
       });
     }).catch(function (error) {
       renderInfo("iOS/iPadOS", error && (error.message || error));

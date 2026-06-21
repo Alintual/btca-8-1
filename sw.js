@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.37";
+const CACHE_VERSION = "btca-web-8.1.38";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
@@ -13,7 +13,6 @@ const CORE_ASSETS = [
   "/btca-8-1/offline/media/manifest.json",
   "/btca-8-1/install-ios.js",
   "/btca-8-1/vendor/zip.min.js",
-  "/btca-8-1/branding/splash.gif",
   "/btca-8-1/level1/level1-db.js",
   "/btca-8-1/level1/level1-app.js",
   "/btca-8-1/level1/data/forma_exercise_list.json",
