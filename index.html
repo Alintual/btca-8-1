@@ -543,6 +543,19 @@ body.btca-boot-mode #root {
   overflow: hidden;
   background: #1f4f5c;
   color: #ffffff;
+  --btca-l1-gutter: max(1.1vmin, 4px);
+  --btca-l1-font: clamp(14px, 2.2vmin, 17px);
+  --btca-l1-lh: clamp(20px, 3.4vmin, 26px);
+  --btca-l1-field-h: max(5vmin, 40px);
+  --btca-l1-trailing-w: max(28vmin, 112px);
+  --btca-l1-primary-max: 72%;
+  --btca-l1-section-w: min(81vw, 324px);
+  --btca-l1-save-icon: max(4.3vmin, 34px);
+  --btca-l1-arrow: max(4vmin, 32px);
+  --btca-l1-table-row: max(5vmin, 40px);
+  --btca-l1-picker-row: max(6.25vmin, 50px);
+  --btca-l1-picker-polez: max(8.75vmin, 70px);
+  --btca-l1-radius: 12px;
 }
 
 .btca-level1-nav {
@@ -757,7 +770,13 @@ body.btca-boot-mode #root {
 .btca-l1-primary-col {
   flex: 1;
   min-width: 0;
-  max-width: 72%;
+  max-width: var(--btca-l1-primary-max);
+}
+
+.btca-l1-exercise-col {
+  flex: 1;
+  min-width: 0;
+  max-width: var(--btca-l1-primary-max);
 }
 
 .btca-l1-trailing-wrap {
@@ -769,9 +788,129 @@ body.btca-boot-mode #root {
 .btca-l1-trailing-slot {
   flex-shrink: 0;
   display: flex;
-  width: 112px;
+  width: var(--btca-l1-trailing-w);
   justify-content: center;
   align-items: center;
+}
+
+.btca-l1-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.btca-l1-sticky-head {
+  flex-shrink: 0;
+  padding-bottom: 4px;
+}
+
+.btca-l1-tab-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.btca-l1-forma-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.btca-l1-forma-body .btca-l1-table-area {
+  flex: 1;
+  min-height: 0;
+  margin-top: 0;
+}
+
+.btca-l1-baza-head {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.btca-l1-baza-filter-row {
+  display: grid;
+  gap: 4px;
+}
+
+.btca-l1-field-label--center {
+  width: 100%;
+  text-align: center;
+}
+
+.btca-l1-period-faces {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.btca-l1-period-face {
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  padding: 0 10px;
+  justify-content: center;
+}
+
+.btca-l1-period-face__icon {
+  flex-shrink: 0;
+  font-size: clamp(16px, 2.4vmin, 18px);
+  line-height: 1;
+}
+
+.btca-l1-baza-labels-row,
+.btca-l1-baza-fields-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.btca-l1-task-label-col,
+.btca-l1-task-field-col {
+  width: var(--btca-l1-trailing-w);
+  flex-shrink: 0;
+}
+
+.btca-l1-baza-chart-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--btca-l1-lh);
+  padding-bottom: 8px;
+}
+
+.btca-l1-baza-chart-title {
+  width: 100%;
+  padding-right: calc(var(--btca-l1-trailing-w) + 8px);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: var(--btca-l1-font);
+  line-height: var(--btca-l1-lh);
+  font-weight: 400;
+  text-align: center;
+}
+
+.btca-l1-chart-arrow-slot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.btca-l1-baza-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.btca-l1-baza-body .btca-l1-chart-panel {
+  flex: 1;
+  min-height: 0;
+  margin-top: 0;
+  border-radius: 16px;
+  background: #c5d9dc;
 }
 
 .btca-l1-period-col {
@@ -799,24 +938,24 @@ body.btca-boot-mode #root {
   display: block;
   margin-bottom: 4px;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 17px;
-  line-height: 26px;
+  font-size: var(--btca-l1-font);
+  line-height: var(--btca-l1-lh);
 }
 
 .btca-l1-face {
   display: inline-flex;
   width: 100%;
-  min-height: 40px;
+  min-height: var(--btca-l1-field-h);
   align-items: center;
   justify-content: center;
   padding: 0 12px;
   border: 1px solid rgba(17, 24, 39, 0.18);
-  border-radius: 12px;
+  border-radius: var(--btca-l1-radius);
   color: #111827;
   background: #ffffff;
-  font-size: 17px;
+  font-size: var(--btca-l1-font);
   font-weight: 600;
-  line-height: 26px;
+  line-height: var(--btca-l1-lh);
   touch-action: manipulation;
 }
 
@@ -835,7 +974,7 @@ body.btca-boot-mode #root {
 }
 
 .btca-l1-face--section {
-  width: 324px;
+  width: var(--btca-l1-section-w);
   max-width: 100%;
   padding-left: 36px;
   padding-right: 36px;
@@ -869,29 +1008,29 @@ body.btca-boot-mode #root {
 }
 
 .btca-l1-face--disabled {
-  opacity: 0.72;
+  opacity: 0.55;
 }
 
 .btca-l1-save {
   display: inline-flex;
-  min-height: 40px;
+  min-height: var(--btca-l1-field-h);
   align-items: center;
   gap: 4px;
   padding: 0 4px;
   border: 1px solid rgba(17, 24, 39, 0.18);
-  border-radius: 12px;
+  border-radius: var(--btca-l1-radius);
   color: #000000;
   background: #d0e0e3;
-  font-size: 17px;
+  font-size: var(--btca-l1-font);
   font-weight: 600;
-  line-height: 26px;
+  line-height: var(--btca-l1-lh);
   touch-action: manipulation;
 }
 
 .btca-l1-save__icon {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: var(--btca-l1-save-icon);
+  height: var(--btca-l1-save-icon);
 }
 
 .btca-l1-save__icon--disabled {
@@ -918,22 +1057,12 @@ body.btca-boot-mode #root {
   justify-content: space-between;
 }
 
-.btca-l1-exercise-col {
-  flex: 1;
-  min-width: 0;
-  max-width: 72%;
-}
-
 .btca-l1-exercise-col--polez {
   max-width: 100%;
 }
 
-.btca-l1-task-col {
-  max-width: 72%;
-}
-
 .btca-l1-nav-section {
-  width: 324px;
+  width: var(--btca-l1-section-w);
   max-width: 100%;
 }
 
@@ -949,8 +1078,8 @@ body.btca-boot-mode #root {
 
 .btca-l1-green-arrow__img {
   display: block;
-  width: 32px;
-  height: 32px;
+  width: var(--btca-l1-arrow);
+  height: var(--btca-l1-arrow);
   transform: rotate(90deg);
   filter: brightness(0) saturate(100%) invert(46%) sepia(98%) saturate(1200%) hue-rotate(89deg) brightness(102%) contrast(97%);
 }
@@ -1012,7 +1141,7 @@ body.btca-boot-mode #root {
 .btca-l1-table-row {
   display: flex;
   width: 100%;
-  min-height: 40px;
+  min-height: var(--btca-l1-table-row);
   border-bottom: 1px solid rgba(17, 24, 39, 0.6);
 }
 
@@ -1285,35 +1414,66 @@ body.btca-boot-mode #root {
 
 .btca-level1-picker--anchored {
   z-index: 80;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
   border: 1px solid rgba(17, 24, 39, 0.6);
-  border-radius: 12px;
+  border-radius: var(--btca-l1-radius);
   background: #ffffff;
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
 }
 
+.btca-level1-picker--sheet {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #000000;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.18);
+}
+
+.btca-level1-picker--sheet .btca-level1-picker__title {
+  color: #111827;
+}
+
+.btca-level1-picker--anchored .btca-level1-picker__list {
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  padding: 4px 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .btca-level1-picker--anchored .btca-level1-picker__item {
+  min-height: var(--btca-l1-picker-row);
+  padding: 12px 14px;
   border: 0;
   border-bottom: 1px solid rgba(17, 24, 39, 0.12);
   border-radius: 0;
   color: #111827;
   background: transparent;
-  font-size: 17px;
+  font-size: var(--btca-l1-font);
   font-weight: 600;
-  line-height: 26px;
+  line-height: var(--btca-l1-lh);
+  text-align: center;
+}
+
+.btca-level1-picker--anchored .btca-level1-picker__item--polez {
+  min-height: var(--btca-l1-picker-polez);
+  padding: 11px var(--btca-l1-gutter);
+  font-weight: 400;
+  text-align: left;
 }
 
 .btca-level1-picker--anchored .btca-level1-picker__item--active {
   background: rgba(162, 196, 201, 0.35);
 }
 
-.btca-level1-picker--anchored.btca-level1-picker--date {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-}
-
-.btca-level1-picker--anchored.btca-level1-picker--date .btca-level1-picker__title {
-  color: #111827;
+.btca-level1-picker--anchored .btca-level1-picker__item--polez.btca-level1-picker__item--active {
+  background: rgba(208, 224, 227, 0.55);
 }
 
 .btca-level1-picker__title {
@@ -1469,6 +1629,77 @@ body.btca-boot-mode #root {
   vertical-align: middle;
 }
 
+.btca-l1-overlay--baza-table {
+  display: flex;
+  flex-direction: column;
+  background: #1f4f5c;
+}
+
+.btca-l1-baza-table-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin: 8px var(--btca-l1-gutter) var(--btca-l1-gutter);
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.55);
+  border-radius: var(--btca-l1-radius);
+  background: #a2c4c9;
+}
+
+.btca-l1-baza-table-head {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.6);
+  background: #a2c4c9;
+}
+
+.btca-l1-baza-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.btca-l1-baza-table-row {
+  display: flex;
+  min-height: max(4.5vmin, 30px);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.6);
+}
+
+.btca-l1-baza-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-right: 1px solid rgba(17, 24, 39, 0.6);
+  color: #111827;
+  font-size: var(--btca-l1-font);
+  line-height: var(--btca-l1-lh);
+  text-align: center;
+}
+
+.btca-l1-baza-col--date,
+.btca-l1-baza-col--ex {
+  flex: 1.1;
+}
+
+.btca-l1-baza-col--task {
+  flex: 0.65;
+}
+
+.btca-l1-baza-col--req {
+  flex: 0.85;
+}
+
+.btca-l1-baza-col--ok {
+  flex: 1;
+}
+
+.btca-l1-baza-col--pct {
+  flex: 0.55;
+  border-right: 0;
+}
+
 .btca-l1-about-body {
   overflow: auto;
   padding: 12px max(8px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
@@ -1489,12 +1720,13 @@ body.btca-boot-mode #root {
 
 .btca-level1-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-height: 0;
-  padding: 2px max(4px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+  padding: 2px max(var(--btca-l1-gutter), env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(var(--btca-l1-gutter), env(safe-area-inset-left));
   background: #1f4f5c;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 }
 
 .btca-level1-card {
@@ -1832,8 +2064,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.45:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.45:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.46:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.46:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -1863,7 +2095,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.45";
+  var LEVEL1_MODULE_VERSION = "8.1.46";
 
   var CORE_REL_PATHS = [
     "",

@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.45";
+  var VERSION = "8.1.46";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -11,6 +11,10 @@
   var POLEZ_ALL = "all";
   var POLEZ_HIDDEN = { fig8: 1, fig9: 1, fig10: 1, fig11: 1, fig20: 1, fig21: 1 };
   var PICK_DELAY_MS = 1500;
+  var PICKER_ROW_SIMPLE = 50;
+  var PICKER_ROW_POLEZ = 70;
+  var PICKER_LIST_PAD = 4;
+  var SCREEN_EDGE_GUTTER = 4;
 
   var SHEETS = [
     { key: "forma", label: "Форма", title: "Форма ввода", emoji: "📊" },
@@ -210,6 +214,80 @@
       "</div></div>";
   }
 
+  function periodDateFaceHtml(label, dataAttr, disabled) {
+    return '<button type="button" class="btca-l1-face btca-l1-period-face' + (disabled ? " btca-l1-face--disabled" : "") +
+      '" ' + dataAttr + (disabled ? " disabled" : "") + ">" +
+      '<span class="btca-l1-period-face__icon" aria-hidden="true">📅</span>' +
+      '<span class="btca-l1-face__text">' + escapeHtml(label) + "</span></button>";
+  }
+
+  function getBazaChartTitle(exercise) {
+    var showChart = exercise !== "all" && String(exercise || "").trim() !== "";
+    return {
+      text: showChart ? "Успешные удары по упражнению за период" : "Нет данных по упражнению",
+      showChart: showChart,
+      arrowDisabled: !showChart,
+    };
+  }
+
+  function safeGutter() {
+    return SCREEN_EDGE_GUTTER;
+  }
+
+  function computeAnchoredPickerLayout(anchorEl) {
+    var rect = anchorEl.getBoundingClientRect();
+    var gap = 6;
+    var panelW = Math.max(96, Math.round(rect.width));
+    var gutterL = safeGutter();
+    var gutterR = safeGutter();
+    var left = Math.max(gutterL, Math.min(Math.round(rect.left), window.innerWidth - gutterR - panelW));
+    var top = Math.round(rect.bottom + gap);
+    var bottomReserve = safeGutter() + 12;
+    var availableH = Math.max(0, window.innerHeight - top - bottomReserve);
+    var maxCap = Math.round(window.innerHeight * 0.52);
+    var panelH = Math.min(maxCap, Math.max(120, availableH));
+    return { top: top, left: left, width: panelW, height: panelH };
+  }
+
+  function computeCenteredDateSheetLayout() {
+    var gutterL = safeGutter();
+    var gutterR = safeGutter();
+    return {
+      top: Math.round(window.innerHeight * 0.2),
+      left: gutterL,
+      width: Math.max(280, window.innerWidth - gutterL - gutterR),
+    };
+  }
+
+  function pickerScrollOffset(options, index, viewportHeight, rowHeight) {
+    if (index < 0 || index >= options.length || viewportHeight <= 0) return 0;
+    var offset = PICKER_LIST_PAD;
+    var i;
+    for (i = 0; i < index; i += 1) offset += rowHeight;
+    var length = rowHeight;
+    var contentHeight = PICKER_LIST_PAD * 2 + options.length * rowHeight;
+    var maxScroll = Math.max(0, contentHeight - viewportHeight);
+    var centered = offset - (viewportHeight - length) / 2;
+    return Math.min(maxScroll, Math.max(0, centered));
+  }
+
+  function scrollPickerToActive(listEl, options, currentValue, rowHeight) {
+    if (!listEl) return;
+    var index = -1;
+    var i;
+    for (i = 0; i < options.length; i += 1) {
+      if (options[i].value === currentValue) { index = i; break; }
+    }
+    if (index < 0) return;
+    var run = function () {
+      listEl.scrollTop = pickerScrollOffset(options, index, listEl.clientHeight, rowHeight);
+    };
+    requestAnimationFrame(function () {
+      requestAnimationFrame(run);
+    });
+    window.setTimeout(run, 50);
+  }
+
   function deriveNavSectionLabel(exerciseFilterKey) {
     if (exerciseFilterKey === NAV_FILTER_ALL) return "Все";
     if (exerciseFilterKey === "Тест1") return "Тренировочные тесты";
@@ -295,37 +373,36 @@
     if (layer) layer.setAttribute("hidden", "hidden");
   }
 
-  function openPicker(title, options, current, onSelect, anchorEl) {
+  function openPicker(title, options, current, onSelect, anchorEl, pickerOpts) {
+    pickerOpts = pickerOpts || {};
     var layer = state.root.querySelector("[data-btca-level1-picker]");
     if (!layer) return;
     layer.removeAttribute("hidden");
-    var pickerClass = "btca-level1-picker";
+    var rowHeight = pickerOpts.rowHeight || PICKER_ROW_SIMPLE;
+    var itemExtraClass = pickerOpts.itemClass || "";
+    var pickerClass = "btca-level1-picker btca-level1-picker--anchored";
     var pickerStyle = "";
-    if (anchorEl && anchorEl.getBoundingClientRect) {
-      var rect = anchorEl.getBoundingClientRect();
-      var gap = 6;
-      var panelW = Math.max(96, Math.round(rect.width));
-      var gutterL = 4;
-      var gutterR = 4;
-      var left = Math.max(gutterL, Math.min(Math.round(rect.left), window.innerWidth - gutterR - panelW));
-      var top = Math.round(rect.bottom + gap);
-      var maxH = Math.min(Math.round(window.innerHeight * 0.52), Math.max(120, window.innerHeight - top - 24));
+    var layout = anchorEl && anchorEl.getBoundingClientRect
+      ? computeAnchoredPickerLayout(anchorEl)
+      : null;
+    if (layout) {
       pickerStyle =
-        ' style="position:fixed;top:' + top + "px;left:" + left + "px;width:" + panelW +
-        "px;max-height:" + maxH + 'px;right:auto;"';
-      pickerClass += " btca-level1-picker--anchored";
+        ' style="position:fixed;top:' + layout.top + "px;left:" + layout.left + "px;width:" + layout.width +
+        "px;height:" + layout.height + 'px;right:auto;"';
     }
     layer.innerHTML =
       '<button class="btca-level1-menu-backdrop" type="button" data-btca-picker-close aria-label="Закрыть"></button>' +
       '<div class="' + pickerClass + '" role="dialog" aria-label="' + escapeHtml(title) + '"' + pickerStyle + ">" +
-      (anchorEl ? "" : '<div class="btca-level1-picker__title">' + escapeHtml(title) + "</div>") +
-      '<div class="btca-level1-picker__list">' +
+      '<div class="btca-level1-picker__list" data-btca-picker-list>' +
       options.map(function (opt) {
         var active = opt.value === current;
-        return '<button type="button" class="btca-level1-picker__item' + (active ? " btca-level1-picker__item--active" : "") +
+        return '<button type="button" class="btca-level1-picker__item' + itemExtraClass +
+          (active ? " btca-level1-picker__item--active" : "") +
           '" data-btca-picker-value="' + escapeHtml(opt.value) + '">' + escapeHtml(opt.label) + "</button>";
       }).join("") +
       "</div></div>";
+    var listEl = layer.querySelector("[data-btca-picker-list]");
+    scrollPickerToActive(listEl, options, current, rowHeight);
     layer.onclick = function (event) {
       if (event.target.closest("[data-btca-picker-close]")) { closePicker(); return; }
       var btn = event.target.closest("[data-btca-picker-value]");
@@ -388,13 +465,14 @@
     });
 
     content.innerHTML =
-      '<div class="btca-l1-forma">' +
+      '<div class="btca-l1-tab btca-l1-forma">' +
+      '<div class="btca-l1-sticky-head">' +
       '<div class="btca-l1-toolbar btca-l1-toolbar-top">' +
       '<div class="btca-l1-primary-col">' +
       '<span class="btca-l1-field-label">Дата</span>' +
       dateFaceHtml(dateLabel, 'data-btca-forma-date aria-label="Дата тренировки"') +
       "</div>" +
-      '<div class="btca-l1-trailing-wrap">' +
+      '<div class="btca-l1-trailing-wrap" data-btca-forma-trailing>' +
       saveButtonHtml(forma.canSave, "data-btca-forma-save") +
       "</div></div>" +
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
@@ -406,7 +484,8 @@
       '<div class="btca-l1-trailing-slot">' +
       greenArrowHtml({ dataAttr: 'data-btca-forma-desc aria-label="Описание упражнения"' }) +
       "</div></div></div>" +
-      '<div class="btca-l1-banner">' + escapeHtml(FORMA_BANNER) + "</div>" +
+      '<div class="btca-l1-banner">' + escapeHtml(FORMA_BANNER) + "</div></div>" +
+      '<div class="btca-l1-tab-body btca-l1-forma-body">' +
       '<div class="btca-l1-table-area"><div class="btca-l1-table-wrap">' +
       formaTableHeadHtml() +
       '<div class="btca-l1-table-scroll"><div class="btca-l1-table-body">' +
@@ -429,9 +508,9 @@
           '<div class="btca-l1-table-cell btca-l1-col--pct"><span class="btca-l1-td' +
           (!row.active ? " btca-l1-td--muted" : "") + '">' + escapeHtml(row.pct) + "</span></div></div>";
       }).join("") +
-      "</div></div></div></div></div>";
+      "</div></div></div></div></div></div>";
 
-    content.querySelector("[data-btca-forma-date]").addEventListener("click", function (event) {
+    content.querySelector("[data-btca-forma-date]").addEventListener("click", function () {
       openDateInput(state.ui.trainingDate, function (iso) {
         state.formaFlags.suppressExerciseActive = false;
         state.formaFlags.statusOverride = null;
@@ -439,7 +518,7 @@
         DB.patchUiState({ trainingDate: iso });
         renderFormaTab(content);
         renderTitleBar();
-      }, event.currentTarget);
+      });
     });
     content.querySelector("[data-btca-forma-exercise]").addEventListener("click", function (event) {
       openPicker("Упражнение", exerciseOptions, state.ui.exerciseValue, function (value) {
@@ -481,24 +560,17 @@
     });
   }
 
-  function openDateInput(currentIso, onPick, anchorEl) {
+  function openDateInput(currentIso, onPick, title) {
     var layer = state.root.querySelector("[data-btca-level1-picker]");
     layer.removeAttribute("hidden");
-    var pickerClass = "btca-level1-picker btca-level1-picker--date";
-    var pickerStyle = "";
-    if (anchorEl && anchorEl.getBoundingClientRect) {
-      var rect = anchorEl.getBoundingClientRect();
-      var gap = 6;
-      var panelW = Math.max(280, Math.round(rect.width));
-      var left = Math.max(4, Math.min(Math.round(rect.left), window.innerWidth - panelW - 4));
-      var top = Math.round(rect.bottom + gap);
-      pickerStyle = ' style="position:fixed;top:' + top + "px;left:" + left + "px;width:" + panelW + 'px;right:auto;"';
-      pickerClass += " btca-level1-picker--anchored";
-    }
+    var sheet = computeCenteredDateSheetLayout();
+    var pickerStyle =
+      ' style="position:fixed;top:' + sheet.top + "px;left:" + sheet.left + "px;width:" + sheet.width + 'px;right:auto;"';
     layer.innerHTML =
       '<button class="btca-level1-menu-backdrop" type="button" data-btca-picker-close aria-label="Закрыть"></button>' +
-      '<div class="' + pickerClass + '" role="dialog" aria-label="Дата"' + pickerStyle + ">" +
-      '<div class="btca-level1-picker__title">Дата тренировки</div>' +
+      '<div class="btca-level1-picker btca-level1-picker--date btca-level1-picker--sheet" role="dialog" aria-label="Дата"' +
+      pickerStyle + ">" +
+      '<div class="btca-level1-picker__title">' + escapeHtml(title || "Дата тренировки") + "</div>" +
       '<input class="btca-l1-date-native" type="date" value="' + escapeHtml(currentIso) + '">' +
       '<button type="button" class="btca-l1-picker-done" data-btca-date-apply>Готово</button></div>';
     layer.onclick = function (event) {
@@ -583,47 +655,43 @@
     var fromLabel = formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—";
     var toLabel = formatIsoDateAsDdMmYyyy(baza.periodTo) || "—";
     var exerciseLabel = baza.exercise === "all" ? "Все" : labelForExerciseValue(baza.exercise);
-    var taskLabel = baza.task === "all" ? "Все" : baza.task;
-    var showChart = baza.exercise !== "all";
-    var chartRows = showChart ? state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; }) : [];
+    var taskLabel = baza.exercise === "all" ? "Все" : (baza.task === "all" ? "Все" : baza.task);
+    var taskDisabled = baza.exercise === "all";
+    var chartMeta = getBazaChartTitle(baza.exercise);
+    var chartRows = chartMeta.showChart ? state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; }) : [];
 
     content.innerHTML =
-      '<div class="btca-l1-baza">' +
-      '<div class="btca-l1-toolbar btca-l1-toolbar-top btca-l1-toolbar--period">' +
-      '<div class="btca-l1-toolbar__col btca-l1-period-col">' +
-      '<span class="btca-l1-field-label">Период с</span>' +
-      filterFaceHtml(fromLabel, { dataAttr: "data-btca-baza-from" }) +
-      "</div>" +
-      '<div class="btca-l1-toolbar__col btca-l1-period-col">' +
-      '<span class="btca-l1-field-label">по</span>' +
-      filterFaceHtml(toLabel, { dataAttr: "data-btca-baza-to" }) +
+      '<div class="btca-l1-tab btca-l1-baza">' +
+      '<div class="btca-l1-sticky-head btca-l1-baza-head">' +
+      '<div class="btca-l1-baza-filter-row">' +
+      '<span class="btca-l1-field-label btca-l1-field-label--center">Период</span>' +
+      '<div class="btca-l1-period-faces">' +
+      periodDateFaceHtml(fromLabel, "data-btca-baza-from") +
+      periodDateFaceHtml(toLabel, "data-btca-baza-to") +
       "</div></div>" +
-      '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
-      '<div class="btca-l1-exercise-row">' +
+      '<div class="btca-l1-baza-filter-row">' +
+      '<div class="btca-l1-baza-labels-row">' +
+      '<span class="btca-l1-field-label btca-l1-field-label--center">Упражнение</span>' +
+      '<span class="btca-l1-field-label btca-l1-field-label--center btca-l1-task-label-col">Задача</span>' +
+      "</div>" +
+      '<div class="btca-l1-baza-fields-row">' +
       '<div class="btca-l1-exercise-col">' +
-      '<span class="btca-l1-field-label">Упражнение</span>' +
       filterFaceHtml(exerciseLabel, { wide: true, dataAttr: "data-btca-baza-exercise" }) +
       "</div>" +
-      (showChart
-        ? '<div class="btca-l1-trailing-slot">' +
-          greenArrowHtml({ dataAttr: 'data-btca-baza-table aria-label="Таблица"' }) +
-          "</div>"
-        : '<div class="btca-l1-trailing-slot"></div>') +
-      "</div></div>" +
-      '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
-      '<div class="btca-l1-exercise-row">' +
-      '<div class="btca-l1-exercise-col btca-l1-task-col">' +
-      '<span class="btca-l1-field-label">Задача</span>' +
-      filterFaceHtml(taskLabel, {
-        wide: true,
-        disabled: baza.exercise === "all",
-        dataAttr: "data-btca-baza-task",
+      '<div class="btca-l1-trailing-slot btca-l1-task-field-col">' +
+      filterFaceHtml(taskLabel, { wide: true, disabled: taskDisabled, dataAttr: "data-btca-baza-task" }) +
+      "</div></div></div>" +
+      '<div class="btca-l1-baza-chart-header">' +
+      '<span class="btca-l1-baza-chart-title">' + escapeHtml(chartMeta.text) + "</span>" +
+      '<div class="btca-l1-trailing-slot btca-l1-chart-arrow-slot">' +
+      greenArrowHtml({
+        disabled: chartMeta.arrowDisabled,
+        dataAttr: 'data-btca-baza-table aria-label="Таблица"',
       }) +
-      "</div>" +
-      '<div class="btca-l1-trailing-slot"></div></div></div>' +
-      (showChart
+      "</div></div></div>" +
+      '<div class="btca-l1-tab-body btca-l1-baza-body">' +
+      (chartMeta.showChart
         ? '<section class="btca-l1-chart-panel" aria-label="Диаграмма">' +
-          '<div class="btca-l1-chart-title">Упр. ' + escapeHtml(exerciseLabel) + "</div>" +
           '<div class="btca-l1-chart-bars">' +
           chartRows.map(function (row) {
             var pct = row.pct == null ? 0 : Math.max(0, Math.min(100, Number(row.pct)));
@@ -632,23 +700,23 @@
               "<span>" + (row.pct == null ? "—" : row.pct + "%") + "</span></div>";
           }).join("") +
           (chartRows.length ? "" : '<p class="btca-l1-empty">Нет данных за выбранный период</p>') +
-          "</div></section>"
-        : '<p class="btca-l1-hint">Выберите упражнение для просмотра диаграммы.</p>') +
-      "</div>";
+          "</section>"
+        : "") +
+      "</div></div>";
 
-    content.querySelector("[data-btca-baza-from]").addEventListener("click", function (event) {
+    content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
       openDateInput(baza.periodFrom, function (iso) {
         state.ui.baza.periodFrom = iso;
         DB.patchUiState({ baza: { periodFrom: iso } });
         refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, event.currentTarget);
+      }, "Период с");
     });
-    content.querySelector("[data-btca-baza-to]").addEventListener("click", function (event) {
+    content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
       openDateInput(baza.periodTo, function (iso) {
         state.ui.baza.periodTo = iso;
         DB.patchUiState({ baza: { periodTo: iso } });
         refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, event.currentTarget);
+      }, "Период по");
     });
     var exerciseOptions = [{ value: "all", label: "Все" }].concat(state.data.exercises.map(function (it) {
       return { value: it.value, label: it.label };
@@ -683,28 +751,31 @@
 
   function openBazaTable() {
     var overlay = document.createElement("div");
-    overlay.className = "btca-l1-overlay";
+    overlay.className = "btca-l1-overlay btca-l1-overlay--baza-table";
     overlay.innerHTML =
       '<header class="btca-l1-overlay__header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
       "<strong>База данных</strong><span></span></header>" +
-      '<div class="btca-l1-table-scroll"><table class="btca-l1-data-table">' +
-      '<colgroup><col class="btca-l1-data-col btca-l1-data-col--date">' +
-      '<col class="btca-l1-data-col btca-l1-data-col--exercise">' +
-      '<col class="btca-l1-data-col btca-l1-data-col--task">' +
-      '<col class="btca-l1-data-col btca-l1-data-col--req">' +
-      '<col class="btca-l1-data-col btca-l1-data-col--ok">' +
-      '<col class="btca-l1-data-col btca-l1-data-col--pct">' +
-      '<col class="btca-l1-data-col btca-l1-data-col--sets"></colgroup>' +
-      "<thead><tr>" +
-      "<th>Дата</th><th>Упр.</th><th>Задача</th><th>Треб.</th><th>Успех</th><th>%</th><th>Подх.</th></tr></thead><tbody>" +
+      '<div class="btca-l1-baza-table-wrap">' +
+      '<div class="btca-l1-baza-table-head"><div class="btca-l1-baza-table-row">' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>Дата</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>Упр.</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>Задача</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>Треб.</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>Успех</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
+      "</div></div>" +
+      '<div class="btca-l1-baza-table-scroll"><div class="btca-l1-baza-table-body">' +
       state.bazaRows.map(function (row) {
-        return "<tr><td>" + escapeHtml(formatIsoDateAsDdMmYyyy(row.date)) + "</td><td>" + escapeHtml(row.exercise) +
-          "</td><td>" + row.task + "</td><td>" + (row.req == null ? "—" : row.req) + "</td><td>" +
-          (row.ok == null ? "—" : row.ok) + "</td><td>" + (row.pct == null ? "—" : row.pct + "%") +
-          "</td><td>" + (row.sets == null ? "—" : row.sets) + "</td></tr>";
+        return '<div class="btca-l1-baza-table-row">' +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' + escapeHtml(formatIsoDateAsDdMmYyyy(row.date)) + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(row.exercise) + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>' + row.task + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + (row.req == null ? "—" : row.req) + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>' + (row.ok == null ? "—" : row.ok) + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>' + (row.pct == null ? "—" : row.pct + "%") + "</span></div></div>";
       }).join("") +
-      "</tbody></table></div>";
+      "</div></div></div>";
     state.root.appendChild(overlay);
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () {
       overlay.remove();
@@ -724,7 +795,8 @@
     }));
 
     content.innerHTML =
-      '<div class="btca-l1-nav">' +
+      '<div class="btca-l1-tab btca-l1-nav">' +
+      '<div class="btca-l1-sticky-head">' +
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
       '<div class="btca-l1-nav-section">' +
       '<span class="btca-l1-field-label">Раздел</span>' +
@@ -741,8 +813,8 @@
         disabled: filterIsAll,
         dataAttr: 'data-btca-nav-desc aria-label="Описание"',
       }) +
-      "</div></div></div>" +
-      '<div class="btca-l1-nav-cards">' +
+      "</div></div></div></div>" +
+      '<div class="btca-l1-tab-body btca-l1-nav-cards">' +
       items.map(function (item) {
         var img = exerciseImageUrl(item.value);
         var consumed = state.ui.exerciseValue === item.value;
@@ -760,7 +832,7 @@
             : '<div class="btca-l1-card-placeholder">' + escapeHtml(item.label) + "</div>") +
           "</div></div></article>";
       }).join("") +
-      "</div></div>";
+      "</div></div></div>";
 
     content.querySelector("[data-btca-nav-filter]").addEventListener("click", function (event) {
       openPicker("Упражнение", exerciseOptions, filterKey, function (value) {
@@ -814,13 +886,14 @@
     var catalogLabel = catalogKey === POLEZ_ALL ? "Весь список" : (rows.filter(function (r) { return r.key === catalogKey; })[0] || {}).label || "Весь список";
 
     content.innerHTML =
-      '<div class="btca-l1-polez">' +
+      '<div class="btca-l1-tab btca-l1-polez">' +
+      '<div class="btca-l1-sticky-head">' +
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
       '<div class="btca-l1-exercise-col btca-l1-exercise-col--polez">' +
       '<span class="btca-l1-field-label">Каталог</span>' +
       filterFaceHtml(catalogLabel, { wide: true, dataAttr: "data-btca-polez-catalog" }) +
-      "</div></div>" +
-      '<div class="btca-l1-polez-cards">' +
+      "</div></div></div>" +
+      '<div class="btca-l1-tab-body btca-l1-polez-cards">' +
       visible.map(function (row) {
         if (row.key === "links") {
           return '<section class="btca-l1-links-panel"><h3>Ссылки, документы, литература, видео</h3>' +
@@ -849,7 +922,10 @@
         state.ui.polez.catalogKey = value;
         DB.patchUiState({ polez: { catalogKey: value } });
         renderPolezTab(content);
-      }, event.currentTarget);
+      }, event.currentTarget, {
+        rowHeight: PICKER_ROW_POLEZ,
+        itemClass: " btca-level1-picker__item--polez",
+      });
     });
     content.querySelectorAll("[data-btca-polez-desc]").forEach(function (btn) {
       btn.addEventListener("click", function () {
