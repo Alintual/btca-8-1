@@ -1466,6 +1466,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   var INSTALL_CACHE = "btca-web-8.1.38:static-install";
   var MEDIA_CACHE = "btca-web-8.1.38:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
+  var APP_READY_KEY = "btca-web:app-ready";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var OFFLINE_PREPARE_URL = "https://alintual.github.io/btca-8-1/";
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -1545,21 +1546,65 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     return window.matchMedia("(display-mode: standalone)").matches || Boolean(navigator.standalone);
   }
 
+  function getCacheGeneration() {
+    return MEDIA_CACHE.split(":")[0];
+  }
+
+  function readAppPreparedState() {
+    try {
+      var raw = localStorage.getItem(APP_READY_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function markAppPrepared() {
+    try {
+      localStorage.setItem(APP_READY_KEY, JSON.stringify({
+        cacheGeneration: getCacheGeneration(),
+        preparedAt: new Date().toISOString(),
+      }));
+    } catch (_) {}
+    window.__BTCA_APP_BOOT_READY__ = true;
+  }
+
+  function isAppPreparedSync() {
+    if (window.__BTCA_APP_BOOT_READY__) return true;
+    var appReady = readAppPreparedState();
+    if (appReady && appReady.cacheGeneration === getCacheGeneration()) return true;
+    return hasPreparedMediaState();
+  }
+
   function hasPreparedMediaState() {
     try {
       var raw = localStorage.getItem(MEDIA_STATE_KEY);
       if (!raw) return false;
       var state = JSON.parse(raw);
-      return Boolean(state && state.version && state.files);
+      if (!state || !state.version || !state.files) return false;
+      if (state.cacheGeneration && state.cacheGeneration !== getCacheGeneration()) return false;
+      return true;
     } catch (_) {
       return false;
     }
   }
 
+  function mediaProbeRequest() {
+    return new Request(assetPath("offline-unpacked/level1/exercises/1.jpg"));
+  }
+
   function verifyMediaCacheReady() {
-    if (!hasPreparedMediaState() || !("caches" in window)) return Promise.resolve(false);
+    if (!("caches" in window)) return Promise.resolve(false);
+    if (!hasPreparedMediaState() && !readAppPreparedState()) {
+      return Promise.resolve(false);
+    }
+    var probe = mediaProbeRequest();
     return caches.open(MEDIA_CACHE).then(function (cache) {
-      return cache.match(assetPath("offline-unpacked/level1/exercises/1.jpg"));
+      return cache.match(probe).then(function (hit) {
+        if (hit) return true;
+        return cache.match(probe.url);
+      });
     }).then(function (hit) {
       return Boolean(hit);
     }).catch(function () {
@@ -1670,7 +1715,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
       '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
       '<p class="hint">' + escapeHtml(hint) + "</p>"
     );
-    window.__BTCA_APP_BOOT_READY__ = true;
+    markAppPrepared();
     if (isStandalone()) {
       renderInstalledHome();
     }
@@ -1776,56 +1821,69 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   function renderLevel1Screen() {
     var root = document.getElementById("root");
     if (!root) return;
-    if (!window.__BTCA_APP_BOOT_READY__) {
-      renderInfo(
-        "iOS/iPadOS",
-        "Приложение не подготовлено. Откройте " + OFFLINE_PREPARE_URL + " в Safari, нажмите iOS и дождитесь 100%."
-      );
-      return;
-    }
-    installedHomeSnapshot = installedHomeSnapshot || root.innerHTML;
-    document.body.classList.add("btca-level1-mode");
-    document.body.classList.remove("btca-installed-mode", "btca-screen-mode");
-    root.innerHTML =
-      '<main class="btca-level1-screen">' +
-      '<header class="btca-level1-nav">' +
-      '<button class="btca-back-button" type="button" data-btca-level1-back aria-label="Назад">←</button>' +
-      '<strong class="btca-level1-nav__title">Уровень 1 — Начальный</strong>' +
-      '<button class="btca-level1-menu-button" type="button" data-btca-level1-menu aria-label="Меню листов"><span></span><span></span><span></span></button>' +
-      "</header>" +
-      '<section class="btca-level1-titlebar" data-btca-level1-titlebar></section>' +
-      '<section class="btca-level1-content" data-btca-level1-content></section>' +
-      '<div class="btca-level1-menu-layer" data-btca-level1-menu-layer hidden></div>' +
-      '<div class="btca-level1-menu-layer" data-btca-level1-picker hidden></div>' +
-      "</main>";
 
-    var back = document.querySelector("[data-btca-level1-back]");
-    if (back) {
-      back.addEventListener("click", function () {
-        if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1.unmount) window.BTCA_LEVEL1.unmount();
-        root.innerHTML = installedHomeSnapshot;
-        installedHomeSnapshot = "";
-        document.body.classList.remove("btca-level1-mode", "btca-allow-landscape");
-        renderInstalledHome();
+    function openLevel1Screen() {
+      installedHomeSnapshot = installedHomeSnapshot || root.innerHTML;
+      document.body.classList.add("btca-level1-mode");
+      document.body.classList.remove("btca-installed-mode", "btca-screen-mode");
+      root.innerHTML =
+        '<main class="btca-level1-screen">' +
+        '<header class="btca-level1-nav">' +
+        '<button class="btca-back-button" type="button" data-btca-level1-back aria-label="Назад">←</button>' +
+        '<strong class="btca-level1-nav__title">Уровень 1 — Начальный</strong>' +
+        '<button class="btca-level1-menu-button" type="button" data-btca-level1-menu aria-label="Меню листов"><span></span><span></span><span></span></button>' +
+        "</header>" +
+        '<section class="btca-level1-titlebar" data-btca-level1-titlebar></section>' +
+        '<section class="btca-level1-content" data-btca-level1-content></section>' +
+        '<div class="btca-level1-menu-layer" data-btca-level1-menu-layer hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level1-picker hidden></div>' +
+        "</main>";
+
+      var back = document.querySelector("[data-btca-level1-back]");
+      if (back) {
+        back.addEventListener("click", function () {
+          if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1.unmount) window.BTCA_LEVEL1.unmount();
+          root.innerHTML = installedHomeSnapshot;
+          installedHomeSnapshot = "";
+          document.body.classList.remove("btca-level1-mode", "btca-allow-landscape");
+          renderInstalledHome();
+        });
+      }
+
+      var main = root.querySelector(".btca-level1-screen");
+      if (!main) return;
+
+      var content = root.querySelector("[data-btca-level1-content]");
+      if (content) {
+        content.innerHTML = '<p class="prepare-status prepare-status--running">Загрузка Уровня 1…</p>';
+      }
+
+      bootLevel1Module().then(function () {
+        return window.BTCA_LEVEL1.mount(main);
+      }).catch(function (error) {
+        if (content) {
+          content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
+        }
+      }).then(function () {
+        syncPortraitMode();
       });
     }
 
-    var main = root.querySelector(".btca-level1-screen");
-    if (!main) return;
-
-    var content = root.querySelector("[data-btca-level1-content]");
-    if (content) {
-      content.innerHTML = '<p class="prepare-status prepare-status--running">Загрузка Уровня 1…</p>';
+    if (isAppPreparedSync()) {
+      openLevel1Screen();
+      return;
     }
 
-    bootLevel1Module().then(function () {
-      return window.BTCA_LEVEL1.mount(main);
-    }).catch(function (error) {
-      if (content) {
-        content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
+    verifyMediaCacheReady().then(function (ready) {
+      if (!ready) {
+        renderInfo(
+          "iOS/iPadOS",
+          "Приложение не подготовлено. Откройте " + OFFLINE_PREPARE_URL + " в Safari, нажмите iOS и дождитесь 100%."
+        );
+        return;
       }
-    }).then(function () {
-      syncPortraitMode();
+      markAppPrepared();
+      openLevel1Screen();
     });
   }
 
@@ -2059,6 +2117,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
             }, Promise.resolve()).then(function () {
               localStorage.setItem(MEDIA_STATE_KEY, JSON.stringify({
                 version: manifest.version,
+                cacheGeneration: getCacheGeneration(),
                 preparedAt: new Date().toISOString(),
                 files: preparedFiles,
               }));
@@ -2129,6 +2188,16 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
       return;
     }
 
+    function showHome() {
+      renderInstalledHome();
+      preloadLevel1ModuleSilently();
+    }
+
+    if (isAppPreparedSync()) {
+      showHome();
+      return;
+    }
+
     verifyMediaCacheReady().then(function (ready) {
       if (!ready) {
         renderInfo(
@@ -2138,14 +2207,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
         renderInstalledHome();
         return;
       }
-      return bootLevel1Module().then(function () {
-        window.__BTCA_APP_BOOT_READY__ = true;
-        renderInstalledHome();
-      }).catch(function () {
-        window.__BTCA_APP_BOOT_READY__ = true;
-        renderInstalledHome();
-        preloadLevel1ModuleSilently();
-      });
+      markAppPrepared();
+      showHome();
     }).catch(function (error) {
       renderInfo("iOS/iPadOS", error && (error.message || error));
       renderInstalledHome();
