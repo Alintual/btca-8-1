@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.41";
+  var VERSION = "8.1.42";
   var FORMA_BANNER = "Цель - результативность не менее 70 %";
   var NAV_FILTER_ALL = "all";
   var POLEZ_ALL = "all";
@@ -745,7 +745,7 @@
     overlay.innerHTML =
       '<header class="btca-l1-overlay__header btca-l1-overlay__header--about">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
-      "<strong>Описание</strong><button type="button" class="btca-l1-green-arrow" data-btca-polez-open-image aria-label="Рисунок">›</button></header>" +
+      '<strong>Описание</strong><button type="button" class="btca-l1-green-arrow" data-btca-polez-open-image aria-label="Рисунок">›</button></header>' +
       '<article class="btca-l1-about-body"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
       '<div class="btca-l1-about-text">' + formatPolezBody(desc.body || "") + "</div></article>";
     state.root.appendChild(overlay);

@@ -1463,8 +1463,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.41:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.41:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.42:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.42:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -1494,7 +1494,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.41";
+  var LEVEL1_MODULE_VERSION = "8.1.42";
 
   var CORE_REL_PATHS = [
     "",
@@ -1794,26 +1794,30 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
         return;
       }
 
-      var existing = document.querySelector('script[src="' + src + '"]');
-      if (existing && existing.parentNode) {
-        existing.parentNode.removeChild(existing);
-      }
-
-      var script = document.createElement("script");
-      script.src = src;
-      script.onload = function () {
-        if (isDb && !window.BTCA_LEVEL1_DB) {
-          reject(new Error("level1-db.js выполнен, но BTCA_LEVEL1_DB не найден"));
-          return;
-        }
-        if (isApp && (!window.BTCA_LEVEL1 || !window.BTCA_LEVEL1.boot)) {
-          reject(new Error("level1-app.js выполнен, но BTCA_LEVEL1.boot не найден"));
-          return;
-        }
-        resolve();
-      };
-      script.onerror = function () { reject(new Error("Не удалось загрузить " + src)); };
-      document.head.appendChild(script);
+      fetch(src, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Не удалось загрузить " + src + ": " + response.status);
+          return response.text();
+        })
+        .then(function (code) {
+          if (!/\(function\s*\(\)/.test(code)) {
+            throw new Error("Неверный ответ для " + src);
+          }
+          var old = document.querySelector('script[data-btca-level1-src="' + src + '"]');
+          if (old && old.parentNode) old.parentNode.removeChild(old);
+          var script = document.createElement("script");
+          script.setAttribute("data-btca-level1-src", src);
+          script.textContent = code;
+          document.head.appendChild(script);
+          if (isDb && !window.BTCA_LEVEL1_DB) {
+            throw new Error("level1-db.js выполнен, но BTCA_LEVEL1_DB не найден");
+          }
+          if (isApp && (!window.BTCA_LEVEL1 || !window.BTCA_LEVEL1.boot)) {
+            throw new Error("level1-app.js выполнен, но BTCA_LEVEL1.boot не найден");
+          }
+          resolve();
+        })
+        .catch(reject);
     });
   }
 
