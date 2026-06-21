@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.39:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.39:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.40:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.40:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
@@ -32,7 +32,7 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.39";
+  var LEVEL1_MODULE_VERSION = "8.1.40";
 
   var CORE_REL_PATHS = [
     "",
@@ -151,7 +151,21 @@
     });
   }
 
+  function shouldForcePortraitLayout() {
+    return isStandalone() || isAppleMobile();
+  }
+
+  function clearForcedPortraitLayout() {
+    document.body.classList.remove("btca-force-portrait");
+    var root = document.getElementById("root");
+    if (!root) return;
+    root.style.top = "";
+    root.style.left = "";
+    root.style.transform = "";
+  }
+
   function lockPortraitOrientation() {
+    if (!shouldForcePortraitLayout()) return;
     var orientation = screen && screen.orientation;
     if (!orientation || !orientation.lock) return;
     try {
@@ -161,6 +175,11 @@
   }
 
   function updateForcedPortraitLayout() {
+    if (!shouldForcePortraitLayout()) {
+      clearForcedPortraitLayout();
+      return;
+    }
+
     var root = document.getElementById("root");
     var viewport = window.visualViewport;
     var width = Math.round((viewport && viewport.width) || window.innerWidth || document.documentElement.clientWidth || 0);

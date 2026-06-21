@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.39";
+  var VERSION = "8.1.40";
   var FORMA_BANNER = "Цель - результативность не менее 70 %";
   var NAV_FILTER_ALL = "all";
   var POLEZ_ALL = "all";
