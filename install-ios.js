@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.38:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.38:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.39:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.39:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
@@ -32,7 +32,7 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.38";
+  var LEVEL1_MODULE_VERSION = "8.1.39";
 
   var CORE_REL_PATHS = [
     "",
@@ -526,12 +526,28 @@
     });
   }
 
+  function resolveProgressCallback(onProgress) {
+    if (typeof onProgress === "function") return onProgress;
+    return function (percent, message) {
+      renderProgress("Подготовка iOS/iPadOS", percent, message);
+    };
+  }
+
+  function registerOfflineServiceWorker() {
+    return withTimeout(
+      navigator.serviceWorker.register(assetPath("sw.js"), { scope: BTCA_BASE })
+        .then(function () { return navigator.serviceWorker.ready; }),
+      12000,
+      "Safari не завершил регистрацию offline-службы. Обновите страницу и попробуйте ещё раз."
+    ).then(function () {
+      return undefined;
+    });
+  }
+
   function cacheCoreAssets(onProgress, pctStart, pctEnd) {
     var start = pctStart == null ? 3 : pctStart;
     var end = pctEnd == null ? 15 : pctEnd;
-    var report = onProgress || function (percent, message) {
-      renderProgress("Подготовка iOS/iPadOS", percent, message);
-    };
+    var emitProgress = resolveProgressCallback(onProgress);
     return caches.open(INSTALL_CACHE).then(function (cache) {
       var documentAssets = Array.prototype.slice
         .call(document.querySelectorAll("script[src], link[rel='stylesheet'][href], link[rel='modulepreload'][href]"))
@@ -550,7 +566,7 @@
       return allAssets.reduce(function (promise, asset, index) {
         return promise.then(function () {
           var pct = start + ((index + 1) / allAssets.length) * (end - start);
-          report(pct, "Загрузка оболочки: " + asset);
+          emitProgress(pct, "Загрузка оболочки: " + asset);
           return cache.add(asset).catch(function () {});
         });
       }, Promise.resolve());
@@ -575,9 +591,7 @@
   }
 
   function unpackZipToCache(blob, pack, password, cache, progressBase, progressShare, onProgress) {
-    var report = onProgress || function (percent, message) {
-      renderProgress("Подготовка iOS/iPadOS", percent, message);
-    };
+    var emitProgress = resolveProgressCallback(onProgress);
     var reader = new window.zip.ZipReader(new window.zip.BlobReader(blob), password ? { password: password } : {});
     return reader.getEntries().then(function (entries) {
       var files = entries.filter(function (entry) { return !entry.directory; });
@@ -596,7 +610,7 @@
             ).then(function () {
               if (IMAGE_RE.test(entryPath)) {
                 imageCount += 1;
-                report(
+                emitProgress(
                   progressBase + Math.min(0.95, imageCount / Math.max(1, images.length)) * progressShare,
                   "Распаковка " + pack.id + ": " + imageCount + "/" + images.length
                 );
@@ -619,9 +633,7 @@
   function prepareMediaArchives(onProgress, pctStart, pctEnd) {
     var start = pctStart == null ? 15 : pctStart;
     var end = pctEnd == null ? 92 : pctEnd;
-    var report = onProgress || function (percent, message) {
-      renderProgress("Подготовка iOS/iPadOS", percent, message);
-    };
+    var emitProgress = resolveProgressCallback(onProgress);
     return fetch(assetPath("offline/media/manifest.json"), { cache: "no-store" })
       .then(function (response) {
         if (!response.ok) throw new Error("Не найден media manifest: " + response.status);
@@ -639,7 +651,7 @@
               return promise.then(function () {
                 var zipUrl = resolvePackZipUrl(pack);
                 var base = start + index * packShare;
-                report(base, "Загрузка " + pack.id + "/media.btca.zip");
+                emitProgress(base, "Загрузка " + pack.id + "/media.btca.zip");
                 return fetch(zipUrl, { cache: "no-store" }).then(function (response) {
                   if (!response.ok) throw new Error("Не удалось загрузить " + zipUrl + ": " + response.status);
                   return response.blob();
@@ -647,7 +659,7 @@
                   return cache.put(zipUrl, new Response(blob.slice(0, blob.size), {
                     headers: { "Content-Type": "application/zip" },
                   })).then(function () {
-                    return unpackZipToCache(blob, pack, manifest.password, cache, base, packShare, report);
+                    return unpackZipToCache(blob, pack, manifest.password, cache, base, packShare, emitProgress);
                   });
                 }).then(function (result) {
                   preparedFiles[pack.id] = result.images;
@@ -689,12 +701,7 @@
     };
 
     report(1, "Регистрация offline-службы...");
-    withTimeout(
-      navigator.serviceWorker.register(assetPath("sw.js"), { scope: BTCA_BASE })
-        .then(function () { return navigator.serviceWorker.ready; }),
-      12000,
-      "Safari не завершил регистрацию offline-службы. Обновите страницу и попробуйте ещё раз."
-    )
+    registerOfflineServiceWorker()
       .then(function () {
         report(2, "Загрузка оболочки приложения...");
         return cacheCoreAssets(report, 2, 15);
