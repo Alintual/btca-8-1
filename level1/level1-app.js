@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.43";
+  var VERSION = "8.1.44";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -454,7 +454,7 @@
       }, event.currentTarget);
     });
     content.querySelector("[data-btca-forma-desc]").addEventListener("click", function () {
-      openExerciseImage({ exerciseValue: state.ui.exerciseValue, title: exerciseLabel, landscape: false });
+      openExerciseImage({ exerciseValue: state.ui.exerciseValue, title: exerciseLabel });
     });
     var saveBtn = content.querySelector("[data-btca-forma-save]");
     if (saveBtn) saveBtn.addEventListener("click", function () { saveFormaCluster(forma); });
@@ -682,9 +682,8 @@
   }
 
   function openBazaTable() {
-    document.body.classList.add("btca-allow-landscape");
     var overlay = document.createElement("div");
-    overlay.className = "btca-l1-overlay btca-l1-overlay--landscape";
+    overlay.className = "btca-l1-overlay";
     overlay.innerHTML =
       '<header class="btca-l1-overlay__header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
@@ -708,7 +707,6 @@
       "</tbody></table></div>";
     state.root.appendChild(overlay);
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () {
-      document.body.classList.remove("btca-allow-landscape");
       overlay.remove();
     });
   }
@@ -774,7 +772,7 @@
     });
     var descBtn = content.querySelector("[data-btca-nav-desc]");
     if (descBtn) descBtn.addEventListener("click", function () {
-      openExerciseImage({ exerciseValue: filterKey, title: labelForExerciseValue(filterKey), landscape: true });
+      openExerciseImage({ exerciseValue: filterKey, title: labelForExerciseValue(filterKey) });
     });
     content.querySelectorAll("[data-btca-nav-pick]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -801,7 +799,7 @@
           renderNavTab(content);
           return;
         }
-        openExerciseImage({ exerciseValue: value, title: labelForExerciseValue(value), landscape: true });
+        openExerciseImage({ exerciseValue: value, title: labelForExerciseValue(value) });
       });
     });
   }
@@ -875,10 +873,8 @@
   function openExerciseImage(payload) {
     var url = exerciseImageUrl(payload.exerciseValue);
     if (!url) return;
-    var landscape = Boolean(payload.landscape);
-    if (landscape) document.body.classList.add("btca-allow-landscape");
     var overlay = document.createElement("div");
-    overlay.className = "btca-l1-overlay" + (landscape ? " btca-l1-overlay--landscape" : "");
+    overlay.className = "btca-l1-overlay";
     overlay.innerHTML =
       '<header class="btca-l1-overlay__header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
@@ -922,10 +918,9 @@
   function openPolezImage(catalogKey) {
     var row = polezRowsForLevel1().filter(function (r) { return r.key === catalogKey; })[0];
     if (!row || !row.file) return;
-    document.body.classList.add("btca-allow-landscape");
     var url = polezImageUrl(row.file);
     var overlay = document.createElement("div");
-    overlay.className = "btca-l1-overlay btca-l1-overlay--landscape";
+    overlay.className = "btca-l1-overlay";
     overlay.innerHTML =
       '<header class="btca-l1-overlay__header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
@@ -933,7 +928,6 @@
       '<div class="btca-l1-image-view"><img src="' + escapeHtml(url) + '" alt="' + escapeHtml(row.label) + '"></div>';
     state.root.appendChild(overlay);
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () {
-      document.body.classList.remove("btca-allow-landscape");
       overlay.remove();
     });
   }

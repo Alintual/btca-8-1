@@ -6,7 +6,7 @@
   "start_url": "/btca-8-1/",
   "scope": "/btca-8-1/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#1a4854",
   "theme_color": "#1a4854",
   "icons": [
