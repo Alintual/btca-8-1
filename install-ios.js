@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.46:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.46:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.47:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.47:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -33,7 +33,7 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.46";
+  var LEVEL1_MODULE_VERSION = "8.1.47";
 
   var CORE_REL_PATHS = [
     "",
@@ -163,6 +163,10 @@
     return !isStandalone() && !isAppleMobile();
   }
 
+  function shouldForcePortraitLayout() {
+    return isStandalone() || isAppleMobile();
+  }
+
   function applyBrowserLayoutMode() {
     document.body.classList.toggle("btca-desktop-browser", isDesktopBrowser());
   }
@@ -176,9 +180,52 @@
     root.style.transform = "";
   }
 
+  function updateForcedPortraitLayout() {
+    if (!shouldForcePortraitLayout()) {
+      clearForcedPortraitLayout();
+      return;
+    }
+
+    var root = document.getElementById("root");
+    var viewport = window.visualViewport;
+    var width = Math.round((viewport && viewport.width) || window.innerWidth || document.documentElement.clientWidth || 0);
+    var height = Math.round((viewport && viewport.height) || window.innerHeight || document.documentElement.clientHeight || 0);
+    if (!root || !width || !height) return;
+
+    document.documentElement.style.setProperty("--btca-viewport-width", width + "px");
+    document.documentElement.style.setProperty("--btca-viewport-height", height + "px");
+    var isLandscape = width > height;
+    document.body.classList.toggle("btca-force-portrait", isLandscape);
+    if (!isLandscape || document.body.classList.contains("btca-allow-landscape")) {
+      root.style.top = "";
+      root.style.left = "";
+      root.style.transform = "";
+      return;
+    }
+
+    var angle = 0;
+    if (typeof window.orientation === "number") {
+      angle = window.orientation;
+    } else if (screen && screen.orientation && typeof screen.orientation.angle === "number") {
+      angle = screen.orientation.angle;
+    }
+    var normalizedAngle = ((angle % 360) + 360) % 360;
+    if (normalizedAngle === 270) {
+      root.style.top = "0px";
+      root.style.left = width + "px";
+      root.style.transform = "rotate(90deg)";
+    } else {
+      root.style.top = height + "px";
+      root.style.left = "0px";
+      root.style.transform = "rotate(-90deg)";
+    }
+  }
+
   function syncPortraitMode() {
     applyBrowserLayoutMode();
-    clearForcedPortraitLayout();
+    updateForcedPortraitLayout();
+    window.setTimeout(updateForcedPortraitLayout, 80);
+    window.setTimeout(updateForcedPortraitLayout, 260);
   }
 
   function setPanel(html) {
@@ -747,6 +794,12 @@
     var els = getEls();
     window.__BTCA_IOS_INSTALLER_READY__ = true;
     syncPortraitMode();
+    window.addEventListener("orientationchange", syncPortraitMode);
+    window.addEventListener("resize", syncPortraitMode);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncPortraitMode);
+      window.visualViewport.addEventListener("scroll", syncPortraitMode);
+    }
     document.addEventListener("click", handleAppNavigation, true);
     if (els.button) {
       els.button.addEventListener("click", prepareOffline);
