@@ -1,23 +1,25 @@
-const CACHE_VERSION = "btca-web-8.1.36";
+const CACHE_VERSION = "btca-web-8.1.37";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
+const BASE_PATH = "/btca-8-1";
+const SW_PATH = BASE_PATH + "/sw.js";
 
 const CORE_ASSETS = [
-  "/",
-  "/icons/btca-apple-touch-icon.png?v=8.1.22",
-  "/icons/btca-icon-192.png?v=8.1.22",
-  "/icons/btca-icon-512.png?v=8.1.22",
-  "/offline/app-shell.json",
-  "/offline/media/manifest.json",
-  "/install-ios.js",
-  "/vendor/zip.min.js",
-  "/branding/splash.gif",
-  "/level1/level1-db.js",
-  "/level1/level1-app.js",
-  "/level1/data/forma_exercise_list.json",
-  "/level1/data/polezCatalog.json",
-  "/level1/data/polezLinks.json",
-  "/level1/data/polezDescriptions.json",
+  "/btca-8-1/",
+  "/btca-8-1/icons/btca-apple-touch-icon.png",
+  "/btca-8-1/icons/btca-icon-192.png",
+  "/btca-8-1/icons/btca-icon-512.png",
+  "/btca-8-1/offline/app-shell.json",
+  "/btca-8-1/offline/media/manifest.json",
+  "/btca-8-1/install-ios.js",
+  "/btca-8-1/vendor/zip.min.js",
+  "/btca-8-1/branding/splash.gif",
+  "/btca-8-1/level1/level1-db.js",
+  "/btca-8-1/level1/level1-app.js",
+  "/btca-8-1/level1/data/forma_exercise_list.json",
+  "/btca-8-1/level1/data/polezCatalog.json",
+  "/btca-8-1/level1/data/polezLinks.json",
+  "/btca-8-1/level1/data/polezDescriptions.json"
 ];
 
 self.addEventListener("install", (event) => {
@@ -45,7 +47,7 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
-  if (requestUrl.pathname === "/sw.js" || event.request.mode === "navigate") {
+  if (requestUrl.pathname === SW_PATH || event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
         .then((response) => {

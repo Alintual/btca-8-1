@@ -1,13 +1,12 @@
 (function () {
   "use strict";
 
-  var INSTALL_CACHE = "btca-web-8.1.36:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.36:static-media";
+  var BTCA_BASE = "/btca-8-1/";
+  var INSTALL_CACHE = "btca-web-8.1.37:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.37:static-media";
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
-  var SPLASH_EXTRACT_PCT_CAP = 98;
-  var SPLASH_MIN_MS = 1200;
-  var SPLASH_STATUS_PREPARE = "Подготовка приложения…";
+  var OFFLINE_PREPARE_URL = "https://alintual.github.io/btca-8-1/";
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
   var ABOUT_MAIN_TEXT = "Настоящее Приложение разработано для локальной установки (развёртывания) на смартфоне или планшете с операционными системами Android или iOS и рассчитано для обучения и тренировки учеников с уровнями подготовки «Уровень 1 — Начальный» и «Уровень 2 — Базовый» (Комплект 1).";
   var ABOUT_POST_TEXT =
@@ -32,28 +31,38 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.36";
-  var bootSplashTarget = 0;
-  var bootSplashDisplay = 0;
-  var bootSplashRaf = null;
-  var bootRunId = 0;
+  var LEVEL1_MODULE_VERSION = "8.1.37";
 
-  var CORE_ASSETS = [
-    "/",
-    "/icons/btca-apple-touch-icon.png?v=8.1.22",
-    "/icons/btca-icon-192.png?v=8.1.22",
-    "/icons/btca-icon-512.png?v=8.1.22",
-    "/offline/app-shell.json",
-    "/offline/media/manifest.json",
-    "/vendor/zip.min.js",
-    "/branding/splash.gif",
-    "/level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
-    "/level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
-    "/level1/data/forma_exercise_list.json",
-    "/level1/data/polezCatalog.json",
-    "/level1/data/polezLinks.json",
-    "/level1/data/polezDescriptions.json",
+  var CORE_REL_PATHS = [
+    "",
+    "icons/btca-apple-touch-icon.png",
+    "icons/btca-icon-192.png",
+    "icons/btca-icon-512.png",
+    "offline/app-shell.json",
+    "offline/media/manifest.json",
+    "vendor/zip.min.js",
+    "branding/splash.gif",
+    "level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
+    "level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
+    "level1/data/forma_exercise_list.json",
+    "level1/data/polezCatalog.json",
+    "level1/data/polezLinks.json",
+    "level1/data/polezDescriptions.json",
   ];
+
+  window.__BTCA_BASE__ = BTCA_BASE;
+
+  function assetPath(relativePath) {
+    var rel = String(relativePath || "").replace(/^\//, "");
+    if (!rel) return BTCA_BASE.replace(/\/?$/, "/");
+    return BTCA_BASE.replace(/\/?$/, "/") + rel;
+  }
+
+  function resolvePackZipUrl(pack) {
+    if (!pack || !pack.zipUrl) return "";
+    if (/^https?:\/\//i.test(pack.zipUrl)) return pack.zipUrl;
+    return assetPath(pack.zipUrl.replace(/^\//, ""));
+  }
 
   function getEls() {
     return {
@@ -90,109 +99,12 @@
   function verifyMediaCacheReady() {
     if (!hasPreparedMediaState() || !("caches" in window)) return Promise.resolve(false);
     return caches.open(MEDIA_CACHE).then(function (cache) {
-      return cache.match("/offline-unpacked/level1/exercises/1.jpg");
+      return cache.match(assetPath("offline-unpacked/level1/exercises/1.jpg"));
     }).then(function (hit) {
       return Boolean(hit);
     }).catch(function () {
       return false;
     });
-  }
-
-  function stopBootSplashRaf() {
-    if (bootSplashRaf != null) {
-      cancelAnimationFrame(bootSplashRaf);
-      bootSplashRaf = null;
-    }
-  }
-
-  function renderBootSplashPct(pct) {
-    var layer = document.getElementById("btca-boot-splash");
-    if (!layer) return;
-    var num = layer.querySelector("[data-btca-boot-pct]");
-    if (num) num.textContent = String(Math.max(0, Math.min(SPLASH_EXTRACT_PCT_CAP, Math.round(pct))));
-  }
-
-  function pumpBootSplashProgress() {
-    var target = Math.max(0, Math.min(SPLASH_EXTRACT_PCT_CAP, bootSplashTarget));
-    var disp = bootSplashDisplay;
-    if (disp >= target - 0.02) {
-      if (disp !== target) {
-        bootSplashDisplay = target;
-        renderBootSplashPct(target);
-      }
-      bootSplashRaf = null;
-      return;
-    }
-    disp += Math.max(0.35, (target - disp) * 0.18);
-    if (disp > target) disp = target;
-    bootSplashDisplay = disp;
-    renderBootSplashPct(disp);
-    bootSplashRaf = requestAnimationFrame(pumpBootSplashProgress);
-  }
-
-  function pushBootProgress(pct) {
-    var clamped = Math.max(0, Math.min(SPLASH_EXTRACT_PCT_CAP, pct));
-    if (clamped > bootSplashTarget) bootSplashTarget = clamped;
-    if (bootSplashRaf == null) bootSplashRaf = requestAnimationFrame(pumpBootSplashProgress);
-  }
-
-  function setBootSplashStatus(text) {
-    var layer = document.getElementById("btca-boot-splash");
-    if (!layer) return;
-    var msg = layer.querySelector("[data-btca-boot-status]");
-    if (msg) msg.textContent = text;
-  }
-
-  function setBootSplashError(text, onRetry) {
-    var layer = document.getElementById("btca-boot-splash");
-    if (!layer) return;
-    var block = layer.querySelector("[data-btca-boot-error]");
-    if (!block) return;
-    if (!text) {
-      block.setAttribute("hidden", "hidden");
-      block.innerHTML = "";
-      return;
-    }
-    block.removeAttribute("hidden");
-    block.innerHTML =
-      '<p class="btca-boot-splash__error">' + escapeHtml(text) + "</p>" +
-      (onRetry ? '<button type="button" class="btca-boot-splash__retry" data-btca-boot-retry>Повторить</button>' : "");
-    var retry = block.querySelector("[data-btca-boot-retry]");
-    if (retry) retry.addEventListener("click", onRetry);
-  }
-
-  function showBootSplash() {
-    document.body.classList.add("btca-boot-mode");
-    var layer = document.getElementById("btca-boot-splash");
-    if (!layer) {
-      layer = document.createElement("div");
-      layer.id = "btca-boot-splash";
-      layer.className = "btca-boot-splash";
-      layer.innerHTML =
-        '<div class="btca-boot-splash__inner">' +
-        '<div class="btca-boot-splash__center">' +
-        '<div class="btca-boot-splash__gif-wrap">' +
-        '<img class="btca-boot-splash__gif" src="/branding/splash.gif" alt="Загрузка приложения">' +
-        '<div class="btca-boot-splash__pct" aria-live="polite">' +
-        '<span class="btca-boot-splash__pct-num" data-btca-boot-pct>0</span>' +
-        '<span class="btca-boot-splash__pct-sym">%</span></div></div>' +
-        '<p class="btca-boot-splash__status" data-btca-boot-status>' + escapeHtml(SPLASH_STATUS_PREPARE) + "</p></div>" +
-        '<div data-btca-boot-error hidden></div></div>';
-      document.body.appendChild(layer);
-    }
-    layer.removeAttribute("hidden");
-    bootSplashTarget = 0;
-    bootSplashDisplay = 0;
-    renderBootSplashPct(0);
-    setBootSplashStatus(SPLASH_STATUS_PREPARE);
-    setBootSplashError(null);
-  }
-
-  function hideBootSplash() {
-    stopBootSplashRaf();
-    document.body.classList.remove("btca-boot-mode");
-    var layer = document.getElementById("btca-boot-splash");
-    if (layer) layer.setAttribute("hidden", "hidden");
   }
 
   function lockPortraitOrientation() {
@@ -273,9 +185,13 @@
   }
 
   function renderProgress(title, percent, message) {
+    var pct = Math.max(0, Math.min(100, Math.round(percent)));
     setPanel(
-      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + Math.round(percent) + "%</span></div>" +
-      '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + Math.max(0, Math.min(100, percent)) + '%"></div></div>' +
+      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + pct + "%</span></div>" +
+      '<div class="ios-panel__splash-wrap">' +
+      '<img class="ios-panel__splash-gif" src="' + assetPath("branding/splash.gif") + '" alt="Загрузка приложения">' +
+      '<div class="ios-panel__splash-pct" aria-live="polite">' + pct + "<span>%</span></div></div>" +
+      '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
       '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>"
     );
   }
@@ -293,12 +209,16 @@
       : "Offline-пакет подготовлен. В Safari нажмите «Поделиться» и выберите «На экран Домой».";
     setPanel(
       '<div class="ios-panel__header"><strong>iOS/iPadOS</strong><span>100%</span></div>' +
+      '<div class="ios-panel__splash-wrap">' +
+      '<img class="ios-panel__splash-gif" src="' + assetPath("branding/splash.gif") + '" alt="">' +
+      '<div class="ios-panel__splash-pct" aria-live="polite">100<span>%</span></div></div>' +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:100%"></div></div>' +
       '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
       '<p class="hint">' + escapeHtml(hint) + "</p>"
     );
+    window.__BTCA_APP_BOOT_READY__ = true;
     if (isStandalone()) {
-      window.setTimeout(runStandaloneBoot, 300);
+      renderInstalledHome();
     }
   }
 
@@ -357,8 +277,8 @@
   function ensureLevel1Module() {
     if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1_DB) return Promise.resolve();
     var v = LEVEL1_MODULE_VERSION;
-    return loadLevel1Script("/level1/level1-db.js?v=" + v).then(function () {
-      return loadLevel1Script("/level1/level1-app.js?v=" + v);
+    return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v)).then(function () {
+      return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v));
     });
   }
 
@@ -375,9 +295,10 @@
     var root = document.getElementById("root");
     if (!root) return;
     if (!window.__BTCA_APP_BOOT_READY__) {
-      runStandaloneBoot().then(function () {
-        renderLevel1Screen();
-      });
+      renderInfo(
+        "iOS/iPadOS",
+        "Приложение не подготовлено. Откройте " + OFFLINE_PREPARE_URL + " в Safari, нажмите iOS и дождитесь 100%."
+      );
       return;
     }
     installedHomeSnapshot = installedHomeSnapshot || root.innerHTML;
@@ -504,7 +425,7 @@
 
     return new Promise(function (resolve, reject) {
       var script = document.createElement("script");
-      script.src = "/vendor/zip.min.js";
+      script.src = assetPath("vendor/zip.min.js");
       script.onload = function () {
         if (window.zip && window.zip.ZipReader) {
           if (window.zip.configure) window.zip.configure({ useWebWorkers: false });
@@ -519,7 +440,9 @@
     });
   }
 
-  function cacheCoreAssets(onProgress) {
+  function cacheCoreAssets(onProgress, pctStart, pctEnd) {
+    var start = pctStart == null ? 3 : pctStart;
+    var end = pctEnd == null ? 15 : pctEnd;
     var report = onProgress || function (percent, message) {
       renderProgress("Подготовка iOS/iPadOS", percent, message);
     };
@@ -535,11 +458,12 @@
           return url.origin === window.location.origin ? url.pathname + url.search : null;
         })
         .filter(Boolean);
-      var allAssets = Array.from(new Set(CORE_ASSETS.concat(documentAssets)));
+      var coreAssets = CORE_REL_PATHS.map(assetPath);
+      var allAssets = Array.from(new Set(coreAssets.concat(documentAssets)));
 
       return allAssets.reduce(function (promise, asset, index) {
         return promise.then(function () {
-          var pct = 8 + ((index + 1) / allAssets.length) * 30;
+          var pct = start + ((index + 1) / allAssets.length) * (end - start);
           report(pct, "Загрузка оболочки: " + asset);
           return cache.add(asset).catch(function () {});
         });
@@ -581,7 +505,7 @@
 
           return entry.getData(new window.zip.BlobWriter(contentTypeFor(entryPath)), password ? { password: password } : {}).then(function (output) {
             return cache.put(
-              "/offline-unpacked/" + pack.id + "/" + entryPath,
+              assetPath("offline-unpacked/" + pack.id + "/" + entryPath),
               new Response(output, { headers: { "Content-Type": contentTypeFor(entryPath) } })
             ).then(function () {
               if (IMAGE_RE.test(entryPath)) {
@@ -606,11 +530,13 @@
     });
   }
 
-  function prepareMediaArchives(onProgress) {
+  function prepareMediaArchives(onProgress, pctStart, pctEnd) {
+    var start = pctStart == null ? 15 : pctStart;
+    var end = pctEnd == null ? 92 : pctEnd;
     var report = onProgress || function (percent, message) {
       renderProgress("Подготовка iOS/iPadOS", percent, message);
     };
-    return fetch("/offline/media/manifest.json", { cache: "no-store" })
+    return fetch(assetPath("offline/media/manifest.json"), { cache: "no-store" })
       .then(function (response) {
         if (!response.ok) throw new Error("Не найден media manifest: " + response.status);
         return response.json();
@@ -621,17 +547,18 @@
         return loadZipLibrary().then(function () {
           return caches.open(MEDIA_CACHE).then(function (cache) {
             var preparedFiles = {};
-            var packShare = 58 / manifest.packs.length;
+            var packShare = (end - start) / manifest.packs.length;
 
             return manifest.packs.reduce(function (promise, pack, index) {
               return promise.then(function () {
-                var base = 38 + index * packShare;
+                var zipUrl = resolvePackZipUrl(pack);
+                var base = start + index * packShare;
                 report(base, "Загрузка " + pack.id + "/media.btca.zip");
-                return fetch(pack.zipUrl, { cache: "no-store" }).then(function (response) {
-                  if (!response.ok) throw new Error("Не удалось загрузить " + pack.zipUrl + ": " + response.status);
+                return fetch(zipUrl, { cache: "no-store" }).then(function (response) {
+                  if (!response.ok) throw new Error("Не удалось загрузить " + zipUrl + ": " + response.status);
                   return response.blob();
                 }).then(function (blob) {
-                  return cache.put(pack.zipUrl, new Response(blob.slice(0, blob.size), {
+                  return cache.put(zipUrl, new Response(blob.slice(0, blob.size), {
                     headers: { "Content-Type": "application/zip" },
                   })).then(function () {
                     return unpackZipToCache(blob, pack, manifest.password, cache, base, packShare, report);
@@ -652,82 +579,6 @@
       });
   }
 
-  function finishStandaloneBootUi(started, skipMinWait) {
-    var waitMs = skipMinWait ? 0 : Math.max(0, SPLASH_MIN_MS - (Date.now() - started));
-    return new Promise(function (resolve) {
-      if (waitMs > 0) window.setTimeout(resolve, waitMs);
-      else resolve();
-    }).then(function () {
-      stopBootSplashRaf();
-      bootSplashTarget = SPLASH_EXTRACT_PCT_CAP;
-      bootSplashDisplay = SPLASH_EXTRACT_PCT_CAP;
-      renderBootSplashPct(SPLASH_EXTRACT_PCT_CAP);
-      window.__BTCA_APP_BOOT_READY__ = true;
-      hideBootSplash();
-      renderInstalledHome();
-    });
-  }
-
-  function runStandaloneBoot() {
-    var runId = ++bootRunId;
-    window.__BTCA_APP_BOOT_READY__ = false;
-    showBootSplash();
-    pushBootProgress(1);
-    setBootSplashError(null);
-
-    if (!window.isSecureContext || !("caches" in window)) {
-      setBootSplashError("Для offline-режима откройте приложение через HTTPS.", null);
-      return Promise.resolve();
-    }
-
-    return verifyMediaCacheReady().then(function (mediaReady) {
-      var started = Date.now();
-      if (runId !== bootRunId) return;
-
-      var swReady = ("serviceWorker" in navigator)
-        ? withTimeout(
-          navigator.serviceWorker.register("/sw.js").then(function () { return navigator.serviceWorker.ready; }),
-          12000,
-          "Offline-служба недоступна"
-        )
-        : Promise.resolve();
-
-      return swReady.then(function () {
-        pushBootProgress(4);
-        setBootSplashStatus("Загрузка оболочки…");
-        return cacheCoreAssets(function (pct, msg) {
-          pushBootProgress(4 + ((pct - 8) / 30) * 10);
-          setBootSplashStatus(msg);
-        });
-      }).then(function () {
-        if (runId !== bootRunId) return;
-        if (mediaReady) {
-          pushBootProgress(78);
-          setBootSplashStatus("Материалы готовы");
-          return;
-        }
-        setBootSplashStatus("Распаковка материалов…");
-        return prepareMediaArchives(function (pct, msg) {
-          pushBootProgress(14 + ((pct - 8) / 90) * 64);
-          setBootSplashStatus(msg);
-        });
-      }).then(function () {
-        if (runId !== bootRunId) return;
-        setBootSplashStatus("Инициализация…");
-        pushBootProgress(82);
-        return bootLevel1Module();
-      }).then(function () {
-        if (runId !== bootRunId) return;
-        pushBootProgress(94);
-        return finishStandaloneBootUi(started, mediaReady);
-      });
-    }).catch(function (error) {
-      if (runId !== bootRunId) return;
-      stopBootSplashRaf();
-      setBootSplashError(error && (error.message || error), function () { runStandaloneBoot(); });
-    });
-  }
-
   function prepareOffline() {
     if (!isAppleMobile() && !isDebugAppleMode()) {
       renderInfo("iOS/iPadOS", "Вы открыли страницу не на устройстве Apple. Для iOS/iPadOS откройте эту ссылку в Safari на iPhone или iPad.");
@@ -746,20 +597,69 @@
 
     setButtonState(true, "Подготовка offline...");
 
-    renderProgress("Подготовка iOS/iPadOS", 1, "Регистрация offline-службы...");
+    var report = function (pct, msg) {
+      renderProgress("Подготовка iOS/iPadOS", pct, msg);
+    };
+
+    report(1, "Регистрация offline-службы...");
     withTimeout(
-      navigator.serviceWorker.register("/sw.js")
+      navigator.serviceWorker.register(assetPath("sw.js"), { scope: BTCA_BASE })
         .then(function () { return navigator.serviceWorker.ready; }),
       12000,
       "Safari не завершил регистрацию offline-службы. Обновите страницу и попробуйте ещё раз."
     )
-      .then(cacheCoreAssets)
-      .then(prepareMediaArchives)
-      .then(renderReady)
+      .then(function () {
+        report(2, "Загрузка оболочки приложения...");
+        return cacheCoreAssets(report, 2, 15);
+      })
+      .then(function () {
+        return verifyMediaCacheReady();
+      })
+      .then(function (mediaReady) {
+        if (mediaReady) {
+          report(90, "Материалы уже распакованы");
+          return;
+        }
+        report(15, "Загрузка и распаковка ZIP-архивов...");
+        return prepareMediaArchives(report, 15, 92);
+      })
+      .then(function () {
+        report(93, "Инициализация Уровня 1...");
+        return bootLevel1Module();
+      })
+      .then(function () {
+        report(100, "Готово");
+        renderReady();
+      })
       .catch(renderError)
       .then(function () {
         setButtonState(false, "Загрузить все данные для offline");
       });
+  }
+
+  function initStandaloneApp() {
+    if (!window.isSecureContext || !("caches" in window)) {
+      renderInfo("iOS/iPadOS", "Для offline-режима откройте приложение через HTTPS.");
+      return;
+    }
+
+    verifyMediaCacheReady().then(function (ready) {
+      if (!ready) {
+        renderInfo(
+          "iOS/iPadOS",
+          "Данные не загружены. Откройте " + OFFLINE_PREPARE_URL + " в Safari, нажмите iOS и дождитесь 100%."
+        );
+        renderInstalledHome();
+        return;
+      }
+      return bootLevel1Module().then(function () {
+        window.__BTCA_APP_BOOT_READY__ = true;
+        renderInstalledHome();
+      });
+    }).catch(function (error) {
+      renderInfo("iOS/iPadOS", error && (error.message || error));
+      renderInstalledHome();
+    });
   }
 
   function init() {
@@ -777,7 +677,7 @@
       els.button.addEventListener("click", prepareOffline);
     }
     if (isStandalone()) {
-      runStandaloneBoot();
+      initStandaloneApp();
     } else if (!els.button) {
       return;
     }

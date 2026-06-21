@@ -3,21 +3,21 @@
   "short_name": "БТКА 8.1",
   "description": "Web/PWA версия БТКА 8.1 для установки на iOS/iPadOS и offline-работы.",
   "lang": "ru",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/btca-8-1/",
+  "scope": "/btca-8-1/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#1a4854",
   "theme_color": "#1a4854",
   "icons": [
     {
-      "src": "/icons/btca-icon-192.png",
+      "src": "/btca-8-1/icons/btca-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/btca-icon-512.png",
+      "src": "/btca-8-1/icons/btca-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

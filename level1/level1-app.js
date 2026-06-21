@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.36";
+  var VERSION = "8.1.37";
   var FORMA_BANNER = "Цель - результативность не менее 70 %";
   var NAV_FILTER_ALL = "all";
   var POLEZ_ALL = "all";
@@ -128,9 +128,15 @@
     return null;
   }
 
+  function assetPath(relativePath) {
+    var base = window.__BTCA_BASE__ || "/btca-8-1/";
+    var rel = String(relativePath || "").replace(/^\//, "");
+    return base.replace(/\/?$/, "/") + rel;
+  }
+
   function mediaUrl(packId, fileName) {
     if (!fileName) return "";
-    return "/offline-unpacked/" + packId + "/" + fileName;
+    return assetPath("offline-unpacked/" + packId + "/" + fileName);
   }
 
   function exerciseImageUrl(exerciseValue) {
@@ -834,10 +840,10 @@
 
   function loadData() {
     return Promise.all([
-      fetchJsonCached("/level1/data/forma_exercise_list.json"),
-      fetchJsonCached("/level1/data/polezCatalog.json"),
-      fetchJsonCached("/level1/data/polezLinks.json"),
-      fetchJsonCached("/level1/data/polezDescriptions.json"),
+      fetchJsonCached(assetPath("level1/data/forma_exercise_list.json")),
+      fetchJsonCached(assetPath("level1/data/polezCatalog.json")),
+      fetchJsonCached(assetPath("level1/data/polezLinks.json")),
+      fetchJsonCached(assetPath("level1/data/polezDescriptions.json")),
     ]).then(function (parts) {
       var list = parts[0];
       state.data.exercises = list.map(function (r) {
