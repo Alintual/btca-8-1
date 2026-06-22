@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.50:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.50:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.51:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.51:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -40,7 +40,7 @@
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
   var LEVEL1_MODULE_VERSION = "8.1.50";
-  var LEVEL2_MODULE_VERSION = "8.1.50";
+  var LEVEL2_MODULE_VERSION = "8.1.51";
 
   var CORE_REL_PATHS = [
     "",
@@ -59,6 +59,7 @@
     "level1/data/polezLinks.json",
     "level1/data/polezDescriptions.json",
     "level2/level2-db.js?v=" + LEVEL2_MODULE_VERSION,
+    "level2/level2-baza.js?v=" + LEVEL2_MODULE_VERSION,
     "level2/level2-app.js?v=" + LEVEL2_MODULE_VERSION,
     "level2/data/forma_exercise_list.json",
     "level2/data/polezCatalog.json",
@@ -522,15 +523,20 @@
   }
 
   function level2ModuleReady() {
-    return Boolean(window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot);
+    return Boolean(window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_BAZA && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot);
   }
 
   function loadLevel2Script(src) {
     return new Promise(function (resolve, reject) {
       var isDb = src.indexOf("level2-db") >= 0;
+      var isBaza = src.indexOf("level2-baza") >= 0;
       var isApp = src.indexOf("level2-app") >= 0;
 
       if (isDb && window.BTCA_LEVEL2_DB) {
+        resolve();
+        return;
+      }
+      if (isBaza && window.BTCA_LEVEL2_BAZA) {
         resolve();
         return;
       }
@@ -557,6 +563,9 @@
           if (isDb && !window.BTCA_LEVEL2_DB) {
             throw new Error("level2-db.js выполнен, но BTCA_LEVEL2_DB не найден");
           }
+          if (isBaza && !window.BTCA_LEVEL2_BAZA) {
+            throw new Error("level2-baza.js выполнен, но BTCA_LEVEL2_BAZA не найден");
+          }
           if (isApp && (!window.BTCA_LEVEL2 || !window.BTCA_LEVEL2.boot)) {
             throw new Error("level2-app.js выполнен, но BTCA_LEVEL2.boot не найден");
           }
@@ -570,6 +579,8 @@
     if (level2ModuleReady()) return Promise.resolve();
     var v = LEVEL2_MODULE_VERSION;
     return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v)).then(function () {
+      return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v));
+    }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v));
     }).then(function () {
       if (!level2ModuleReady()) {
@@ -676,6 +687,10 @@
         '<section class="btca-level1-content" data-btca-level2-content></section>' +
         '<div class="btca-level1-menu-layer" data-btca-level2-menu-layer hidden></div>' +
         '<div class="btca-level1-menu-layer" data-btca-level2-picker hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-baza-menu-layer hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-baza-id-layer hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-baza-delete-layer hidden></div>' +
+        '<div class="btca-l2-baza-toast-host" data-btca-level2-baza-toast hidden></div>' +
         "</main>";
 
       var back = document.querySelector("[data-btca-level2-back]");

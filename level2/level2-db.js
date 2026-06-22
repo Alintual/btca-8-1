@@ -2,9 +2,12 @@
   "use strict";
 
   var DB_NAME = "btca_level2_web";
-  var DB_VERSION = 1;
+  var DB_VERSION = 2;
   var KV_UI_KEY = "level2_ui_state_v1";
+  var KV_USER_FILE_ID = "baza_file_identifier_user_l2_v1";
+  var KV_IMPORT_FILE_ID = "baza_import_file_identifier_l2_v1";
   var DB_MAX_ROWS = 36512;
+  var BACKUP_LEVEL_MARKER = "28.1";
 
   var dbPromise = null;
 
@@ -18,6 +21,11 @@
           var store = db.createObjectStore("results", { keyPath: ["date", "exercise", "task"] });
           store.createIndex("byDate", "date", { unique: false });
           store.createIndex("byExercise", "exercise", { unique: false });
+        }
+        if (!db.objectStoreNames.contains("foreign_results")) {
+          var fstore = db.createObjectStore("foreign_results", { keyPath: ["date", "exercise", "task"] });
+          fstore.createIndex("byDate", "date", { unique: false });
+          fstore.createIndex("byExercise", "exercise", { unique: false });
         }
         if (!db.objectStoreNames.contains("kv")) {
           db.createObjectStore("kv", { keyPath: "key" });
@@ -176,15 +184,23 @@
     });
   }
 
-  function countResults() {
-    return tx(["results"], "readonly").then(function (transaction) {
+  function countStore(storeName) {
+    return tx([storeName], "readonly").then(function (transaction) {
       return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("results");
+        var store = transaction.objectStore(storeName);
         var req = store.count();
         req.onsuccess = function () { resolve(req.result || 0); };
         req.onerror = function () { reject(req.error); };
       });
     });
+  }
+
+  function countResults() {
+    return countStore("results");
+  }
+
+  function countForeignResults() {
+    return countStore("foreign_results");
   }
 
   function countCluster(date, exercise) {
@@ -203,6 +219,78 @@
         req.onerror = function () { reject(req.error); };
       });
     });
+  }
+
+  function queryStore(storeName, query) {
+    var from = String(query.from || "").trim();
+    var to = String(query.to || "").trim();
+    var exercise = String(query.exercise || "all").trim() || "all";
+    var taskRaw = String(query.task || "all").trim() || "all";
+
+    return countStore(storeName).then(function (total) {
+      if (total <= 0) return { ok: true, isEmpty: true, exercises: [], tasks: [], rows: [] };
+      return tx([storeName], "readonly").then(function (transaction) {
+        return new Promise(function (resolve, reject) {
+          var store = transaction.objectStore(storeName);
+          var req = store.openCursor();
+          var rows = [];
+          var exercises = {};
+          var tasks = {};
+          req.onsuccess = function () {
+            var cursor = req.result;
+            if (!cursor) {
+              resolve({
+                ok: true,
+                isEmpty: false,
+                exercises: Object.keys(exercises).sort(),
+                tasks: Object.keys(tasks).map(Number).filter(function (n) { return Number.isFinite(n); }).sort(function (a, b) { return a - b; }),
+                rows: rows.sort(function (a, b) {
+                  if (a.date !== b.date) return a.date.localeCompare(b.date);
+                  if (a.exercise !== b.exercise) return a.exercise.localeCompare(b.exercise);
+                  return a.task - b.task;
+                }),
+              });
+              return;
+            }
+            var row = cursor.value;
+            var passDate = true;
+            if (from && to) passDate = row.date >= from && row.date <= to;
+            else if (from) passDate = row.date >= from;
+            else if (to) passDate = row.date <= to;
+            var passExercise = exercise === "all" || row.exercise === exercise;
+            var passTask = taskRaw === "all" || String(row.task) === taskRaw;
+            if (passDate && passExercise && passTask) {
+              rows.push({
+                n: rows.length + 1,
+                date: row.date,
+                exercise: row.exercise,
+                task: row.task,
+                req: row.req,
+                ok: row.ok,
+                pct: row.pct,
+                sets: row.sets,
+              });
+              exercises[row.exercise] = true;
+              tasks[row.task] = true;
+            }
+            cursor.continue();
+          };
+          req.onerror = function () { reject(req.error); };
+        });
+      });
+    });
+  }
+
+  function bazaQuery(query) {
+    return queryStore("results", query);
+  }
+
+  function foreignBazaQuery(query) {
+    return queryStore("foreign_results", query);
+  }
+
+  function bazaQueryForSource(source, query) {
+    return source === "foreign" ? foreignBazaQuery(query) : bazaQuery(query);
   }
 
   function dbCapacity(dateIso, exercise) {
@@ -261,62 +349,22 @@
     });
   }
 
-  function bazaQuery(query) {
-    var from = String(query.from || "").trim();
-    var to = String(query.to || "").trim();
-    var exercise = String(query.exercise || "all").trim() || "all";
-    var taskRaw = String(query.task || "all").trim() || "all";
-
-    return countResults().then(function (total) {
-      if (total <= 0) return { ok: true, isEmpty: true, exercises: [], tasks: [], rows: [] };
-      return tx(["results"], "readonly").then(function (transaction) {
-        return new Promise(function (resolve, reject) {
-          var store = transaction.objectStore("results");
-          var req = store.openCursor();
-          var rows = [];
-          var exercises = {};
-          var tasks = {};
-          req.onsuccess = function () {
-            var cursor = req.result;
-            if (!cursor) {
-              resolve({
-                ok: true,
-                isEmpty: false,
-                exercises: Object.keys(exercises).sort(),
-                tasks: Object.keys(tasks).map(Number).filter(function (n) { return Number.isFinite(n); }).sort(function (a, b) { return a - b; }),
-                rows: rows.sort(function (a, b) {
-                  if (a.date !== b.date) return a.date.localeCompare(b.date);
-                  if (a.exercise !== b.exercise) return a.exercise.localeCompare(b.exercise);
-                  return a.task - b.task;
-                }),
-              });
-              return;
-            }
-            var row = cursor.value;
-            var passDate = true;
-            if (from && to) passDate = row.date >= from && row.date <= to;
-            else if (from) passDate = row.date >= from;
-            else if (to) passDate = row.date <= to;
-            var passExercise = exercise === "all" || row.exercise === exercise;
-            var passTask = taskRaw === "all" || String(row.task) === taskRaw;
-            if (passDate && passExercise && passTask) {
-              rows.push({
-                n: rows.length + 1,
-                date: row.date,
-                exercise: row.exercise,
-                task: row.task,
-                req: row.req,
-                ok: row.ok,
-                pct: row.pct,
-                sets: row.sets,
-              });
-              exercises[row.exercise] = true;
-              tasks[row.task] = true;
-            }
-            cursor.continue();
-          };
-          req.onerror = function () { reject(req.error); };
-        });
+  function listExerciseKeys(storeName) {
+    return tx([storeName], "readonly").then(function (transaction) {
+      return new Promise(function (resolve, reject) {
+        var store = transaction.objectStore(storeName);
+        var req = store.openCursor();
+        var keys = {};
+        req.onsuccess = function () {
+          var cursor = req.result;
+          if (!cursor) {
+            resolve(Object.keys(keys).sort());
+            return;
+          }
+          keys[cursor.value.exercise] = true;
+          cursor.continue();
+        };
+        req.onerror = function () { reject(req.error); };
       });
     });
   }
@@ -327,6 +375,199 @@
     });
   }
 
+  function foreignDbStats() {
+    return countForeignResults().then(function (totalRows) {
+      return { totalRows: totalRows, filledRows: totalRows, empty: totalRows <= 0 };
+    });
+  }
+
+  function hasForeignDatabase() {
+    return countForeignResults().then(function (n) { return n > 0; });
+  }
+
+  function combinedDbStats() {
+    return Promise.all([countResults(), countForeignResults()]).then(function (parts) {
+      var filledRows = parts[0] + parts[1];
+      return {
+        maxRows: DB_MAX_ROWS,
+        totalRows: filledRows,
+        filledRows: filledRows,
+        empty: filledRows <= 0,
+        ownRows: parts[0],
+        foreignRows: parts[1],
+      };
+    });
+  }
+
+  function loadUserFileIdentifier() {
+    return readKv(KV_USER_FILE_ID).then(function (v) { return v || ""; });
+  }
+
+  function saveUserFileIdentifier(value) {
+    var id = String(value || "").trim();
+    if (!id) return Promise.resolve();
+    return writeKv(KV_USER_FILE_ID, id);
+  }
+
+  function loadImportFileIdentifier() {
+    return readKv(KV_IMPORT_FILE_ID).then(function (v) { return v || ""; });
+  }
+
+  function saveImportFileIdentifier(value) {
+    var id = String(value || "").trim();
+    if (!id) return Promise.resolve();
+    return writeKv(KV_IMPORT_FILE_ID, id);
+  }
+
+  function clearImportFileIdentifier() {
+    return writeKv(KV_IMPORT_FILE_ID, "");
+  }
+
+  function clearForeignDatabase() {
+    return tx(["foreign_results"], "readwrite").then(function (transaction) {
+      return new Promise(function (resolve, reject) {
+        var store = transaction.objectStore("foreign_results");
+        var req = store.clear();
+        req.onsuccess = function () { resolve({ ok: true }); };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+
+  function bazaDeleteCurrentByFilters(filters) {
+    var from = String(filters.from || "").trim();
+    var to = String(filters.to || "").trim();
+    var exercise = String(filters.exercise || "all").trim() || "all";
+    var taskRaw = String(filters.task || "all").trim() || "all";
+    return tx(["results"], "readwrite").then(function (transaction) {
+      return new Promise(function (resolve, reject) {
+        var store = transaction.objectStore("results");
+        var req = store.openCursor();
+        var toDelete = [];
+        req.onsuccess = function () {
+          var cursor = req.result;
+          if (!cursor) {
+            toDelete.forEach(function (key) { store.delete(key); });
+            resolve({ ok: true, deleted: toDelete.length });
+            return;
+          }
+          var row = cursor.value;
+          var passDate = true;
+          if (from && to) passDate = row.date >= from && row.date <= to;
+          else if (from) passDate = row.date >= from;
+          else if (to) passDate = row.date <= to;
+          var passExercise = exercise === "all" || row.exercise === exercise;
+          var passTask = taskRaw === "all" || String(row.task) === taskRaw;
+          if (passDate && passExercise && passTask) {
+            toDelete.push([row.date, row.exercise, row.task]);
+          }
+          cursor.continue();
+        };
+        req.onerror = function () { reject(req.error); };
+      });
+    }).catch(function () { return { ok: false }; });
+  }
+
+  function readAllRows(storeName) {
+    return tx([storeName], "readonly").then(function (transaction) {
+      return new Promise(function (resolve, reject) {
+        var store = transaction.objectStore(storeName);
+        var req = store.openCursor();
+        var rows = [];
+        req.onsuccess = function () {
+          var cursor = req.result;
+          if (!cursor) { resolve(rows); return; }
+          rows.push(cursor.value);
+          cursor.continue();
+        };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+
+  function exportBazaBackup(userId) {
+    return Promise.all([readAllRows("results"), loadUserFileIdentifier()]).then(function (parts) {
+      var rows = parts[0];
+      var id = String(userId || parts[1] || "").trim();
+      var payload = {
+        version: 1,
+        level: 2,
+        levelMarker: BACKUP_LEVEL_MARKER,
+        userId: id,
+        exportedAt: new Date().toISOString(),
+        rows: rows,
+      };
+      return { ok: true, payload: payload, fileName: "BTCA_L2_" + (id || "backup") + "_" + BACKUP_LEVEL_MARKER + ".json" };
+    });
+  }
+
+  function importBazaBackupObject(payload) {
+    if (!payload || payload.level !== 2) return Promise.resolve({ ok: false, error: "wrong_level" });
+    if (String(payload.levelMarker || "") !== BACKUP_LEVEL_MARKER) return Promise.resolve({ ok: false, error: "bad_format" });
+    var rows = Array.isArray(payload.rows) ? payload.rows : [];
+    return clearForeignDatabase().then(function () {
+      return tx(["foreign_results"], "readwrite").then(function (transaction) {
+        var store = transaction.objectStore("foreign_results");
+        rows.forEach(function (row) {
+          if (!row || !row.date || !row.exercise || row.task == null) return;
+          store.put({
+            date: String(row.date),
+            exercise: String(row.exercise),
+            task: Number(row.task),
+            req: row.req == null ? null : Number(row.req),
+            ok: row.ok == null ? null : Number(row.ok),
+            pct: row.pct == null ? null : Number(row.pct),
+            sets: row.sets == null ? null : Number(row.sets),
+          });
+        });
+        return new Promise(function (resolve, reject) {
+          transaction.oncomplete = function () { resolve({ ok: true }); };
+          transaction.onerror = function () { reject(transaction.error); };
+        });
+      });
+    }).then(function () {
+      var importId = String(payload.userId || payload.importId || "import").trim();
+      return saveImportFileIdentifier(importId).then(function () {
+        return { ok: true, importId: importId };
+      });
+    }).catch(function () { return { ok: false, error: "import_failed" }; });
+  }
+
+  function foreignDbDateRange() {
+    return tx(["foreign_results"], "readonly").then(function (transaction) {
+      return new Promise(function (resolve, reject) {
+        var store = transaction.objectStore("foreign_results");
+        var req = store.openCursor();
+        var minDate = "";
+        var maxDate = "";
+        req.onsuccess = function () {
+          var cursor = req.result;
+          if (!cursor) {
+            if (!minDate || !maxDate) resolve(null);
+            else resolve({ from: minDate, to: maxDate });
+            return;
+          }
+          var d = String(cursor.value.date || "");
+          if (d) {
+            if (!minDate || d < minDate) minDate = d;
+            if (!maxDate || d > maxDate) maxDate = d;
+          }
+          cursor.continue();
+        };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+
+  function flushUiState() {
+    if (!uiCache) return Promise.resolve();
+    if (uiSaveTimer) {
+      window.clearTimeout(uiSaveTimer);
+      uiSaveTimer = null;
+    }
+    return writeKv(KV_UI_KEY, JSON.stringify(uiCache));
+  }
+
   function bazaFillStatusText(filledRows, maxRows) {
     if (!filledRows) return "пуста";
     var pct = Math.floor((filledRows / maxRows) * 100);
@@ -335,13 +576,31 @@
 
   window.BTCA_LEVEL2_DB = {
     DB_MAX_ROWS: DB_MAX_ROWS,
+    BACKUP_LEVEL_MARKER: BACKUP_LEVEL_MARKER,
     loadUiState: loadUiState,
     patchUiState: patchUiState,
+    flushUiState: flushUiState,
     getUiState: function () { return uiCache; },
     saveCluster: saveCluster,
     dbCapacity: dbCapacity,
     bazaQuery: bazaQuery,
+    foreignBazaQuery: foreignBazaQuery,
+    bazaQueryForSource: bazaQueryForSource,
+    listExerciseKeys: listExerciseKeys,
     dbStats: dbStats,
+    foreignDbStats: foreignDbStats,
+    combinedDbStats: combinedDbStats,
+    hasForeignDatabase: hasForeignDatabase,
+    loadUserFileIdentifier: loadUserFileIdentifier,
+    saveUserFileIdentifier: saveUserFileIdentifier,
+    loadImportFileIdentifier: loadImportFileIdentifier,
+    saveImportFileIdentifier: saveImportFileIdentifier,
+    clearImportFileIdentifier: clearImportFileIdentifier,
+    clearForeignDatabase: clearForeignDatabase,
+    bazaDeleteCurrentByFilters: bazaDeleteCurrentByFilters,
+    exportBazaBackup: exportBazaBackup,
+    importBazaBackupObject: importBazaBackupObject,
+    foreignDbDateRange: foreignDbDateRange,
     bazaFillStatusText: bazaFillStatusText,
     formatYmd: formatYmd,
   };

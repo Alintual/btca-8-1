@@ -479,7 +479,201 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   border-color: #bb20e8;
 }
 
-.btca-level1-picker__group {
+.btca-l2-chart-panel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.btca-l2-diagram-wrap {
+  width: 100%;
+  min-height: 220px;
+}
+
+.btca-l2-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.btca-l2-baza-menu {
+  position: absolute;
+  top: calc(max(4px, env(safe-area-inset-top)) + 6px);
+  right: max(4px, env(safe-area-inset-right));
+  display: grid;
+  gap: 6px;
+  width: min(288px, calc(100vw - 8px));
+  padding: 10px 4px;
+  border: 2px solid #ffffff;
+  border-radius: 12px;
+  background: #263444;
+  box-shadow: 0 2px 8px rgba(26, 79, 92, 0.35);
+}
+
+.btca-l2-baza-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid rgba(164, 196, 201, 0.32);
+  border-radius: 10px;
+  color: #ffffff;
+  background: transparent;
+  font-size: 1rem;
+  text-align: left;
+}
+
+.btca-l2-baza-menu__item--disabled {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.btca-l2-baza-menu__icon {
+  width: 28px;
+  text-align: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.btca-l2-baza-menu__icon--export { color: #1e88e5; }
+.btca-l2-baza-menu__icon--import { color: #fb8c00; }
+.btca-l2-baza-menu__icon--shot { color: #15a60e; }
+
+.btca-l2-baza-menu__chevron {
+  margin-left: auto;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 8px solid #ffffff;
+}
+
+.btca-l2-baza-menu__sub {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 0 0;
+}
+
+.btca-l2-baza-menu__sub[hidden] {
+  display: none;
+}
+
+.btca-l2-baza-menu__dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.btca-l2-baza-menu__dot--own { background: #bb20e8; }
+.btca-l2-baza-menu__dot--import { background: #fb8c00; }
+
+.btca-l2-baza-id-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - 24px));
+  padding: 16px;
+  border: 2px solid #ffffff;
+  border-radius: 12px;
+  background: #263444;
+  color: #ffffff;
+  z-index: 80;
+}
+
+.btca-l2-baza-id-dialog h3 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.btca-l2-baza-id-label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.btca-l2-baza-id-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.btca-l2-baza-id-error {
+  margin: 0 0 8px;
+  color: #ff8a80;
+  font-size: 0.92rem;
+}
+
+.btca-l2-baza-id-hint {
+  margin: 0 0 12px;
+  opacity: 0.9;
+}
+
+.btca-l2-baza-id-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btca-l2-baza-id-btn {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  color: #ffffff;
+  background: transparent;
+}
+
+.btca-l2-baza-id-btn--primary {
+  border-color: #bb20e8;
+  background: rgba(187, 32, 232, 0.2);
+}
+
+.btca-l2-baza-id-btn--danger {
+  border-color: #e53935;
+  background: rgba(229, 57, 53, 0.2);
+}
+
+.btca-l2-baza-toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 12px);
+  transform: translateX(-50%);
+  z-index: 90;
+  pointer-events: none;
+}
+
+.btca-l2-baza-toast-host[hidden] {
+  display: none;
+}
+
+.btca-l2-baza-toast {
+  padding: 10px 18px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.btca-l1-baza-table-row--cluster .btca-l1-baza-col--date span,
+.btca-l1-baza-table-row--cluster .btca-l1-baza-col--ex span {
+  visibility: hidden;
+}
+
+.btca-level1-picker__item--baza {
+  white-space: pre-line;
+  text-align: left;
+}
+
   padding: 8px 12px 4px;
   color: rgba(17, 24, 39, 0.55);
   font-size: calc(12rem / 17);
@@ -2274,8 +2468,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.50:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.50:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.51:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.51:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -2312,7 +2506,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
   var LEVEL1_MODULE_VERSION = "8.1.50";
-  var LEVEL2_MODULE_VERSION = "8.1.50";
+  var LEVEL2_MODULE_VERSION = "8.1.51";
 
   var CORE_REL_PATHS = [
     "",
@@ -2331,6 +2525,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     "level1/data/polezLinks.json",
     "level1/data/polezDescriptions.json",
     "level2/level2-db.js?v=" + LEVEL2_MODULE_VERSION,
+    "level2/level2-baza.js?v=" + LEVEL2_MODULE_VERSION,
     "level2/level2-app.js?v=" + LEVEL2_MODULE_VERSION,
     "level2/data/forma_exercise_list.json",
     "level2/data/polezCatalog.json",
@@ -2794,15 +2989,20 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   }
 
   function level2ModuleReady() {
-    return Boolean(window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot);
+    return Boolean(window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_BAZA && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot);
   }
 
   function loadLevel2Script(src) {
     return new Promise(function (resolve, reject) {
       var isDb = src.indexOf("level2-db") >= 0;
+      var isBaza = src.indexOf("level2-baza") >= 0;
       var isApp = src.indexOf("level2-app") >= 0;
 
       if (isDb && window.BTCA_LEVEL2_DB) {
+        resolve();
+        return;
+      }
+      if (isBaza && window.BTCA_LEVEL2_BAZA) {
         resolve();
         return;
       }
@@ -2829,6 +3029,9 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
           if (isDb && !window.BTCA_LEVEL2_DB) {
             throw new Error("level2-db.js выполнен, но BTCA_LEVEL2_DB не найден");
           }
+          if (isBaza && !window.BTCA_LEVEL2_BAZA) {
+            throw new Error("level2-baza.js выполнен, но BTCA_LEVEL2_BAZA не найден");
+          }
           if (isApp && (!window.BTCA_LEVEL2 || !window.BTCA_LEVEL2.boot)) {
             throw new Error("level2-app.js выполнен, но BTCA_LEVEL2.boot не найден");
           }
@@ -2842,6 +3045,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     if (level2ModuleReady()) return Promise.resolve();
     var v = LEVEL2_MODULE_VERSION;
     return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v)).then(function () {
+      return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v));
+    }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v));
     }).then(function () {
       if (!level2ModuleReady()) {
@@ -2948,6 +3153,10 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
         '<section class="btca-level1-content" data-btca-level2-content></section>' +
         '<div class="btca-level1-menu-layer" data-btca-level2-menu-layer hidden></div>' +
         '<div class="btca-level1-menu-layer" data-btca-level2-picker hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-baza-menu-layer hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-baza-id-layer hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-baza-delete-layer hidden></div>' +
+        '<div class="btca-l2-baza-toast-host" data-btca-level2-baza-toast hidden></div>' +
         "</main>";
 
       var back = document.querySelector("[data-btca-level2-back]");

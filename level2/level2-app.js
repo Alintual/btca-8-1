@@ -2,7 +2,8 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL2_DB;
-  var VERSION = "8.1.50";
+  var BAZA = window.BTCA_LEVEL2_BAZA;
+  var VERSION = "8.1.51";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -29,8 +30,23 @@
     ui: null,
     data: { exercises: [], polezCatalog: [], polezLinks: [], polezDescriptions: {} },
     formaFlags: {},
-    bazaStats: { empty: true, fillText: "пуста" },
+    bazaStats: { empty: true, fillText: "пуста", hasOwn: false, hasForeign: false },
     bazaRows: [],
+    bazaExpandedRows: [],
+    bazaOwnKeys: [],
+    bazaForeignKeys: [],
+    bazaForeignAvailable: false,
+    bazaImportLabelId: "",
+    bazaOwnEmpty: true,
+    bazaNoExercisesInPeriod: false,
+    bazaRuleTasks: [],
+    bazaMenuOpen: false,
+    bazaDeleteConfirm: null,
+    bazaIdentifierMode: null,
+    bazaIdentifierDraft: "",
+    bazaIdentifierError: "",
+    bazaUserFileId: "",
+    bazaToast: null,
     pickTimer: null,
     mounted: false,
   };
@@ -181,6 +197,27 @@
     return { requiredByTask: requiredByTask };
   }
 
+  function activeTaskCountL2(b5) {
+    var count = 0;
+    for (var task = 1; task <= 12; task += 1) {
+      if (taskActiveFormL1(b5, task)) count += 1;
+    }
+    return count;
+  }
+
+  function taskNumbersForExercise(exerciseKey) {
+    var rules = exerciseRulesL1(b5FromSelectValue(exerciseKey));
+    var out = [];
+    for (var i = 0; i < rules.requiredByTask.length; i += 1) {
+      if (rules.requiredByTask[i] != null) out.push(i + 1);
+    }
+    return out;
+  }
+
+  function sectionForDbKey(exerciseKey) {
+    return exerciseSectionNameL2(b5FromSelectValue(exerciseKey));
+  }
+
   function buildNavSectionOptions() {
     var opts = [{ value: NAV_SECTION_FILTER_ALL, label: "Все" }];
     var present = {};
@@ -243,24 +280,67 @@
   }
 
   function buildBazaExercisePickerOptions() {
-    var opts = [{ value: "all", label: "Все" }];
-    var bySection = {};
-    state.data.exercises.forEach(function (it) {
-      var sec = it.section || "—";
-      if (!bySection[sec]) bySection[sec] = [];
-      bySection[sec].push(it);
-    });
-    var secOrder = NAV_TRAINING_KIND_ORDER.filter(function (s) { return bySection[s]; });
-    Object.keys(bySection).forEach(function (s) {
-      if (secOrder.indexOf(s) < 0) secOrder.push(s);
-    });
-    secOrder.forEach(function (sec) {
-      opts.push({ value: "__section:" + sec, label: sec, groupHeader: true });
-      bySection[sec].forEach(function (it) {
-        opts.push({ value: it.value, label: it.label });
+    if (!BAZA) return [{ value: "all", label: "Все" }];
+    var BAZA_ALL = BAZA.BAZA_EXERCISE_ALL;
+    var GROUP_OWN = BAZA.BAZA_GROUP_OWN;
+    var GROUP_FOREIGN = BAZA.BAZA_GROUP_FOREIGN;
+    var ownKeys = state.bazaOwnKeys;
+    var foreignKeys = state.bazaForeignKeys;
+    var foreignAvailable = state.bazaForeignAvailable;
+    var importId = state.bazaImportLabelId;
+    var ownDbEmpty = state.bazaOwnEmpty;
+    var out = [];
+
+    function appendExerciseRows(source, keys) {
+      var bySection = {};
+      keys.forEach(function (key) {
+        var section = sectionForDbKey(key);
+        if (!section || section === "—") {
+          out.push({ value: key, label: labelForExerciseValue(key), source: source });
+          return;
+        }
+        if (!bySection[section]) bySection[section] = [];
+        bySection[section].push(key);
       });
-    });
-    return opts;
+      Object.keys(bySection).forEach(function (section) {
+        out.push({ value: "__section:" + source + ":" + section, label: section, groupHeader: true, sectionHeader: true });
+        bySection[section].forEach(function (key) {
+          out.push({ value: key, label: labelForExerciseValue(key), source: source });
+        });
+      });
+    }
+
+    if (ownDbEmpty) {
+      out.push({ value: GROUP_OWN, label: "--- ТЕКУЩИЕ - НЕТ ДАННЫХ ---", groupHeader: true, disabledHeader: true });
+    } else {
+      out.push({ value: GROUP_OWN, label: "--- ТЕКУЩИЕ ---", groupHeader: true });
+      out.push({ value: BAZA_ALL, label: "Все", source: "own" });
+      appendExerciseRows("own", ownKeys);
+    }
+
+    if (foreignAvailable) {
+      out.push({
+        value: GROUP_FOREIGN,
+        label: importId ? "--- ИМПОРТ ---\n" + importId : "--- ИМПОРТ ---",
+        groupHeader: true,
+        source: "foreign",
+      });
+      out.push({ value: BAZA_ALL, label: "Все", source: "foreign" });
+      appendExerciseRows("foreign", foreignKeys);
+    }
+    return out;
+  }
+
+  function bazaExerciseFaceLabel(exercise, dataSource, disabled) {
+    if (disabled) return "---";
+    if (exercise === "all") return "Все";
+    return labelForExerciseValue(exercise);
+  }
+
+  function isBazaExerciseSelectionValid(exercise, dataSource) {
+    if (exercise === "all") return true;
+    var keys = dataSource === "foreign" ? state.bazaForeignKeys : state.bazaOwnKeys;
+    return keys.indexOf(exercise) >= 0;
   }
 
   function formaBannerText() {
@@ -305,6 +385,16 @@
       if (k === "Тест1") return "test_1.jpg";
       var n = Number(k);
       if (Number.isInteger(n) && n >= 1 && n <= 14) return n + ".jpg";
+      return null;
+    }
+    if (level === 2) {
+      if (k.indexOf("Тест") === 0) {
+        var tm = /^Тест(\d+)$/.exec(k);
+        if (tm && Number(tm[1]) >= 1 && Number(tm[1]) <= 8) return "test_" + tm[1] + ".jpg";
+        return null;
+      }
+      var n2 = Number(k);
+      if (Number.isInteger(n2) && n2 >= 1 && n2 <= 32) return n2 + ".jpg";
       return null;
     }
     return null;
@@ -380,9 +470,10 @@
       '">Записать</span></button>';
   }
 
-  function formaTableHeadHtml() {
+  function formaTableHeadHtml(b5) {
+    var count = activeTaskCountL2(b5);
     return '<div class="btca-l1-table-head"><div class="btca-l1-table-row">' +
-      '<div class="btca-l1-table-cell btca-l1-col--task"><span class="btca-l1-th">Задача</span></div>' +
+      '<div class="btca-l1-table-cell btca-l1-col--task"><span class="btca-l1-th">Задача (' + count + ")</span></div>" +
       '<div class="btca-l1-table-cell btca-l1-col--req"><span class="btca-l1-th">Требуемое<br>число ударов</span></div>' +
       '<div class="btca-l1-table-cell btca-l1-col--ok"><span class="btca-l1-th">Число успешных<br>ударов</span></div>' +
       '<div class="btca-l1-table-cell btca-l1-col--pct"><span class="btca-l1-th">%</span></div>' +
@@ -396,12 +487,12 @@
       '<span class="btca-l1-face__text">' + escapeHtml(label) + "</span></button>";
   }
 
-  function getBazaChartTitle(exercise) {
-    var showChart = exercise !== "all" && String(exercise || "").trim() !== "";
+  function getBazaChartTitle(exercise, exerciseFilterDisabled) {
+    var showChart = !exerciseFilterDisabled && exercise !== "all" && String(exercise || "").trim() !== "";
     return {
       text: showChart ? "Успешные удары по упражнению за период" : "Нет данных по упражнению",
       showChart: showChart,
-      arrowDisabled: !showChart,
+      arrowDisabled: exerciseFilterDisabled || !showChart,
     };
   }
 
@@ -587,6 +678,7 @@
       if (!btn) return;
       var value = btn.getAttribute("data-btca-picker-value");
       if (!value || value.indexOf("__group:") === 0 || value.indexOf("__section:") === 0) return;
+      if (value.indexOf("__group_") === 0) return;
       closePicker();
       onSelect(value);
     };
@@ -640,9 +732,7 @@
     state.formaFlags.invalidData = !forma.allActiveOkAreEmptyOrValid;
     var dateLabel = formatIsoDateAsDdMmYyyy(state.ui.trainingDate) || state.ui.trainingDate;
     var exerciseLabel = labelForExerciseValue(state.ui.exerciseValue);
-    var exerciseOptions = state.data.exercises.map(function (it) {
-      return { value: it.value, label: it.label };
-    });
+    var exerciseOptions = buildNavExercisePickerOptions(NAV_SECTION_FILTER_ALL);
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-forma">' +
@@ -667,7 +757,7 @@
       '<div class="btca-l1-banner">' + escapeHtml(formaBannerText()) + "</div></div>" +
       '<div class="btca-l1-tab-body btca-l1-forma-body">' +
       '<div class="btca-l1-table-area"><div class="btca-l1-table-wrap">' +
-      formaTableHeadHtml() +
+      formaTableHeadHtml(b5FromSelectValue(state.ui.exerciseValue)) +
       '<div class="btca-l1-table-scroll"><div class="btca-l1-table-body">' +
       forma.rows.map(function (row, idx) {
         var rowClass = !row.active || row.required === null ? "btca-l1-table__row--unused" : (idx % 2 ? "btca-l1-table__row--odd" : "btca-l1-table__row--even");
@@ -707,7 +797,8 @@
         state.ui.exerciseValue = value;
         state.ui.taskOk = {};
         state.ui.nav.exerciseFilterKey = value;
-        DB.patchUiState({ exerciseValue: value, taskOk: {}, nav: { exerciseFilterKey: value } });
+        state.ui.nav.sectionKey = sectionKeyForExerciseValue(value);
+        DB.patchUiState({ exerciseValue: value, taskOk: {}, nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
         renderFormaTab(content);
         renderTitleBar();
       }, event.currentTarget);
@@ -804,7 +895,7 @@
         state.formaFlags.statusOverride = null;
         renderTitleBar();
       }, 5000);
-      refreshBazaStats().then(function () {
+      refreshBazaContext().then(function () {
         renderActiveTab();
         renderTitleBar();
       });
@@ -812,33 +903,546 @@
   }
 
   function refreshBazaStats() {
-    return DB.dbStats().then(function (stats) {
+    return DB.combinedDbStats().then(function (stats) {
       state.bazaStats.empty = stats.empty;
-      state.bazaStats.fillText = DB.bazaFillStatusText(stats.filledRows, stats.maxRows);
+      state.bazaStats.hasOwn = (stats.ownRows || 0) > 0;
+      state.bazaStats.hasForeign = (stats.foreignRows || 0) > 0;
+      state.bazaStats.fillText = stats.empty ? "пуста" : DB.bazaFillStatusText(stats.filledRows, stats.maxRows);
+      state.bazaOwnEmpty = (stats.ownRows || 0) <= 0;
+    });
+  }
+
+  function refreshBazaContext() {
+    var baza = state.ui.baza;
+    var today = DB.formatYmd(new Date());
+    var from = baza.periodFrom || today;
+    var to = baza.periodTo || today;
+    return Promise.all([
+      DB.dbStats(),
+      refreshBazaStats(),
+      DB.hasForeignDatabase(),
+      DB.loadImportFileIdentifier(),
+      DB.loadUserFileIdentifier(),
+      DB.bazaQuery({ from: from, to: to, exercise: "all", task: "all" }),
+    ]).then(function (parts) {
+      var ownStats = parts[0];
+      var foreignAvailable = parts[2];
+      state.bazaForeignAvailable = foreignAvailable;
+      state.bazaImportLabelId = parts[3] || "";
+      state.bazaUserFileId = parts[4] || "";
+      state.bazaOwnKeys = parts[5].exercises || [];
+      state.bazaOwnEmpty = Number(ownStats.totalRows || 0) <= 0;
+
+      return (foreignAvailable
+        ? DB.foreignBazaQuery({ exercise: "all", task: "all" })
+        : Promise.resolve({ exercises: [] })
+      ).then(function (foreignRes) {
+        state.bazaForeignKeys = foreignRes.exercises || [];
+        var src = baza.dataSource === "foreign" ? "foreign" : "own";
+        var ex = baza.exercise;
+        var tk = baza.task;
+
+        if (!foreignAvailable && src === "foreign") {
+          src = "own";
+          ex = "all";
+        }
+        if (state.bazaOwnEmpty && foreignAvailable && ex === "all" && src === "own") {
+          src = "foreign";
+        }
+        if (ex !== "all" && !isBazaExerciseSelectionValid(ex, src)) {
+          if (state.bazaOwnEmpty && foreignAvailable) {
+            src = "foreign";
+            ex = "all";
+          } else {
+            ex = "all";
+          }
+          tk = "all";
+        }
+
+        var hasAny = state.bazaOwnKeys.length > 0 || (foreignAvailable && state.bazaForeignKeys.length > 0);
+        state.bazaNoExercisesInPeriod = !hasAny;
+        if (src !== baza.dataSource || ex !== baza.exercise || tk !== baza.task) {
+          state.ui.baza.dataSource = src;
+          state.ui.baza.exercise = ex;
+          state.ui.baza.task = tk;
+          DB.patchUiState({ baza: { dataSource: src, exercise: ex, task: tk } });
+        }
+
+        if (!hasAny) {
+          state.bazaRuleTasks = [];
+          state.bazaRows = [];
+          state.bazaExpandedRows = [];
+          return;
+        }
+
+        if (ex !== "all") {
+          state.bazaRuleTasks = taskNumbersForExercise(ex);
+          if (tk !== "all" && state.bazaRuleTasks.indexOf(Number(tk)) < 0) {
+            state.ui.baza.task = "all";
+            DB.patchUiState({ baza: { task: "all" } });
+            tk = "all";
+          }
+        } else {
+          state.bazaRuleTasks = [];
+          if (tk !== "all") {
+            state.ui.baza.task = "all";
+            DB.patchUiState({ baza: { task: "all" } });
+          }
+        }
+
+        return refreshBazaRows();
+      });
     });
   }
 
   function refreshBazaRows() {
-    return DB.bazaQuery({
-      from: state.ui.baza.periodFrom,
-      to: state.ui.baza.periodTo,
-      exercise: state.ui.baza.exercise,
-      task: state.ui.baza.task,
+    var baza = state.ui.baza;
+    var queryEx = baza.exercise;
+    var src = baza.dataSource === "foreign" ? "foreign" : "own";
+    return DB.bazaQueryForSource(src, {
+      from: baza.periodFrom,
+      to: baza.periodTo,
+      exercise: queryEx,
+      task: baza.task === "all" ? "all" : baza.task,
     }).then(function (result) {
       state.bazaRows = result.rows || [];
+      if (!BAZA || queryEx === "all") {
+        state.bazaExpandedRows = [];
+        return result;
+      }
+      state.bazaExpandedRows = BAZA.expandBazaRows(
+        state.bazaRows,
+        queryEx,
+        exerciseRulesL1,
+        b5FromSelectValue
+      );
       return result;
+    });
+  }
+
+  function renderBazaDiagramHtml() {
+    if (!BAZA || !state.bazaExpandedRows.length) return '<p class="btca-l1-empty">Нет данных за выбранный период</p>';
+    var baza = state.ui.baza;
+    var panel = contentElForMeasure();
+    var width = panel ? Math.max(280, panel.clientWidth - 16) : 320;
+    var height = Math.max(220, Math.round(window.innerHeight * 0.38));
+    var allowed = taskNumbersForExercise(baza.exercise);
+    var render = BAZA.buildBazaDiagramRender(state.bazaExpandedRows, allowed, baza.task, width, height);
+    return '<div class="btca-l2-diagram-wrap" data-btca-baza-diagram-capture>' + BAZA.renderBazaDiagramSvg(render) + "</div>";
+  }
+
+  function contentElForMeasure() {
+    return state.root && state.root.querySelector("[data-btca-level2-content]");
+  }
+
+  function showBazaToast(message, color) {
+    state.bazaToast = { message: message, color: color || "#15A60E" };
+    renderBazaToast();
+    window.setTimeout(function () {
+      state.bazaToast = null;
+      renderBazaToast();
+    }, 2800);
+  }
+
+  function renderBazaToast() {
+    var host = state.root && state.root.querySelector("[data-btca-level2-baza-toast]");
+    if (!host) return;
+    if (!state.bazaToast) {
+      host.setAttribute("hidden", "hidden");
+      host.innerHTML = "";
+      return;
+    }
+    host.removeAttribute("hidden");
+    host.innerHTML = '<div class="btca-l2-baza-toast" style="background:' + escapeHtml(state.bazaToast.color) + '">' +
+      escapeHtml(state.bazaToast.message) + "</div>";
+  }
+
+  function validateBazaIdentifierInput(raw) {
+    var trimmed = String(raw || "").trim();
+    if (!trimmed) return { ok: false, error: "Введите идентификатор." };
+    if (trimmed.length > 32) return { ok: false, error: "Не более 32 символов." };
+    if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+      return { ok: false, error: "Разрешены только латинские буквы A–Z, цифры 0–9, дефис (-) и подчёркивание (_)." };
+    }
+    return { ok: true, value: trimmed };
+  }
+
+  function bazaMenuCapabilities() {
+    var chartMeta = getBazaChartTitle(state.ui.baza.exercise, bazaFiltersDisabled());
+    return {
+      canExport: !state.bazaStats.empty,
+      canImport: !state.bazaStats.hasForeign && !state.bazaForeignAvailable,
+      canDeleteOwn: state.bazaStats.hasOwn,
+      canDeleteForeign: state.bazaStats.hasForeign,
+      canScreenshot: chartMeta.showChart && state.bazaExpandedRows.length > 0,
+    };
+  }
+
+  function bazaFiltersDisabled() {
+    var baza = state.ui.baza;
+    var src = baza.dataSource === "foreign" ? "foreign" : "own";
+    return (src === "own" && state.bazaOwnEmpty) || (src === "foreign" && !state.bazaForeignAvailable);
+  }
+
+  function renderBazaMenuLayer() {
+    var layer = state.root && state.root.querySelector("[data-btca-level2-baza-menu-layer]");
+    if (!layer) return;
+    if (!state.bazaMenuOpen) {
+      layer.setAttribute("hidden", "hidden");
+      layer.innerHTML = "";
+      return;
+    }
+    var caps = bazaMenuCapabilities();
+    layer.removeAttribute("hidden");
+    layer.innerHTML =
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-menu-close aria-label="Закрыть меню"></button>' +
+      '<nav class="btca-l2-baza-menu" aria-label="Меню базы">' +
+      '<button type="button" class="btca-l2-baza-menu__item' + (caps.canExport ? "" : " btca-l2-baza-menu__item--disabled") +
+      '" data-btca-baza-action="export"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--export" aria-hidden="true">↑</span><span>Экспорт</span></button>' +
+      '<button type="button" class="btca-l2-baza-menu__item' + (caps.canImport ? "" : " btca-l2-baza-menu__item--disabled") +
+      '" data-btca-baza-action="import"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--import" aria-hidden="true">↓</span><span>Импорт</span></button>' +
+      '<div class="btca-l2-baza-menu__delete-branch">' +
+      '<button type="button" class="btca-l2-baza-menu__item' +
+      ((caps.canDeleteOwn || caps.canDeleteForeign) ? "" : " btca-l2-baza-menu__item--disabled") +
+      '" data-btca-baza-delete-toggle><span class="btca-l2-baza-menu__icon" aria-hidden="true">🔴</span><span>Удалить данные</span><span class="btca-l2-baza-menu__chevron" aria-hidden="true"></span></button>' +
+      '<div class="btca-l2-baza-menu__sub" data-btca-baza-delete-sub hidden>' +
+      '<button type="button" class="btca-l2-baza-menu__item btca-l2-baza-menu__sub-item' + (caps.canDeleteOwn ? "" : " btca-l2-baza-menu__item--disabled") +
+      '" data-btca-baza-action="deleteOwn"><span class="btca-l2-baza-menu__dot btca-l2-baza-menu__dot--own"></span><span>Текущие</span></button>' +
+      '<button type="button" class="btca-l2-baza-menu__item btca-l2-baza-menu__sub-item' + (caps.canDeleteForeign ? "" : " btca-l2-baza-menu__item--disabled") +
+      '" data-btca-baza-action="deleteForeign"><span class="btca-l2-baza-menu__dot btca-l2-baza-menu__dot--import"></span><span>По импорту</span></button>' +
+      "</div></div>" +
+      '<button type="button" class="btca-l2-baza-menu__item' + (caps.canScreenshot ? "" : " btca-l2-baza-menu__item--disabled") +
+      '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>' +
+      "</nav>";
+    layer.onclick = function (event) {
+      if (event.target.closest("[data-btca-baza-menu-close]")) {
+        state.bazaMenuOpen = false;
+        renderBazaMenuLayer();
+        return;
+      }
+      if (event.target.closest("[data-btca-baza-delete-toggle]")) {
+        var sub = layer.querySelector("[data-btca-baza-delete-sub]");
+        if (sub) sub.toggleAttribute("hidden");
+        return;
+      }
+      var btn = event.target.closest("[data-btca-baza-action]");
+      if (!btn || btn.classList.contains("btca-l2-baza-menu__item--disabled")) return;
+      handleBazaMenuAction(btn.getAttribute("data-btca-baza-action"));
+    };
+  }
+
+  function openBazaIdentifierDialog(mode) {
+    state.bazaIdentifierMode = mode;
+    state.bazaIdentifierDraft = state.bazaUserFileId || "";
+    state.bazaIdentifierError = "";
+    renderBazaIdentifierDialog();
+  }
+
+  function renderBazaIdentifierDialog() {
+    var layer = state.root && state.root.querySelector("[data-btca-level2-baza-id-layer]");
+    if (!layer) return;
+    if (!state.bazaIdentifierMode) {
+      layer.setAttribute("hidden", "hidden");
+      layer.innerHTML = "";
+      return;
+    }
+    var title = state.bazaIdentifierMode === "export" ? "Экспорт базы" :
+      state.bazaIdentifierMode === "import" ? "Импорт базы" : "Скриншот диаграммы";
+    layer.removeAttribute("hidden");
+    layer.innerHTML =
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-id-close aria-label="Закрыть"></button>' +
+      '<div class="btca-l2-baza-id-dialog" role="dialog">' +
+      "<h3>" + escapeHtml(title) + "</h3>" +
+      (state.bazaIdentifierMode === "import"
+        ? '<p class="btca-l2-baza-id-hint">Выберите файл резервной копии BTCA (JSON).</p>'
+        : '<label class="btca-l2-baza-id-label">Идентификатор<input class="btca-l2-baza-id-input" type="text" value="' +
+          escapeHtml(state.bazaIdentifierDraft) + '" placeholder="Идентификатор анг..." maxlength="32"></label>') +
+      (state.bazaIdentifierError
+        ? '<p class="btca-l2-baza-id-error">' + escapeHtml(state.bazaIdentifierError) + "</p>" : "") +
+      '<div class="btca-l2-baza-id-actions">' +
+      '<button type="button" class="btca-l2-baza-id-btn" data-btca-baza-id-cancel>Отмена</button>' +
+      '<button type="button" class="btca-l2-baza-id-btn btca-l2-baza-id-btn--primary" data-btca-baza-id-confirm>' +
+      (state.bazaIdentifierMode === "import" ? "Выбрать файл" : "Продолжить") + "</button></div></div>";
+    layer.onclick = function (event) {
+      if (event.target.closest("[data-btca-baza-id-close]") || event.target.closest("[data-btca-baza-id-cancel]")) {
+        state.bazaIdentifierMode = null;
+        renderBazaIdentifierDialog();
+        return;
+      }
+      if (!event.target.closest("[data-btca-baza-id-confirm]")) return;
+      if (state.bazaIdentifierMode === "import") {
+        state.bazaIdentifierMode = null;
+        renderBazaIdentifierDialog();
+        runBazaImportPick();
+        return;
+      }
+      var input = layer.querySelector(".btca-l2-baza-id-input");
+      var id = state.bazaUserFileId;
+      if (!id && input) {
+        var validation = validateBazaIdentifierInput(input.value);
+        if (!validation.ok) {
+          state.bazaIdentifierError = validation.error;
+          renderBazaIdentifierDialog();
+          return;
+        }
+        id = validation.value;
+      }
+      var mode = state.bazaIdentifierMode;
+      state.bazaIdentifierMode = null;
+      renderBazaIdentifierDialog();
+      if (mode === "export") runBazaExport(id);
+      else if (mode === "screenshot") runBazaScreenshot(id);
+    };
+  }
+
+  function runBazaExport(userId) {
+    DB.exportBazaBackup(userId).then(function (result) {
+      if (!result.ok) {
+        showBazaToast("Не удалось экспортировать.", "#E53935");
+        return;
+      }
+      if (userId && !state.bazaUserFileId) {
+        return DB.saveUserFileIdentifier(userId).then(function () {
+          state.bazaUserFileId = userId;
+          return result;
+        });
+      }
+      return result;
+    }).then(function (result) {
+      if (!result || !result.ok) return;
+      var blob = new Blob([JSON.stringify(result.payload, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = result.fileName || "BTCA_L2_backup.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      showBazaToast("Успех!");
+    }).catch(function () {
+      showBazaToast("Не удалось экспортировать.", "#E53935");
+    });
+  }
+
+  function runBazaImportPick() {
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.style.display = "none";
+    document.body.appendChild(input);
+    input.addEventListener("change", function () {
+      var file = input.files && input.files[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var payload = JSON.parse(String(reader.result || ""));
+          DB.importBazaBackupObject(payload).then(function (res) {
+            if (!res.ok) {
+              showBazaToast("Неверный формат файла.", "#E53935");
+              return;
+            }
+            state.bazaMenuOpen = false;
+            renderBazaMenuLayer();
+            return refreshBazaContext();
+          }).then(function () {
+            renderActiveTab();
+            renderTitleBar();
+            showBazaToast("Успех!");
+          }).catch(function () {
+            showBazaToast("Не удалось импортировать.", "#E53935");
+          });
+        } catch (_) {
+          showBazaToast("Неверный формат файла.", "#E53935");
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    });
+    input.click();
+  }
+
+  function runBazaScreenshot(userId) {
+    var svgWrap = state.root && state.root.querySelector("[data-btca-baza-diagram-capture] svg");
+    if (!svgWrap) {
+      showBazaToast("Нет диаграммы для сохранения.", "#E53935");
+      return;
+    }
+    var saveId = function () {
+      if (userId && !state.bazaUserFileId) {
+        return DB.saveUserFileIdentifier(userId).then(function () {
+          state.bazaUserFileId = userId;
+        });
+      }
+      return Promise.resolve();
+    };
+    saveId().then(function () {
+      var svgData = new XMLSerializer().serializeToString(svgWrap);
+      var canvas = document.createElement("canvas");
+      var ctx = canvas.getContext("2d");
+      var img = new Image();
+      var blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      img.onload = function () {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = "#c5d9dc";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(function (pngBlob) {
+          URL.revokeObjectURL(url);
+          if (!pngBlob) {
+            showBazaToast("Не удалось сохранить скриншот.", "#E53935");
+            return;
+          }
+          var id = userId || state.bazaUserFileId || "screenshot";
+          var baza = state.ui.baza;
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(pngBlob);
+          a.download = "BTCA_L2_" + id + "_" + baza.exercise + "_" + baza.periodFrom + ".png";
+          a.click();
+          state.bazaMenuOpen = false;
+          renderBazaMenuLayer();
+          showBazaToast("Успех!");
+        }, "image/png");
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        showBazaToast("Не удалось сохранить скриншот.", "#E53935");
+      };
+      img.src = url;
+    });
+  }
+
+  function openBazaDeleteConfirm(target) {
+    state.bazaDeleteConfirm = target;
+    renderBazaDeleteConfirm();
+  }
+
+  function renderBazaDeleteConfirm() {
+    var layer = state.root && state.root.querySelector("[data-btca-level2-baza-delete-layer]");
+    if (!layer) return;
+    if (!state.bazaDeleteConfirm) {
+      layer.setAttribute("hidden", "hidden");
+      layer.innerHTML = "";
+      return;
+    }
+    var own = state.bazaDeleteConfirm === "own";
+    layer.removeAttribute("hidden");
+    layer.innerHTML =
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-del-close aria-label="Закрыть"></button>' +
+      '<div class="btca-l2-baza-id-dialog" role="dialog">' +
+      "<h3>Удалить данные?</h3>" +
+      "<p>" + (own ? "Будут удалены текущие записи по выбранным фильтрам." : "Будет удалена импортированная база целиком.") + "</p>" +
+      '<div class="btca-l2-baza-id-actions">' +
+      '<button type="button" class="btca-l2-baza-id-btn" data-btca-baza-del-cancel>Отмена</button>' +
+      '<button type="button" class="btca-l2-baza-id-btn btca-l2-baza-id-btn--danger" data-btca-baza-del-confirm>Удалить</button></div></div>';
+    layer.onclick = function (event) {
+      if (event.target.closest("[data-btca-baza-del-close]") || event.target.closest("[data-btca-baza-del-cancel]")) {
+        state.bazaDeleteConfirm = null;
+        renderBazaDeleteConfirm();
+        return;
+      }
+      if (!event.target.closest("[data-btca-baza-del-confirm]")) return;
+      var target = state.bazaDeleteConfirm;
+      state.bazaDeleteConfirm = null;
+      renderBazaDeleteConfirm();
+      runBazaDelete(target);
+    };
+  }
+
+  function runBazaDelete(target) {
+    var baza = state.ui.baza;
+    var promise = target === "foreign"
+      ? DB.clearForeignDatabase().then(function () { return DB.clearImportFileIdentifier(); })
+      : DB.bazaDeleteCurrentByFilters({
+        from: baza.periodFrom,
+        to: baza.periodTo,
+        exercise: baza.exercise,
+        task: baza.task,
+      });
+    promise.then(function () {
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      if (target === "foreign" && baza.dataSource === "foreign") {
+        state.ui.baza.dataSource = "own";
+        state.ui.baza.exercise = "all";
+        DB.patchUiState({ baza: { dataSource: "own", exercise: "all", task: "all" } });
+      }
+      return refreshBazaContext();
+    }).then(function () {
+      renderActiveTab();
+      renderTitleBar();
+      showBazaToast("Успех!");
+    }).catch(function () {
+      showBazaToast("Не удалось удалить данные.", "#E53935");
+    });
+  }
+
+  function handleBazaMenuAction(action) {
+    var caps = bazaMenuCapabilities();
+    if (action === "export" && caps.canExport) {
+      openBazaIdentifierDialog("export");
+      return;
+    }
+    if (action === "import" && caps.canImport) {
+      openBazaIdentifierDialog("import");
+      return;
+    }
+    if (action === "screenshot" && caps.canScreenshot) {
+      openBazaIdentifierDialog("screenshot");
+      return;
+    }
+    if (action === "deleteOwn" && caps.canDeleteOwn) {
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      openBazaDeleteConfirm("own");
+      return;
+    }
+    if (action === "deleteForeign" && caps.canDeleteForeign) {
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      openBazaDeleteConfirm("foreign");
+    }
+  }
+
+  function onPickBazaExercise(item) {
+    if (!item || item.groupHeader || item.disabled || item.disabledHeader) return;
+    if (BAZA && (item.value === BAZA.BAZA_GROUP_OWN || item.value === BAZA.BAZA_GROUP_FOREIGN)) return;
+    if (item.value === "all") {
+      state.ui.baza.dataSource = item.source === "foreign" ? "foreign" : "own";
+      state.ui.baza.exercise = "all";
+      state.ui.baza.task = "all";
+      DB.patchUiState({ baza: { dataSource: state.ui.baza.dataSource, exercise: "all", task: "all" } });
+      return refreshBazaContext().then(function () {
+        renderActiveTab();
+        renderTitleBar();
+      });
+    }
+    var nextSource = item.source || (state.bazaForeignKeys.indexOf(item.value) >= 0 ? "foreign" : "own");
+    state.ui.baza.dataSource = nextSource;
+    state.ui.baza.exercise = item.value;
+    state.ui.baza.task = "all";
+    DB.patchUiState({ baza: { dataSource: nextSource, exercise: item.value, task: "all" } });
+    return refreshBazaRows().then(function () {
+      renderActiveTab();
+      renderTitleBar();
     });
   }
 
   function renderBazaTab(content) {
     var baza = state.ui.baza;
-    var fromLabel = formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—";
-    var toLabel = formatIsoDateAsDdMmYyyy(baza.periodTo) || "—";
-    var exerciseLabel = baza.exercise === "all" ? "Все" : labelForExerciseValue(baza.exercise);
-    var taskLabel = baza.exercise === "all" ? "Все" : (baza.task === "all" ? "Все" : baza.task);
-    var taskDisabled = baza.exercise === "all";
-    var chartMeta = getBazaChartTitle(baza.exercise);
-    var chartRows = chartMeta.showChart ? state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; }) : [];
+    var periodDisabled = bazaFiltersDisabled();
+    var exerciseDisabled = periodDisabled || state.bazaNoExercisesInPeriod;
+    var taskFilterEmpty = exerciseDisabled;
+    var fromLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—");
+    var toLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodTo) || "—");
+    var exerciseLabel = bazaExerciseFaceLabel(baza.exercise, baza.dataSource, exerciseDisabled);
+    var taskLabel = taskFilterEmpty || baza.exercise === "all" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
+    var taskDisabled = taskFilterEmpty || baza.exercise === "all";
+    var chartMeta = getBazaChartTitle(baza.exercise, exerciseDisabled);
+    var diagramHtml = chartMeta.showChart ? renderBazaDiagramHtml() : "";
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-baza">' +
@@ -846,8 +1450,8 @@
       '<div class="btca-l1-baza-filter-row">' +
       '<span class="btca-l1-field-label btca-l1-field-label--center">Период</span>' +
       '<div class="btca-l1-period-faces">' +
-      periodDateFaceHtml(fromLabel, "data-btca-baza-from") +
-      periodDateFaceHtml(toLabel, "data-btca-baza-to") +
+      periodDateFaceHtml(fromLabel, "data-btca-baza-from", periodDisabled) +
+      periodDateFaceHtml(toLabel, "data-btca-baza-to", periodDisabled) +
       "</div></div>" +
       '<div class="btca-l1-baza-filter-row">' +
       '<div class="btca-l1-baza-labels-row">' +
@@ -856,7 +1460,7 @@
       "</div>" +
       '<div class="btca-l1-baza-fields-row">' +
       '<div class="btca-l1-exercise-col">' +
-      filterFaceHtml(exerciseLabel, { wide: true, dataAttr: "data-btca-baza-exercise" }) +
+      filterFaceHtml(exerciseLabel, { wide: true, disabled: exerciseDisabled, dataAttr: "data-btca-baza-exercise" }) +
       "</div>" +
       '<div class="btca-l1-trailing-slot btca-l1-task-field-col">' +
       filterFaceHtml(taskLabel, { wide: true, disabled: taskDisabled, dataAttr: "data-btca-baza-task" }) +
@@ -871,63 +1475,55 @@
       "</div></div></div>" +
       '<div class="btca-l1-tab-body btca-l1-baza-body">' +
       (chartMeta.showChart
-        ? '<section class="btca-l1-chart-panel" aria-label="Диаграмма">' +
-          '<div class="btca-l1-chart-bars">' +
-          chartRows.map(function (row) {
-            var pct = row.pct == null ? 0 : Math.max(0, Math.min(100, Number(row.pct)));
-            return '<div class="btca-l1-chart-row"><span>З' + row.task + "</span>" +
-              '<div class="btca-l1-chart-bar"><div style="width:' + pct + '%"></div></div>' +
-              "<span>" + (row.pct == null ? "—" : row.pct + "%") + "</span></div>";
-          }).join("") +
-          (chartRows.length ? "" : '<p class="btca-l1-empty">Нет данных за выбранный период</p>') +
-          "</section>"
+        ? '<section class="btca-l1-chart-panel btca-l2-chart-panel" aria-label="Диаграмма">' + diagramHtml + "</section>"
         : "") +
       "</div></div>";
 
-    content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
-      openDateInput(baza.periodFrom, function (iso) {
-        state.ui.baza.periodFrom = iso;
-        DB.patchUiState({ baza: { periodFrom: iso } });
-        refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, "Период с");
-    });
-    content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
-      openDateInput(baza.periodTo, function (iso) {
-        state.ui.baza.periodTo = iso;
-        DB.patchUiState({ baza: { periodTo: iso } });
-        refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, "Период по");
-    });
-    var exerciseOptions = buildBazaExercisePickerOptions();
-    content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
-      openPicker("Упражнение", exerciseOptions, baza.exercise, function (value) {
-        state.ui.baza.exercise = value;
-        state.ui.baza.task = "all";
-        DB.patchUiState({ baza: { exercise: value, task: "all" } });
-        refreshBazaRows().then(function () { renderBazaTab(content); renderTitleBar(); });
-      }, event.currentTarget);
-    });
-    var taskBtn = content.querySelector("[data-btca-baza-task]");
-    if (taskBtn) taskBtn.addEventListener("click", function (event) {
-      if (baza.exercise === "all") return;
-      var tasks = [];
-      var seen = {};
-      state.bazaRows.forEach(function (r) {
-        if (r.exercise === baza.exercise && !seen[r.task]) { seen[r.task] = true; tasks.push(r.task); }
+    if (!periodDisabled) {
+      content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
+        openDateInput(baza.periodFrom, function (iso) {
+          state.ui.baza.periodFrom = iso;
+          DB.patchUiState({ baza: { periodFrom: iso } });
+          refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
+        }, "Период с");
       });
-      tasks.sort(function (a, b) { return a - b; });
-      var options = [{ value: "all", label: "Все" }].concat(tasks.map(function (t) { return { value: String(t), label: String(t) }; }));
-      openPicker("Задача", options, baza.task, function (value) {
-        state.ui.baza.task = value;
-        DB.patchUiState({ baza: { task: value } });
-        refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, event.currentTarget);
-    });
+      content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
+        openDateInput(baza.periodTo, function (iso) {
+          state.ui.baza.periodTo = iso;
+          DB.patchUiState({ baza: { periodTo: iso } });
+          refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
+        }, "Период по");
+      });
+    }
+    if (!exerciseDisabled) {
+      var exerciseOptions = buildBazaExercisePickerOptions();
+      var pickerValue = baza.exercise;
+      content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
+        openPicker("Упражнение", exerciseOptions, pickerValue, function (value) {
+          var item = exerciseOptions.filter(function (o) { return o.value === value; })[0];
+          onPickBazaExercise(item || { value: value, source: baza.dataSource });
+        }, event.currentTarget, { rowHeight: PICKER_ROW_SIMPLE, itemClass: " btca-level1-picker__item--baza" });
+      });
+    }
+    var taskBtn = content.querySelector("[data-btca-baza-task]");
+    if (taskBtn && !taskDisabled) {
+      taskBtn.addEventListener("click", function (event) {
+        var options = [{ value: "all", label: "Все" }].concat(
+          state.bazaRuleTasks.map(function (t) { return { value: String(t), label: String(t) }; })
+        );
+        openPicker("Задача", options, baza.task, function (value) {
+          state.ui.baza.task = value;
+          DB.patchUiState({ baza: { task: value } });
+          refreshBazaRows().then(function () { renderBazaTab(content); });
+        }, event.currentTarget);
+      });
+    }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
-    if (tableBtn) tableBtn.addEventListener("click", function () { openBazaTable(); });
+    if (tableBtn && !chartMeta.arrowDisabled) tableBtn.addEventListener("click", function () { openBazaTable(); });
   }
 
   function openBazaTable() {
+    var rows = state.bazaExpandedRows.length ? state.bazaExpandedRows : state.bazaRows;
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--baza-table";
     overlay.innerHTML =
@@ -944,12 +1540,19 @@
       '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
       "</div></div>" +
       '<div class="btca-l1-baza-table-scroll"><div class="btca-l1-baza-table-body">' +
-      state.bazaRows.map(function (row) {
-        return '<div class="btca-l1-baza-table-row">' +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' + escapeHtml(formatIsoDateAsDdMmYyyy(row.date)) + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(row.exercise) + "</span></div>" +
+      rows.map(function (row) {
+        var exKey = row.exerciseKey || row.exercise;
+        var reqText = BAZA
+          ? BAZA.formatBazaReqCell(exerciseRulesL1, b5FromSelectValue, exKey, row.task, row.ok, row.sets)
+          : (row.req == null ? "—" : String(row.req));
+        if (!reqText && row.req != null) reqText = String(row.req);
+        if (!reqText) reqText = "—";
+        return '<div class="btca-l1-baza-table-row' + (row.clusterFirst === false ? " btca-l1-baza-table-row--cluster" : "") + '">' +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' +
+          escapeHtml(row.date ? formatIsoDateAsDdMmYyyy(row.date) : "") + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(row.exercise || "") + "</span></div>" +
           '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>' + row.task + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + (row.req == null ? "—" : row.req) + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + escapeHtml(reqText) + "</span></div>" +
           '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>' + (row.ok == null ? "—" : row.ok) + "</span></div>" +
           '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>' + (row.pct == null ? "—" : row.pct + "%") + "</span></div></div>";
       }).join("") +
@@ -1228,9 +1831,7 @@
     DB.patchUiState({ tab: key });
     renderSheetMenu(false);
     if (key === "baza") {
-      refreshBazaStats().then(function () {
-        return refreshBazaRows();
-      }).then(function () {
+      refreshBazaContext().then(function () {
         renderActiveTab();
         renderTitleBar();
       });
@@ -1267,7 +1868,11 @@
       state.data.exercises = list.map(function (r) {
         var v = String(r.value || "").trim();
         var b5 = v.indexOf("Тест") === 0 ? v : Number(v);
-        return { value: optionValueForB5(b5), label: exerciseOptionLabel(b5) };
+        return {
+          value: optionValueForB5(b5),
+          label: exerciseOptionLabel(b5),
+          section: exerciseSectionNameL2(b5),
+        };
       });
       if (!state.data.exercises.some(function (it) { return it.value === "Тест1"; })) {
         state.data.exercises.push({ value: "Тест1", label: "Тест1" });
@@ -1302,9 +1907,7 @@
     if (!booted) {
       return Promise.reject(new Error("Приложение ещё не завершило загрузку. Перезапустите."));
     }
-    return refreshBazaStats().then(function () {
-      return refreshBazaRows();
-    }).then(function () {
+    return refreshBazaContext().then(function () {
       renderTitleBar();
       renderActiveTab();
       var menuBtn = rootEl.querySelector("[data-btca-level2-menu]");
@@ -1317,6 +1920,13 @@
           if (item) setSheet(item.getAttribute("data-btca-level2-sheet"));
         });
       }
+      rootEl.addEventListener("click", function (event) {
+        if (event.target.closest("[data-btca-baza-menu]")) {
+          state.bazaMenuOpen = true;
+          renderBazaMenuLayer();
+        }
+      });
+      renderBazaToast();
       if (hooks && hooks.onReady) hooks.onReady();
     });
   }
