@@ -330,6 +330,52 @@
     return pct <= 0 ? "< 1 %" : pct + " %";
   }
 
+  var KV_USER_FILE_ID = "baza_file_identifier_user_l1_v1";
+
+  function loadUserFileIdentifier() {
+    return readKv(KV_USER_FILE_ID).then(function (v) { return v || ""; });
+  }
+
+  function saveUserFileIdentifier(value) {
+    var id = String(value || "").trim();
+    if (!id) return Promise.resolve();
+    return writeKv(KV_USER_FILE_ID, id);
+  }
+
+  function bazaDeleteCurrentByFilters(filters) {
+    var from = String(filters.from || "").trim();
+    var to = String(filters.to || "").trim();
+    var exercise = String(filters.exercise || "all").trim() || "all";
+    var taskRaw = String(filters.task || "all").trim() || "all";
+    return tx(["results"], "readwrite").then(function (transaction) {
+      return new Promise(function (resolve, reject) {
+        var store = transaction.objectStore("results");
+        var req = store.openCursor();
+        var toDelete = [];
+        req.onsuccess = function () {
+          var cursor = req.result;
+          if (!cursor) {
+            toDelete.forEach(function (key) { store.delete(key); });
+            resolve({ ok: true, deleted: toDelete.length });
+            return;
+          }
+          var row = cursor.value;
+          var passDate = true;
+          if (from && to) passDate = row.date >= from && row.date <= to;
+          else if (from) passDate = row.date >= from;
+          else if (to) passDate = row.date <= to;
+          var passExercise = exercise === "all" || row.exercise === exercise;
+          var passTask = taskRaw === "all" || String(row.task) === taskRaw;
+          if (passDate && passExercise && passTask) {
+            toDelete.push([row.date, row.exercise, row.task]);
+          }
+          cursor.continue();
+        };
+        req.onerror = function () { reject(req.error); };
+      });
+    }).catch(function () { return { ok: false }; });
+  }
+
   window.BTCA_LEVEL1_DB = {
     DB_MAX_ROWS: DB_MAX_ROWS,
     loadUiState: loadUiState,
@@ -340,6 +386,9 @@
     bazaQuery: bazaQuery,
     dbStats: dbStats,
     bazaFillStatusText: bazaFillStatusText,
+    bazaDeleteCurrentByFilters: bazaDeleteCurrentByFilters,
+    loadUserFileIdentifier: loadUserFileIdentifier,
+    saveUserFileIdentifier: saveUserFileIdentifier,
     formatYmd: formatYmd,
   };
 })();

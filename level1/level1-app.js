@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.50";
+  var VERSION = "8.1.52";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -33,6 +33,11 @@
     formaFlags: {},
     bazaStats: { empty: true, fillText: "пуста" },
     bazaRows: [],
+    bazaMenuOpen: false,
+    bazaDeleteConfirm: null,
+    bazaIdentifierMode: null,
+    bazaUserFileId: "",
+    bazaToast: null,
     pickTimer: null,
     mounted: false,
   };
@@ -468,7 +473,7 @@
       '<div class="btca-l1-tab btca-l1-forma">' +
       '<div class="btca-l1-sticky-head">' +
       '<div class="btca-l1-toolbar btca-l1-toolbar-top">' +
-      '<div class="btca-l1-primary-col">' +
+      '<div class="btca-l1-forma-date-col">' +
       '<span class="btca-l1-field-label">Дата</span>' +
       dateFaceHtml(dateLabel, 'data-btca-forma-date aria-label="Дата тренировки"') +
       "</div>" +
@@ -560,27 +565,31 @@
     });
   }
 
-  function openDateInput(currentIso, onPick, title) {
-    var layer = state.root.querySelector("[data-btca-level1-picker]");
-    layer.removeAttribute("hidden");
-    var sheet = computeCenteredDateSheetLayout();
-    var pickerStyle =
-      ' style="position:fixed;top:' + sheet.top + "px;left:" + sheet.left + "px;width:" + sheet.width + 'px;right:auto;"';
-    layer.innerHTML =
-      '<button class="btca-level1-menu-backdrop" type="button" data-btca-picker-close aria-label="Закрыть"></button>' +
-      '<div class="btca-level1-picker btca-level1-picker--date btca-level1-picker--sheet" role="dialog" aria-label="Дата"' +
-      pickerStyle + ">" +
-      '<div class="btca-level1-picker__title">' + escapeHtml(title || "Дата тренировки") + "</div>" +
-      '<input class="btca-l1-date-native" type="date" value="' + escapeHtml(currentIso) + '">' +
-      '<button type="button" class="btca-l1-picker-done" data-btca-date-apply>Готово</button></div>';
-    layer.onclick = function (event) {
-      if (event.target.closest("[data-btca-picker-close]")) { closePicker(); return; }
-      if (event.target.closest("[data-btca-date-apply]")) {
-        var input = layer.querySelector(".btca-l1-date-native");
-        if (input && input.value) onPick(input.value);
-        closePicker();
-      }
-    };
+  function openDateInput(currentIso, onPick) {
+    var input = document.createElement("input");
+    input.type = "date";
+    input.value = String(currentIso || "").trim();
+    input.className = "btca-l1-date-native-hidden";
+    input.setAttribute("aria-hidden", "true");
+    document.body.appendChild(input);
+    var done = false;
+    function finish(value) {
+      if (done) return;
+      done = true;
+      if (input.parentNode) input.parentNode.removeChild(input);
+      if (value) onPick(value);
+    }
+    input.addEventListener("change", function () { finish(input.value); });
+    input.addEventListener("cancel", function () { finish(""); });
+    window.setTimeout(function () {
+      if (done) return;
+      if (input.parentNode) input.parentNode.removeChild(input);
+      done = true;
+    }, 60000);
+    if (typeof input.showPicker === "function") {
+      try { input.showPicker(); return; } catch (_) {}
+    }
+    input.click();
   }
 
   function saveFormaCluster(forma) {
@@ -648,6 +657,246 @@
       state.bazaRows = result.rows || [];
       return result;
     });
+  }
+
+  function showBazaToast(message, color) {
+    state.bazaToast = { message: message, color: color || "#15A60E" };
+    renderBazaToast();
+    window.setTimeout(function () {
+      state.bazaToast = null;
+      renderBazaToast();
+    }, 2800);
+  }
+
+  function renderBazaToast() {
+    var host = state.root && state.root.querySelector("[data-btca-level1-baza-toast]");
+    if (!host) return;
+    if (!state.bazaToast) {
+      host.setAttribute("hidden", "hidden");
+      host.innerHTML = "";
+      return;
+    }
+    host.removeAttribute("hidden");
+    host.innerHTML = '<div class="btca-l2-baza-toast" style="background:' + escapeHtml(state.bazaToast.color) + '">' +
+      escapeHtml(state.bazaToast.message) + "</div>";
+  }
+
+  function validateBazaIdentifierInput(raw) {
+    var trimmed = String(raw || "").trim();
+    if (!trimmed) return { ok: false, error: "Введите идентификатор." };
+    if (trimmed.length > 32) return { ok: false, error: "Не более 32 символов." };
+    if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+      return { ok: false, error: "Разрешены только латинские буквы A–Z, цифры 0–9, дефис (-) и подчёркивание (_)." };
+    }
+    return { ok: true, value: trimmed };
+  }
+
+  function bazaMenuCapabilities() {
+    var baza = state.ui.baza;
+    var chartMeta = getBazaChartTitle(baza.exercise);
+    var chartRows = chartMeta.showChart ? state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; }) : [];
+    return {
+      canDeleteOwn: !state.bazaStats.empty,
+      canScreenshot: chartMeta.showChart && chartRows.length > 0,
+    };
+  }
+
+  function renderBazaMenuLayer() {
+    var layer = state.root && state.root.querySelector("[data-btca-level1-baza-menu-layer]");
+    if (!layer) return;
+    if (!state.bazaMenuOpen) {
+      layer.setAttribute("hidden", "hidden");
+      layer.innerHTML = "";
+      return;
+    }
+    var caps = bazaMenuCapabilities();
+    layer.removeAttribute("hidden");
+    layer.innerHTML =
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-menu-close aria-label="Закрыть меню"></button>' +
+      '<nav class="btca-l1-baza-sheet-menu" aria-label="Меню базы">' +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canDeleteOwn ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
+      '" data-btca-baza-action="deleteOwn"><span class="btca-l2-baza-menu__icon" aria-hidden="true">🔴</span><span>Удалить данные</span></button>' +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canScreenshot ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
+      '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>' +
+      "</nav>";
+    layer.onclick = function (event) {
+      if (event.target.closest("[data-btca-baza-menu-close]")) {
+        state.bazaMenuOpen = false;
+        renderBazaMenuLayer();
+        return;
+      }
+      var btn = event.target.closest("[data-btca-baza-action]");
+      if (!btn || btn.classList.contains("btca-l1-baza-sheet-menu__item--disabled")) return;
+      handleBazaMenuAction(btn.getAttribute("data-btca-baza-action"));
+    };
+  }
+
+  function openBazaIdentifierDialog() {
+    state.bazaIdentifierMode = "screenshot";
+    renderBazaIdentifierDialog();
+  }
+
+  function renderBazaIdentifierDialog() {
+    var layer = state.root && state.root.querySelector("[data-btca-level1-baza-id-layer]");
+    if (!layer) return;
+    if (!state.bazaIdentifierMode) {
+      layer.setAttribute("hidden", "hidden");
+      layer.innerHTML = "";
+      return;
+    }
+    layer.removeAttribute("hidden");
+    layer.innerHTML =
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-id-close aria-label="Закрыть"></button>' +
+      '<div class="btca-l2-baza-id-dialog" role="dialog">' +
+      "<h3>Скриншот диаграммы</h3>" +
+      '<label class="btca-l2-baza-id-label">Идентификатор<input class="btca-l2-baza-id-input" type="text" value="' +
+      escapeHtml(state.bazaUserFileId || "") + '" placeholder="Идентификатор анг..." maxlength="32"></label>' +
+      '<div class="btca-l2-baza-id-actions">' +
+      '<button type="button" class="btca-l2-baza-id-btn" data-btca-baza-id-cancel>Отмена</button>' +
+      '<button type="button" class="btca-l2-baza-id-btn btca-l2-baza-id-btn--primary" data-btca-baza-id-confirm>Продолжить</button></div></div>';
+    layer.onclick = function (event) {
+      if (event.target.closest("[data-btca-baza-id-close]") || event.target.closest("[data-btca-baza-id-cancel]")) {
+        state.bazaIdentifierMode = null;
+        renderBazaIdentifierDialog();
+        return;
+      }
+      if (!event.target.closest("[data-btca-baza-id-confirm]")) return;
+      var input = layer.querySelector(".btca-l2-baza-id-input");
+      var id = state.bazaUserFileId;
+      if (!id && input) {
+        var validation = validateBazaIdentifierInput(input.value);
+        if (!validation.ok) {
+          showBazaToast(validation.error, "#E53935");
+          return;
+        }
+        id = validation.value;
+      }
+      state.bazaIdentifierMode = null;
+      renderBazaIdentifierDialog();
+      runBazaScreenshot(id);
+    };
+  }
+
+  function runBazaScreenshot(userId) {
+    var baza = state.ui.baza;
+    var chartRows = state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; });
+    if (!chartRows.length) {
+      showBazaToast("Нет диаграммы для сохранения.", "#E53935");
+      return;
+    }
+    var saveId = function () {
+      if (userId && !state.bazaUserFileId && DB.saveUserFileIdentifier) {
+        return DB.saveUserFileIdentifier(userId).then(function () { state.bazaUserFileId = userId; });
+      }
+      return Promise.resolve();
+    };
+    saveId().then(function () {
+      var width = 640;
+      var height = 360;
+      var canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#c5d9dc";
+      ctx.fillRect(0, 0, width, height);
+      var rowH = Math.max(28, Math.floor((height - 40) / chartRows.length));
+      chartRows.forEach(function (row, idx) {
+        var y = 20 + idx * rowH;
+        var pct = row.pct == null ? 0 : Math.max(0, Math.min(100, Number(row.pct)));
+        ctx.fillStyle = "#111827";
+        ctx.font = "14px sans-serif";
+        ctx.fillText("З" + row.task, 16, y + 18);
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.fillRect(56, y + 4, width - 120, 18);
+        ctx.fillStyle = "#0ab10a";
+        ctx.fillRect(56, y + 4, Math.round((width - 120) * pct / 100), 18);
+        ctx.fillStyle = "#111827";
+        ctx.fillText(row.pct == null ? "—" : row.pct + "%", width - 52, y + 18);
+      });
+      canvas.toBlob(function (pngBlob) {
+        if (!pngBlob) {
+          showBazaToast("Не удалось сохранить скриншот.", "#E53935");
+          return;
+        }
+        var id = userId || state.bazaUserFileId || "screenshot";
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(pngBlob);
+        a.download = "BTCA_L1_" + id + "_" + baza.exercise + "_" + baza.periodFrom + ".png";
+        a.click();
+        state.bazaMenuOpen = false;
+        renderBazaMenuLayer();
+        showBazaToast("Успех!");
+      }, "image/png");
+    });
+  }
+
+  function openBazaDeleteConfirm() {
+    state.bazaDeleteConfirm = true;
+    renderBazaDeleteConfirm();
+  }
+
+  function renderBazaDeleteConfirm() {
+    var layer = state.root && state.root.querySelector("[data-btca-level1-baza-delete-layer]");
+    if (!layer) return;
+    if (!state.bazaDeleteConfirm) {
+      layer.setAttribute("hidden", "hidden");
+      layer.innerHTML = "";
+      return;
+    }
+    layer.removeAttribute("hidden");
+    layer.innerHTML =
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-del-close aria-label="Закрыть"></button>' +
+      '<div class="btca-l2-baza-id-dialog" role="dialog">' +
+      "<h3>Удалить данные?</h3>" +
+      "<p>Будут удалены текущие записи по выбранным фильтрам.</p>" +
+      '<div class="btca-l2-baza-id-actions">' +
+      '<button type="button" class="btca-l2-baza-id-btn" data-btca-baza-del-cancel>Отмена</button>' +
+      '<button type="button" class="btca-l2-baza-id-btn btca-l2-baza-id-btn--danger" data-btca-baza-del-confirm>Удалить</button></div></div>';
+    layer.onclick = function (event) {
+      if (event.target.closest("[data-btca-baza-del-close]") || event.target.closest("[data-btca-baza-del-cancel]")) {
+        state.bazaDeleteConfirm = null;
+        renderBazaDeleteConfirm();
+        return;
+      }
+      if (!event.target.closest("[data-btca-baza-del-confirm]")) return;
+      state.bazaDeleteConfirm = null;
+      renderBazaDeleteConfirm();
+      runBazaDelete();
+    };
+  }
+
+  function runBazaDelete() {
+    var baza = state.ui.baza;
+    DB.bazaDeleteCurrentByFilters({
+      from: baza.periodFrom,
+      to: baza.periodTo,
+      exercise: baza.exercise,
+      task: baza.task,
+    }).then(function () {
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      return refreshBazaStats().then(function () { return refreshBazaRows(); });
+    }).then(function () {
+      renderActiveTab();
+      renderTitleBar();
+      showBazaToast("Успех!");
+    }).catch(function () {
+      showBazaToast("Не удалось удалить данные.", "#E53935");
+    });
+  }
+
+  function handleBazaMenuAction(action) {
+    var caps = bazaMenuCapabilities();
+    if (action === "deleteOwn" && caps.canDeleteOwn) {
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      openBazaDeleteConfirm();
+      return;
+    }
+    if (action === "screenshot" && caps.canScreenshot) {
+      if (state.bazaUserFileId) runBazaScreenshot(state.bazaUserFileId);
+      else openBazaIdentifierDialog();
+    }
   }
 
   function renderBazaTab(content) {
@@ -906,14 +1155,19 @@
         var hasDesc = row.key !== POLEZ_ALL && row.key !== "links";
         var single = catalogKey !== POLEZ_ALL;
         return '<article class="btca-l1-polez-card">' +
+          '<div class="btca-l1-polez-card-inner">' +
           (single && hasDesc
-            ? '<button type="button" class="btca-l1-desc-tab" data-btca-polez-desc="' + escapeHtml(row.key) + '">Описание</button>'
+            ? '<div class="btca-l1-nav-card-top">' +
+              '<button type="button" class="btca-l1-pick" data-btca-polez-desc="' + escapeHtml(row.key) + '">' +
+              '<span class="btca-l1-pick__icon" aria-hidden="true">📖</span>' +
+              '<span class="btca-l1-pick__text">Описание</span></button></div>'
             : "") +
+          '<div class="btca-l1-polez-card-frame">' +
           (img
             ? '<button type="button" class="btca-l1-card-image-btn" data-btca-polez-image="' + escapeHtml(row.key) + '">' +
               '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>'
             : '<div class="btca-l1-card-placeholder">' + escapeHtml(row.label) + "</div>") +
-          "</article>";
+          "</div></div></article>";
       }).join("") +
       "</div></div>";
 
@@ -1132,6 +1386,16 @@
           if (item) setSheet(item.getAttribute("data-btca-level1-sheet"));
         });
       }
+      rootEl.addEventListener("click", function (event) {
+        if (event.target.closest("[data-btca-baza-menu]")) {
+          state.bazaMenuOpen = true;
+          renderBazaMenuLayer();
+        }
+      });
+      if (DB.loadUserFileIdentifier) {
+        DB.loadUserFileIdentifier().then(function (id) { state.bazaUserFileId = id || ""; });
+      }
+      renderBazaToast();
       if (hooks && hooks.onReady) hooks.onReady();
     });
   }

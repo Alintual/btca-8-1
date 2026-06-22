@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.51";
+  var VERSION = "8.1.52";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -738,7 +738,7 @@
       '<div class="btca-l1-tab btca-l1-forma">' +
       '<div class="btca-l1-sticky-head">' +
       '<div class="btca-l1-toolbar btca-l1-toolbar-top">' +
-      '<div class="btca-l1-primary-col">' +
+      '<div class="btca-l1-forma-date-col">' +
       '<span class="btca-l1-field-label">Дата</span>' +
       dateFaceHtml(dateLabel, 'data-btca-forma-date aria-label="Дата тренировки"') +
       "</div>" +
@@ -831,27 +831,31 @@
     });
   }
 
-  function openDateInput(currentIso, onPick, title) {
-    var layer = state.root.querySelector("[data-btca-level2-picker]");
-    layer.removeAttribute("hidden");
-    var sheet = computeCenteredDateSheetLayout();
-    var pickerStyle =
-      ' style="position:fixed;top:' + sheet.top + "px;left:" + sheet.left + "px;width:" + sheet.width + 'px;right:auto;"';
-    layer.innerHTML =
-      '<button class="btca-level1-menu-backdrop" type="button" data-btca-picker-close aria-label="Закрыть"></button>' +
-      '<div class="btca-level1-picker btca-level1-picker--date btca-level1-picker--sheet" role="dialog" aria-label="Дата"' +
-      pickerStyle + ">" +
-      '<div class="btca-level1-picker__title">' + escapeHtml(title || "Дата тренировки") + "</div>" +
-      '<input class="btca-l1-date-native" type="date" value="' + escapeHtml(currentIso) + '">' +
-      '<button type="button" class="btca-l1-picker-done" data-btca-date-apply>Готово</button></div>';
-    layer.onclick = function (event) {
-      if (event.target.closest("[data-btca-picker-close]")) { closePicker(); return; }
-      if (event.target.closest("[data-btca-date-apply]")) {
-        var input = layer.querySelector(".btca-l1-date-native");
-        if (input && input.value) onPick(input.value);
-        closePicker();
-      }
-    };
+  function openDateInput(currentIso, onPick) {
+    var input = document.createElement("input");
+    input.type = "date";
+    input.value = String(currentIso || "").trim();
+    input.className = "btca-l1-date-native-hidden";
+    input.setAttribute("aria-hidden", "true");
+    document.body.appendChild(input);
+    var done = false;
+    function finish(value) {
+      if (done) return;
+      done = true;
+      if (input.parentNode) input.parentNode.removeChild(input);
+      if (value) onPick(value);
+    }
+    input.addEventListener("change", function () { finish(input.value); });
+    input.addEventListener("cancel", function () { finish(""); });
+    window.setTimeout(function () {
+      if (done) return;
+      if (input.parentNode) input.parentNode.removeChild(input);
+      done = true;
+    }, 60000);
+    if (typeof input.showPicker === "function") {
+      try { input.showPicker(); return; } catch (_) {}
+    }
+    input.click();
   }
 
   function saveFormaCluster(forma) {
@@ -1096,22 +1100,22 @@
     layer.removeAttribute("hidden");
     layer.innerHTML =
       '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-menu-close aria-label="Закрыть меню"></button>' +
-      '<nav class="btca-l2-baza-menu" aria-label="Меню базы">' +
-      '<button type="button" class="btca-l2-baza-menu__item' + (caps.canExport ? "" : " btca-l2-baza-menu__item--disabled") +
+      '<nav class="btca-l1-baza-sheet-menu" aria-label="Меню базы">' +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canExport ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="export"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--export" aria-hidden="true">↑</span><span>Экспорт</span></button>' +
-      '<button type="button" class="btca-l2-baza-menu__item' + (caps.canImport ? "" : " btca-l2-baza-menu__item--disabled") +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canImport ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="import"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--import" aria-hidden="true">↓</span><span>Импорт</span></button>' +
       '<div class="btca-l2-baza-menu__delete-branch">' +
-      '<button type="button" class="btca-l2-baza-menu__item' +
-      ((caps.canDeleteOwn || caps.canDeleteForeign) ? "" : " btca-l2-baza-menu__item--disabled") +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item' +
+      ((caps.canDeleteOwn || caps.canDeleteForeign) ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-delete-toggle><span class="btca-l2-baza-menu__icon" aria-hidden="true">🔴</span><span>Удалить данные</span><span class="btca-l2-baza-menu__chevron" aria-hidden="true"></span></button>' +
       '<div class="btca-l2-baza-menu__sub" data-btca-baza-delete-sub hidden>' +
-      '<button type="button" class="btca-l2-baza-menu__item btca-l2-baza-menu__sub-item' + (caps.canDeleteOwn ? "" : " btca-l2-baza-menu__item--disabled") +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__sub-item' + (caps.canDeleteOwn ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="deleteOwn"><span class="btca-l2-baza-menu__dot btca-l2-baza-menu__dot--own"></span><span>Текущие</span></button>' +
-      '<button type="button" class="btca-l2-baza-menu__item btca-l2-baza-menu__sub-item' + (caps.canDeleteForeign ? "" : " btca-l2-baza-menu__item--disabled") +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__sub-item' + (caps.canDeleteForeign ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="deleteForeign"><span class="btca-l2-baza-menu__dot btca-l2-baza-menu__dot--import"></span><span>По импорту</span></button>' +
       "</div></div>" +
-      '<button type="button" class="btca-l2-baza-menu__item' + (caps.canScreenshot ? "" : " btca-l2-baza-menu__item--disabled") +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canScreenshot ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>' +
       "</nav>";
     layer.onclick = function (event) {
@@ -1126,7 +1130,7 @@
         return;
       }
       var btn = event.target.closest("[data-btca-baza-action]");
-      if (!btn || btn.classList.contains("btca-l2-baza-menu__item--disabled")) return;
+      if (!btn || btn.classList.contains("btca-l1-baza-sheet-menu__item--disabled")) return;
       handleBazaMenuAction(btn.getAttribute("data-btca-baza-action"));
     };
   }
@@ -1694,14 +1698,19 @@
         var hasDesc = row.key !== POLEZ_ALL && row.key !== "links";
         var single = catalogKey !== POLEZ_ALL;
         return '<article class="btca-l1-polez-card">' +
+          '<div class="btca-l1-polez-card-inner">' +
           (single && hasDesc
-            ? '<button type="button" class="btca-l1-desc-tab" data-btca-polez-desc="' + escapeHtml(row.key) + '">Описание</button>'
+            ? '<div class="btca-l1-nav-card-top">' +
+              '<button type="button" class="btca-l1-pick" data-btca-polez-desc="' + escapeHtml(row.key) + '">' +
+              '<span class="btca-l1-pick__icon" aria-hidden="true">📖</span>' +
+              '<span class="btca-l1-pick__text">Описание</span></button></div>'
             : "") +
+          '<div class="btca-l1-polez-card-frame">' +
           (img
             ? '<button type="button" class="btca-l1-card-image-btn" data-btca-polez-image="' + escapeHtml(row.key) + '">' +
               '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>'
             : '<div class="btca-l1-card-placeholder">' + escapeHtml(row.label) + "</div>") +
-          "</article>";
+          "</div></div></article>";
       }).join("") +
       "</div></div>";
 
