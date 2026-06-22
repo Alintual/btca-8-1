@@ -17,6 +17,16 @@
   --btca-viewport-width: 100vw;
   --btca-viewport-height: 100vh;
   --btca-comfort-scale: 1;
+  --btca-layout-min: 390px;
+  --btca-layout-actual: 390px;
+  --btca-body-font: 17px;
+  --btca-ui-1: 1px;
+  --btca-ui-2: 2px;
+  --btca-touch: 44px;
+  --btca-bar: 48px;
+  --btca-r-sm: 8px;
+  --btca-r-md: 12px;
+  --btca-r-lg: 16px;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,7 +35,7 @@
 }
 
 html {
-  font-size: 1rem;
+  font-size: 17px;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -368,6 +378,76 @@ code {
   opacity: 0.75;
 }
 
+.btca-sim-iphone-wrap {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  margin-top: 14px;
+  padding: 0 8px;
+}
+
+.btca-work-menu__sim-iphone {
+  padding: 6px 10px;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  font-size: calc(14rem / 17);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btca-work-menu__sim-iphone[aria-pressed="true"] {
+  color: #0ab10a;
+  text-decoration-style: solid;
+}
+
+.btca-work-menu__sim-iphone-note {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: calc(11rem / 17);
+  line-height: calc(15rem / 17);
+  text-align: center;
+}
+
+body.btca-sim-iphone.btca-installed-mode .app {
+  width: min(var(--btca-layout-min), 100%);
+  max-width: var(--btca-layout-min);
+}
+
+body.btca-apple-comfort {
+  --btca-ui-1: max(1px, calc(1rem / 17));
+  --btca-ui-2: max(1px, calc(2rem / 17));
+  --btca-touch: calc(44rem / 17);
+  --btca-bar: calc(48rem / 17);
+  --btca-r-sm: calc(8rem / 17);
+  --btca-r-md: calc(12rem / 17);
+  --btca-r-lg: calc(16rem / 17);
+}
+
+body.btca-apple-comfort .platform-button {
+  min-height: var(--btca-touch);
+  border-width: var(--btca-ui-2);
+  border-radius: var(--btca-r-lg);
+}
+
+body.btca-apple-comfort .btca-work-menu__item {
+  min-height: calc(58rem / 17);
+  border-radius: var(--btca-r-md);
+}
+
+body.btca-apple-comfort .btca-screen-header {
+  min-height: var(--btca-bar);
+  font-size: 1rem;
+}
+
+body.btca-apple-comfort .btca-back-button {
+  min-width: var(--btca-touch);
+  min-height: var(--btca-touch);
+}
+
 .btca-screen-mode {
   background: #c5d9dc;
 }
@@ -562,7 +642,7 @@ body.btca-boot-mode #root {
   --btca-l1-table-row: max(5vmin, calc(40rem / 17));
   --btca-l1-picker-row: max(6.25vmin, calc(50rem / 17));
   --btca-l1-picker-polez: max(8.75vmin, calc(70rem / 17));
-  --btca-l1-radius: 12px;
+  --btca-l1-radius: var(--btca-r-md, 12px);
 }
 
 body.btca-apple-comfort .btca-level1-screen {
@@ -576,6 +656,42 @@ body.btca-apple-comfort .btca-level1-screen {
   --btca-l1-table-row: max(calc(40rem / 17), 5vmin);
   --btca-l1-picker-row: max(calc(50rem / 17), 6.25vmin);
   --btca-l1-picker-polez: max(calc(70rem / 17), 8.75vmin);
+  --btca-l1-radius: var(--btca-r-md);
+}
+
+body.btca-apple-comfort .btca-level1-nav {
+  grid-template-columns: var(--btca-bar) 1fr var(--btca-bar);
+  min-height: var(--btca-bar);
+}
+
+body.btca-apple-comfort .btca-level1-menu-button {
+  width: var(--btca-touch);
+  min-height: var(--btca-touch);
+}
+
+body.btca-apple-comfort .btca-level1-titlebar {
+  border-bottom-width: var(--btca-ui-2);
+}
+
+body.btca-apple-comfort .btca-l1-table-wrap,
+body.btca-apple-comfort .btca-l1-table-head,
+body.btca-apple-comfort .btca-l1-table-row,
+body.btca-apple-comfort .btca-l1-table-cell {
+  border-width: var(--btca-ui-1);
+}
+
+body.btca-apple-comfort .btca-l1-table-cell--invalid {
+  border-width: var(--btca-ui-2);
+}
+
+body.btca-apple-comfort .btca-l1-field,
+body.btca-apple-comfort .btca-l1-filter-field,
+body.btca-apple-comfort .btca-l1-pick {
+  border-width: var(--btca-ui-1);
+}
+
+body.btca-apple-comfort .btca-l1-chart-panel {
+  border-radius: var(--btca-r-lg);
 }
 
 .btca-level1-nav {
@@ -2084,11 +2200,17 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.48:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.48:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.49:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.49:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
+  var IFHONE_SIM_KEY = "btca-ifhone-sim";
+  var IOS_TYPO_BASE_PX = 17;
+  var IOS_TYPO_IPHONE_MIN = 390;
+  var IOS_TYPO_IPAD_MINI_MIN = 744;
+  var IOS_TYPO_IPAD_BODY_PX = 21;
+  var IOS_TYPO_MAX_BODY_PX = 23;
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var OFFLINE_PREPARE_URL = "https://alintual.github.io/btca-8-1/";
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -2115,7 +2237,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.48";
+  var LEVEL1_MODULE_VERSION = "8.1.49";
 
   var CORE_REL_PATHS = [
     "",
@@ -2307,22 +2429,54 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     var viewport = window.visualViewport;
     var width = Math.round((viewport && viewport.width) || window.innerWidth || document.documentElement.clientWidth || 0);
     var height = Math.round((viewport && viewport.height) || window.innerHeight || document.documentElement.clientHeight || 0);
-    if (!width || !height) return 390;
+    if (!width || !height) return IOS_TYPO_IPHONE_MIN;
     return Math.min(width, height);
   }
 
+  function isIphoneSimActive() {
+    try {
+      return localStorage.getItem(IFHONE_SIM_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function setIphoneSimActive(active) {
+    try {
+      if (active) localStorage.setItem(IFHONE_SIM_KEY, "1");
+      else localStorage.removeItem(IFHONE_SIM_KEY);
+    } catch (_) {}
+    document.body.classList.toggle("btca-sim-iphone", active);
+    syncPortraitMode();
+    updateSimIphoneButton();
+  }
+
+  function getEffectiveTypographyWidth() {
+    if (document.body.classList.contains("btca-sim-iphone")) {
+      return IOS_TYPO_IPHONE_MIN;
+    }
+    return getTypographyLayoutWidth();
+  }
+
   function comfortBodyFont(layoutWidth) {
-    if (layoutWidth <= 375) return 17;
-    if (layoutWidth <= 430) return 17 + ((layoutWidth - 375) / 55) * 1.25;
-    if (layoutWidth <= 600) return 18.25 + ((layoutWidth - 430) / 170) * 1.75;
-    if (layoutWidth <= 834) return 20 + ((layoutWidth - 600) / 234) * 1.5;
-    return Math.min(23, 21.5 + ((layoutWidth - 834) / 190) * 1.5);
+    if (layoutWidth <= IOS_TYPO_IPHONE_MIN) return IOS_TYPO_BASE_PX;
+    if (layoutWidth >= IOS_TYPO_IPAD_MINI_MIN) {
+      return Math.min(
+        IOS_TYPO_MAX_BODY_PX,
+        IOS_TYPO_IPAD_BODY_PX + (layoutWidth - IOS_TYPO_IPAD_MINI_MIN) * 0.003
+      );
+    }
+    var ratio = (layoutWidth - IOS_TYPO_IPHONE_MIN) / (IOS_TYPO_IPAD_MINI_MIN - IOS_TYPO_IPHONE_MIN);
+    return IOS_TYPO_BASE_PX + ratio * (IOS_TYPO_IPAD_BODY_PX - IOS_TYPO_BASE_PX);
   }
 
   function clearComfortTypography() {
     document.body.classList.remove("btca-apple-comfort");
     document.documentElement.style.fontSize = "";
     document.documentElement.style.removeProperty("--btca-comfort-scale");
+    document.documentElement.style.removeProperty("--btca-layout-min");
+    document.documentElement.style.removeProperty("--btca-layout-actual");
+    document.documentElement.style.removeProperty("--btca-body-font");
   }
 
   function updateComfortTypography() {
@@ -2330,11 +2484,57 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
       clearComfortTypography();
       return;
     }
-    var layoutWidth = getTypographyLayoutWidth();
+    var layoutWidth = getEffectiveTypographyWidth();
+    var actualWidth = getTypographyLayoutWidth();
     var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    var scale = bodyFont / IOS_TYPO_BASE_PX;
     document.body.classList.add("btca-apple-comfort");
     document.documentElement.style.fontSize = bodyFont + "px";
-    document.documentElement.style.setProperty("--btca-comfort-scale", String(bodyFont / 17));
+    document.documentElement.style.setProperty("--btca-comfort-scale", String(scale));
+    document.documentElement.style.setProperty("--btca-layout-min", layoutWidth + "px");
+    document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
+    document.documentElement.style.setProperty("--btca-body-font", bodyFont + "px");
+    updateSimIphoneButton();
+  }
+
+  function updateSimIphoneButton() {
+    var note = document.querySelector(".btca-work-menu__sim-iphone-note");
+    var button = document.querySelector("[data-btca-sim-iphone]");
+    if (!button) return;
+    var simActive = document.body.classList.contains("btca-sim-iphone");
+    button.setAttribute("aria-pressed", simActive ? "true" : "false");
+    if (!note) return;
+    var layoutWidth = shouldForcePortraitLayout() ? getEffectiveTypographyWidth() : getTypographyLayoutWidth();
+    var actualWidth = getTypographyLayoutWidth();
+    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    if (simActive) {
+      note.textContent = "Симуляция iPhone: " + layoutWidth + "px · кегль " + bodyFont + "px (экран " + actualWidth + "px)";
+      return;
+    }
+    note.textContent = "iOS: " + actualWidth + "px · кегль " + bodyFont + "px";
+  }
+
+  function ensureSimIphoneControl() {
+    if (!isAppleMobile()) return;
+    var anchor = document.querySelector(".btca-work-menu") || document.querySelector(".platform-menu") || document.querySelector(".home__intro");
+    if (!anchor) return;
+    if (!document.querySelector("[data-btca-sim-iphone]")) {
+      var wrap = document.createElement("div");
+      wrap.className = "btca-sim-iphone-wrap";
+      wrap.innerHTML =
+        '<button type="button" class="btca-work-menu__sim-iphone" data-btca-sim-iphone="toggle" aria-pressed="false">iFhone</button>' +
+        '<span class="btca-work-menu__sim-iphone-note" aria-live="polite"></span>';
+      anchor.appendChild(wrap);
+    }
+    if (isIphoneSimActive()) document.body.classList.add("btca-sim-iphone");
+    updateSimIphoneButton();
+  }
+
+  function handleSimIphoneClick(event) {
+    var target = event.target && event.target.closest ? event.target.closest("[data-btca-sim-iphone]") : null;
+    if (!target || !isAppleMobile()) return;
+    event.preventDefault();
+    setIphoneSimActive(!isIphoneSimActive());
   }
 
   function syncPortraitMode() {
@@ -2614,6 +2814,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     if (footer) {
       footer.innerHTML = "<span>BTCA-mobile v.8.1 © 2026 Alint&apos;s R.lab</span>";
     }
+    ensureSimIphoneControl();
     syncPortraitMode();
   }
 
@@ -2924,6 +3125,11 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
       window.visualViewport.addEventListener("scroll", syncPortraitMode);
     }
     document.addEventListener("click", handleAppNavigation, true);
+    document.addEventListener("click", handleSimIphoneClick, true);
+    if (isAppleMobile()) {
+      if (isIphoneSimActive()) document.body.classList.add("btca-sim-iphone");
+      ensureSimIphoneControl();
+    }
     if (els.button) {
       els.button.addEventListener("click", prepareOffline);
     }
