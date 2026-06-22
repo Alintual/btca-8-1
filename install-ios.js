@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.49:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.49:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.50:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.50:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -39,7 +39,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.49";
+  var LEVEL1_MODULE_VERSION = "8.1.50";
+  var LEVEL2_MODULE_VERSION = "8.1.50";
 
   var CORE_REL_PATHS = [
     "",
@@ -57,6 +58,12 @@
     "level1/data/polezCatalog.json",
     "level1/data/polezLinks.json",
     "level1/data/polezDescriptions.json",
+    "level2/level2-db.js?v=" + LEVEL2_MODULE_VERSION,
+    "level2/level2-app.js?v=" + LEVEL2_MODULE_VERSION,
+    "level2/data/forma_exercise_list.json",
+    "level2/data/polezCatalog.json",
+    "level2/data/polezLinks.json",
+    "level2/data/polezDescriptions.json",
   ];
 
   window.__BTCA_BASE__ = BTCA_BASE;
@@ -300,8 +307,10 @@
   }
 
   function updateSimIphoneButton() {
-    var note = document.querySelector(".btca-work-menu__sim-iphone-note");
-    var button = document.querySelector("[data-btca-sim-iphone]");
+    var wrap = document.getElementById("btca-sim-iphone-global");
+    if (!wrap) return;
+    var button = wrap.querySelector("[data-btca-sim-iphone]");
+    var note = wrap.querySelector(".btca-sim-iphone-global__note");
     if (!button) return;
     var simActive = document.body.classList.contains("btca-sim-iphone");
     button.setAttribute("aria-pressed", simActive ? "true" : "false");
@@ -310,24 +319,25 @@
     var actualWidth = getTypographyLayoutWidth();
     var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
     if (simActive) {
-      note.textContent = "Симуляция iPhone: " + layoutWidth + "px · кегль " + bodyFont + "px (экран " + actualWidth + "px)";
+      note.textContent = "iPhone: " + layoutWidth + "px · " + bodyFont + "px (экран " + actualWidth + "px)";
       return;
     }
-    note.textContent = "iOS: " + actualWidth + "px · кегль " + bodyFont + "px";
+    note.textContent = "iOS: " + actualWidth + "px · " + bodyFont + "px";
   }
 
   function ensureSimIphoneControl() {
     if (!isAppleMobile()) return;
-    var anchor = document.querySelector(".btca-work-menu") || document.querySelector(".platform-menu") || document.querySelector(".home__intro");
-    if (!anchor) return;
-    if (!document.querySelector("[data-btca-sim-iphone]")) {
-      var wrap = document.createElement("div");
-      wrap.className = "btca-sim-iphone-wrap";
+    var wrap = document.getElementById("btca-sim-iphone-global");
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "btca-sim-iphone-global";
+      wrap.className = "btca-sim-iphone-global";
       wrap.innerHTML =
-        '<button type="button" class="btca-work-menu__sim-iphone" data-btca-sim-iphone="toggle" aria-pressed="false">iFhone</button>' +
-        '<span class="btca-work-menu__sim-iphone-note" aria-live="polite"></span>';
-      anchor.appendChild(wrap);
+        '<button type="button" class="btca-sim-iphone-global__btn" data-btca-sim-iphone="toggle" aria-pressed="false">iPhone</button>' +
+        '<span class="btca-sim-iphone-global__note" aria-live="polite"></span>';
+      document.body.appendChild(wrap);
     }
+    wrap.style.display = "";
     if (isIphoneSimActive()) document.body.classList.add("btca-sim-iphone");
     updateSimIphoneButton();
   }
@@ -511,6 +521,77 @@
     });
   }
 
+  function level2ModuleReady() {
+    return Boolean(window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot);
+  }
+
+  function loadLevel2Script(src) {
+    return new Promise(function (resolve, reject) {
+      var isDb = src.indexOf("level2-db") >= 0;
+      var isApp = src.indexOf("level2-app") >= 0;
+
+      if (isDb && window.BTCA_LEVEL2_DB) {
+        resolve();
+        return;
+      }
+      if (isApp && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot) {
+        resolve();
+        return;
+      }
+
+      fetch(src, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Не удалось загрузить " + src + ": " + response.status);
+          return response.text();
+        })
+        .then(function (code) {
+          if (!/\(function\s*\(\)/.test(code)) {
+            throw new Error("Неверный ответ для " + src);
+          }
+          var old = document.querySelector('script[data-btca-level2-src="' + src + '"]');
+          if (old && old.parentNode) old.parentNode.removeChild(old);
+          var script = document.createElement("script");
+          script.setAttribute("data-btca-level2-src", src);
+          script.textContent = code;
+          document.head.appendChild(script);
+          if (isDb && !window.BTCA_LEVEL2_DB) {
+            throw new Error("level2-db.js выполнен, но BTCA_LEVEL2_DB не найден");
+          }
+          if (isApp && (!window.BTCA_LEVEL2 || !window.BTCA_LEVEL2.boot)) {
+            throw new Error("level2-app.js выполнен, но BTCA_LEVEL2.boot не найден");
+          }
+          resolve();
+        })
+        .catch(reject);
+    });
+  }
+
+  function ensureLevel2Module() {
+    if (level2ModuleReady()) return Promise.resolve();
+    var v = LEVEL2_MODULE_VERSION;
+    return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v)).then(function () {
+      return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v));
+    }).then(function () {
+      if (!level2ModuleReady()) {
+        throw new Error("Модуль Уровня 2 не инициализирован");
+      }
+    });
+  }
+
+  function bootLevel2Module() {
+    return ensureLevel2Module().then(function () {
+      return window.BTCA_LEVEL2.boot();
+    });
+  }
+
+  function preloadLevel2ModuleSilently() {
+    return ensureLevel2Module().then(function () {
+      return window.BTCA_LEVEL2.boot();
+    }).catch(function (error) {
+      console.warn("BTCA Level 2 preload failed", error);
+    });
+  }
+
   function renderLevel1Screen() {
     var root = document.getElementById("root");
     if (!root) return;
@@ -518,7 +599,7 @@
     function openLevel1Screen() {
       installedHomeSnapshot = installedHomeSnapshot || root.innerHTML;
       document.body.classList.add("btca-level1-mode");
-      document.body.classList.remove("btca-installed-mode", "btca-screen-mode");
+      document.body.classList.remove("btca-installed-mode", "btca-screen-mode", "btca-level2-mode");
       root.innerHTML =
         '<main class="btca-level1-screen">' +
         '<header class="btca-level1-nav">' +
@@ -538,7 +619,7 @@
           if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1.unmount) window.BTCA_LEVEL1.unmount();
           root.innerHTML = installedHomeSnapshot;
           installedHomeSnapshot = "";
-          document.body.classList.remove("btca-level1-mode", "btca-allow-landscape");
+          document.body.classList.remove("btca-level1-mode", "btca-level2-mode", "btca-allow-landscape");
           renderInstalledHome();
         });
       }
@@ -558,6 +639,7 @@
           content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
         }
       }).then(function () {
+        ensureSimIphoneControl();
         syncPortraitMode();
       });
     }
@@ -575,6 +657,71 @@
     });
   }
 
+  function renderLevel2Screen() {
+    var root = document.getElementById("root");
+    if (!root) return;
+
+    function openLevel2Screen() {
+      installedHomeSnapshot = installedHomeSnapshot || root.innerHTML;
+      document.body.classList.add("btca-level1-mode", "btca-level2-mode");
+      document.body.classList.remove("btca-installed-mode", "btca-screen-mode");
+      root.innerHTML =
+        '<main class="btca-level1-screen">' +
+        '<header class="btca-level1-nav">' +
+        '<button class="btca-back-button" type="button" data-btca-level2-back aria-label="Назад">←</button>' +
+        '<strong class="btca-level1-nav__title">Уровень 2 — Базовый</strong>' +
+        '<button class="btca-level1-menu-button" type="button" data-btca-level2-menu aria-label="Меню листов"><span></span><span></span><span></span></button>' +
+        "</header>" +
+        '<section class="btca-level1-titlebar" data-btca-level2-titlebar></section>' +
+        '<section class="btca-level1-content" data-btca-level2-content></section>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-menu-layer hidden></div>' +
+        '<div class="btca-level1-menu-layer" data-btca-level2-picker hidden></div>' +
+        "</main>";
+
+      var back = document.querySelector("[data-btca-level2-back]");
+      if (back) {
+        back.addEventListener("click", function () {
+          if (window.BTCA_LEVEL2 && window.BTCA_LEVEL2.unmount) window.BTCA_LEVEL2.unmount();
+          root.innerHTML = installedHomeSnapshot;
+          installedHomeSnapshot = "";
+          document.body.classList.remove("btca-level1-mode", "btca-level2-mode", "btca-allow-landscape");
+          renderInstalledHome();
+        });
+      }
+
+      var main = root.querySelector(".btca-level1-screen");
+      if (!main) return;
+
+      var content = root.querySelector("[data-btca-level2-content]");
+      if (content) {
+        content.innerHTML = '<p class="prepare-status prepare-status--running">Загрузка Уровня 2…</p>';
+      }
+
+      bootLevel2Module().then(function () {
+        return window.BTCA_LEVEL2.mount(main);
+      }).catch(function (error) {
+        if (content) {
+          content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
+        }
+      }).then(function () {
+        ensureSimIphoneControl();
+        syncPortraitMode();
+      });
+    }
+
+    if (isAppPreparedSync()) {
+      openLevel2Screen();
+      return;
+    }
+
+    verifyMediaCacheReady().then(function (ready) {
+      if (ready) markAppPrepared();
+      openLevel2Screen();
+    }).catch(function () {
+      openLevel2Screen();
+    });
+  }
+
   function handleAppNavigation(event) {
     var target = event.target && event.target.closest ? event.target.closest("[data-btca-route]") : null;
     if (!target || !document.body.classList.contains("btca-installed-mode")) return;
@@ -588,6 +735,14 @@
       }
       return;
     }
+    if (route === "level2") {
+      try {
+        renderLevel2Screen();
+      } catch (error) {
+        console.error("BTCA Level 2 open failed", error);
+      }
+      return;
+    }
     if (route === "about") renderAboutScreen();
   }
 
@@ -598,7 +753,7 @@
     var footer = document.querySelector(".footer");
 
     document.body.classList.add("btca-installed-mode");
-    document.body.classList.remove("btca-screen-mode", "btca-level1-mode");
+    document.body.classList.remove("btca-screen-mode", "btca-level1-mode", "btca-level2-mode");
 
     if (intro) intro.setAttribute("hidden", "hidden");
     if (panel) {
@@ -871,6 +1026,7 @@
         report(100, "Готово");
         renderReady();
         preloadLevel1ModuleSilently();
+        preloadLevel2ModuleSilently();
       })
       .catch(renderError)
       .then(function () {
@@ -887,6 +1043,7 @@
     function showHome() {
       renderInstalledHome();
       preloadLevel1ModuleSilently();
+      preloadLevel2ModuleSilently();
     }
 
     if (isAppPreparedSync()) {

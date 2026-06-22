@@ -1,16 +1,14 @@
 (function () {
   "use strict";
 
-  var DB = window.BTCA_LEVEL1_DB;
+  var DB = window.BTCA_LEVEL2_DB;
   var VERSION = "8.1.50";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
-  var FORMA_BANNER = "Цель - результативность не менее 70 %";
-  var NAV_FILTER_ALL = "all";
+    var NAV_FILTER_ALL = "all";
   var POLEZ_ALL = "all";
-  var POLEZ_HIDDEN = { fig8: 1, fig9: 1, fig10: 1, fig11: 1, fig20: 1, fig21: 1 };
-  var PICK_DELAY_MS = 1500;
+    var PICK_DELAY_MS = 1500;
   var PICKER_ROW_SIMPLE = 50;
   var PICKER_ROW_POLEZ = 70;
   var PICKER_LIST_PAD = 4;
@@ -63,27 +61,117 @@
     return Number.isFinite(n) ? n : s;
   }
 
+
+  var FORMA_LEVEL2_DEFAULT_EXERCISE = "10";
+  var NAV_SECTION_FILTER_ALL = "all";
+  var NAV_TRAINING_KIND_ORDER = [
+    "Тренировка чужих прямых",
+    "Тренировка чужих на резке",
+    "Тренировка свояков",
+    "Тренировка отыгрышей",
+    "Тренировка выходов",
+    "Тренировка одиночными",
+    "Игровые тренировки",
+    "Тренировочные тесты",
+  ];
+
+  function exerciseSectionNameL2(b5) {
+    if (typeof b5 === "string" && b5.indexOf("Тест") === 0) return "Тренировочные тесты";
+    var n = numericB5(b5);
+    if (n === null || !Number.isFinite(n)) return "—";
+    if (n >= 1 && n <= 5) return "Тренировка чужих прямых";
+    if (n >= 6 && n <= 13) return "Тренировка чужих на резке";
+    if (n >= 14 && n <= 22) return "Тренировка свояков";
+    if (n === 23) return "Тренировка отыгрышей";
+    if (n === 24) return "Тренировка выходов";
+    if (n >= 25 && n <= 30) return "Тренировка одиночными";
+    if (n >= 31 && n <= 32) return "Игровые тренировки";
+    return "Тренировочные тесты";
+  }
+
+  function test5to8(b5) {
+    return b5 === "Тест5" || b5 === "Тест6" || b5 === "Тест7" || b5 === "Тест8";
+  }
+
+  function tests1to7(b5) {
+    return ["Тест1", "Тест2", "Тест3", "Тест4", "Тест5", "Тест6", "Тест7"].indexOf(String(b5)) >= 0;
+  }
+
+  function orC11to14(b5) {
+    var n = numericB5(b5);
+    if (n !== null) {
+      if (n >= 12 && n <= 25) return true;
+      if (n >= 26 && n <= 32) return true;
+    }
+    return b5 === "Тест1" || b5 === "Тест2" || b5 === "Тест3" || b5 === "Тест4" || test5to8(b5);
+  }
+
+  function orC15to16(b5) {
+    var n = numericB5(b5);
+    if (n === 6 || n === 7) return true;
+    if (n !== null && n >= 12 && n <= 32) return true;
+    return b5 === "Тест1" || b5 === "Тест2" || b5 === "Тест3" || b5 === "Тест4" || test5to8(b5);
+  }
+
   function taskActiveFormL1(b5, task) {
     if (b5 === "" || b5 == null) return false;
     var n = numericB5(b5);
-    if (task >= 7 && task <= 12) return false;
+    if (n === 6 || n === 7) return task >= 1 && task <= 10;
     if (task === 1) return true;
-    if (task === 2 || task === 3) return !(n === 9 || n === 10 || n === 11 || n === 14 || b5 === "Тест1");
-    if (task === 4) return !(n === 9 || n === 10 || n === 11 || n === 12 || n === 14 || b5 === "Тест1");
-    if (task === 5) return !(n === 1 || n === 2 || n === 9 || n === 10 || n === 11 || n === 12 || n === 14 || b5 === "Тест1");
-    if (task === 6) return n === 3 || n === 4 || n === 6 || n === 7 || n === 8 || n === 13;
+    if (task === 2) return !(n === 25 || n === 32 || b5 === "Тест2" || b5 === "Тест8");
+    if (task === 3 || task === 4) {
+      return !(n === 22 || n === 23 || n === 25 || n === 28 || n === 32 || b5 === "Тест2" || b5 === "Тест8");
+    }
+    if (task === 5) {
+      return !(
+        n === 22 || n === 23 || n === 25 || n === 27 || n === 31 || n === 28 || n === 32 ||
+        b5 === "Тест1" || b5 === "Тест2" || b5 === "Тест8"
+      );
+    }
+    if (task === 6) {
+      return !(
+        n === 13 || n === 22 || n === 23 || n === 25 || n === 27 || n === 28 || n === 31 || n === 32 ||
+        b5 === "Тест1" || b5 === "Тест2" || b5 === "Тест8"
+      );
+    }
+    if (task === 7 || task === 8 || task === 9) return !orC11to14(b5);
+    if (task === 10 || task === 11 || task === 12) return !orC15to16(b5);
     return false;
   }
 
   function requiredStrikesFormL1(b5, task) {
     if (!taskActiveFormL1(b5, task)) return null;
     var n = numericB5(b5);
-    if (task === 1) {
-      if (n === 9 || n === 10 || b5 === "Тест1") return 30;
-      if (n === 14) return 16;
+    if (n === 6 || n === 7) return 15;
+    if (task <= 2) {
+      if (n === 26) return 15;
+      if (n === 28) return 25;
+      if (n === 32) return 40;
+      if (b5 === "Тест8") return 80;
+      if (tests1to7(b5)) return 30;
       return 15;
     }
-    if (task >= 2 && task <= 6) return n === 14 ? 16 : 15;
+    if (task >= 3 && task <= 9) {
+      if (n === 26) return 15;
+      if (n === 32) return 40;
+      if (b5 === "Тест8") return 80;
+      if (tests1to7(b5)) return 30;
+      return 15;
+    }
+    if (task === 10) {
+      if (n === 26) return 10;
+      if (n === 32) return 40;
+      if (b5 === "Тест8") return 80;
+      if (tests1to7(b5)) return 30;
+      return 15;
+    }
+    if (task === 11 || task === 12) {
+      if (n === 26) return 15;
+      if (n === 32) return 40;
+      if (b5 === "Тест8") return 80;
+      if (tests1to7(b5)) return 30;
+      return 15;
+    }
     return null;
   }
 
@@ -92,6 +180,93 @@
     for (var task = 1; task <= 12; task += 1) requiredByTask.push(requiredStrikesFormL1(b5, task));
     return { requiredByTask: requiredByTask };
   }
+
+  function buildNavSectionOptions() {
+    var opts = [{ value: NAV_SECTION_FILTER_ALL, label: "Все" }];
+    var present = {};
+    state.data.exercises.forEach(function (it) {
+      if (it.section && it.section !== "—") present[it.section] = true;
+    });
+    NAV_TRAINING_KIND_ORDER.forEach(function (sec) {
+      if (present[sec]) opts.push({ value: sec, label: sec });
+    });
+    Object.keys(present).forEach(function (sec) {
+      if (NAV_TRAINING_KIND_ORDER.indexOf(sec) < 0) opts.push({ value: sec, label: sec });
+    });
+    return opts;
+  }
+
+  function buildNavExercisePickerOptions(sectionKey) {
+    if (sectionKey !== NAV_SECTION_FILTER_ALL) {
+      var scoped = [{ value: NAV_FILTER_ALL, label: "Все" }];
+      state.data.exercises.forEach(function (it) {
+        if (it.section === sectionKey) scoped.push({ value: it.value, label: it.label });
+      });
+      return scoped;
+    }
+    var bySection = {};
+    state.data.exercises.forEach(function (it) {
+      var sec = it.section || "—";
+      if (!bySection[sec]) bySection[sec] = [];
+      bySection[sec].push({ value: it.value, label: it.label });
+    });
+    var secOrder = NAV_TRAINING_KIND_ORDER.filter(function (s) { return bySection[s]; });
+    Object.keys(bySection).forEach(function (s) {
+      if (secOrder.indexOf(s) < 0) secOrder.push(s);
+    });
+    var grouped = [];
+    secOrder.forEach(function (sec) {
+      grouped.push({ value: "__group:" + sec, label: sec, groupHeader: true });
+      bySection[sec].forEach(function (row) { grouped.push(row); });
+    });
+    return grouped;
+  }
+
+  function filterNavCardItems(sectionKey, exerciseFilterKey) {
+    if (exerciseFilterKey !== NAV_FILTER_ALL) {
+      return state.data.exercises.filter(function (it) { return it.value === exerciseFilterKey; });
+    }
+    if (sectionKey !== NAV_SECTION_FILTER_ALL) {
+      return state.data.exercises.filter(function (it) { return it.section === sectionKey; });
+    }
+    return state.data.exercises.slice();
+  }
+
+  function sectionKeyForExerciseValue(exerciseValue) {
+    var sec = exerciseSectionNameL2(b5FromSelectValue(exerciseValue));
+    return sec === "—" ? NAV_SECTION_FILTER_ALL : sec;
+  }
+
+  function labelForNavSection(sectionKey, options) {
+    var row = options.filter(function (o) { return o.value === sectionKey; })[0];
+    return row ? row.label : "Все";
+  }
+
+  function buildBazaExercisePickerOptions() {
+    var opts = [{ value: "all", label: "Все" }];
+    var bySection = {};
+    state.data.exercises.forEach(function (it) {
+      var sec = it.section || "—";
+      if (!bySection[sec]) bySection[sec] = [];
+      bySection[sec].push(it);
+    });
+    var secOrder = NAV_TRAINING_KIND_ORDER.filter(function (s) { return bySection[s]; });
+    Object.keys(bySection).forEach(function (s) {
+      if (secOrder.indexOf(s) < 0) secOrder.push(s);
+    });
+    secOrder.forEach(function (sec) {
+      opts.push({ value: "__section:" + sec, label: sec, groupHeader: true });
+      bySection[sec].forEach(function (it) {
+        opts.push({ value: it.value, label: it.label });
+      });
+    });
+    return opts;
+  }
+
+  function formaBannerText() {
+    return exerciseSectionNameL2(b5FromSelectValue(state.ui.exerciseValue));
+  }
+
 
   function parseNonNegativeInt(raw) {
     var s = String(raw || "").trim();
@@ -147,8 +322,8 @@
   }
 
   function exerciseImageUrl(exerciseValue) {
-    var file = exerciseImageFile(1, exerciseValue);
-    return file ? mediaUrl("level1/exercises", file) : "";
+    var file = exerciseImageFile(2, exerciseValue);
+    return file ? mediaUrl("level2/exercises", file) : "";
   }
 
   function polezImageUrl(file) {
@@ -300,7 +475,7 @@
   }
 
   function polezRowsForLevel1() {
-    return state.data.polezCatalog.filter(function (row) { return !POLEZ_HIDDEN[row.key]; });
+    return state.data.polezCatalog.slice();
   }
 
   function sheetByKey(key) {
@@ -330,7 +505,7 @@
   }
 
   function renderTitleBar() {
-    var titlebar = state.root && state.root.querySelector("[data-btca-level1-titlebar]");
+    var titlebar = state.root && state.root.querySelector("[data-btca-level2-titlebar]");
     if (!titlebar) return;
     var sheet = sheetByKey(state.ui.tab);
     var status = getTitleStatus();
@@ -369,13 +544,13 @@
   }
 
   function closePicker() {
-    var layer = state.root && state.root.querySelector("[data-btca-level1-picker]");
+    var layer = state.root && state.root.querySelector("[data-btca-level2-picker]");
     if (layer) layer.setAttribute("hidden", "hidden");
   }
 
   function openPicker(title, options, current, onSelect, anchorEl, pickerOpts) {
     pickerOpts = pickerOpts || {};
-    var layer = state.root.querySelector("[data-btca-level1-picker]");
+    var layer = state.root.querySelector("[data-btca-level2-picker]");
     if (!layer) return;
     layer.removeAttribute("hidden");
     var rowHeight = pickerOpts.rowHeight || PICKER_ROW_SIMPLE;
@@ -395,6 +570,9 @@
       '<div class="' + pickerClass + '" role="dialog" aria-label="' + escapeHtml(title) + '"' + pickerStyle + ">" +
       '<div class="btca-level1-picker__list" data-btca-picker-list>' +
       options.map(function (opt) {
+        if (opt.groupHeader) {
+          return '<div class="btca-level1-picker__group">' + escapeHtml(opt.label) + "</div>";
+        }
         var active = opt.value === current;
         return '<button type="button" class="btca-level1-picker__item' + itemExtraClass +
           (active ? " btca-level1-picker__item--active" : "") +
@@ -407,8 +585,10 @@
       if (event.target.closest("[data-btca-picker-close]")) { closePicker(); return; }
       var btn = event.target.closest("[data-btca-picker-value]");
       if (!btn) return;
+      var value = btn.getAttribute("data-btca-picker-value");
+      if (!value || value.indexOf("__group:") === 0 || value.indexOf("__section:") === 0) return;
       closePicker();
-      onSelect(btn.getAttribute("data-btca-picker-value"));
+      onSelect(value);
     };
   }
 
@@ -484,7 +664,7 @@
       '<div class="btca-l1-trailing-slot">' +
       greenArrowHtml({ dataAttr: 'data-btca-forma-desc aria-label="Описание упражнения"' }) +
       "</div></div></div>" +
-      '<div class="btca-l1-banner">' + escapeHtml(FORMA_BANNER) + "</div></div>" +
+      '<div class="btca-l1-banner">' + escapeHtml(formaBannerText()) + "</div></div>" +
       '<div class="btca-l1-tab-body btca-l1-forma-body">' +
       '<div class="btca-l1-table-area"><div class="btca-l1-table-wrap">' +
       formaTableHeadHtml() +
@@ -561,7 +741,7 @@
   }
 
   function openDateInput(currentIso, onPick, title) {
-    var layer = state.root.querySelector("[data-btca-level1-picker]");
+    var layer = state.root.querySelector("[data-btca-level2-picker]");
     layer.removeAttribute("hidden");
     var sheet = computeCenteredDateSheetLayout();
     var pickerStyle =
@@ -718,9 +898,7 @@
         refreshBazaRows().then(function () { renderBazaTab(content); });
       }, "Период по");
     });
-    var exerciseOptions = [{ value: "all", label: "Все" }].concat(state.data.exercises.map(function (it) {
-      return { value: it.value, label: it.label };
-    }));
+    var exerciseOptions = buildBazaExercisePickerOptions();
     content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
       openPicker("Упражнение", exerciseOptions, baza.exercise, function (value) {
         state.ui.baza.exercise = value;
@@ -783,16 +961,14 @@
   }
 
   function renderNavTab(content) {
-    var filterKey = state.ui.nav.exerciseFilterKey;
-    var sectionLabel = deriveNavSectionLabel(filterKey);
+    var sectionKey = state.ui.nav.sectionKey || NAV_SECTION_FILTER_ALL;
+    var filterKey = state.ui.nav.exerciseFilterKey || NAV_FILTER_ALL;
+    var sectionOptions = buildNavSectionOptions();
+    var sectionLabel = labelForNavSection(sectionKey, sectionOptions);
     var filterIsAll = filterKey === NAV_FILTER_ALL;
     var displayExercise = filterIsAll ? "Все" : labelForExerciseValue(filterKey);
-    var items = filterIsAll
-      ? state.data.exercises
-      : state.data.exercises.filter(function (it) { return it.value === filterKey; });
-    var exerciseOptions = [{ value: NAV_FILTER_ALL, label: "Все" }].concat(state.data.exercises.map(function (it) {
-      return { value: it.value, label: it.label };
-    }));
+    var items = filterNavCardItems(sectionKey, filterKey);
+    var exerciseOptions = buildNavExercisePickerOptions(sectionKey);
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-nav">' +
@@ -800,7 +976,7 @@
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
       '<div class="btca-l1-nav-section">' +
       '<span class="btca-l1-field-label">Раздел</span>' +
-      sectionFaceHtml(sectionLabel) +
+      filterFaceHtml(sectionLabel, { wide: true, extraClass: "btca-l1-face--section", dataAttr: "data-btca-nav-section" }) +
       "</div></div>" +
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
       '<div class="btca-l1-exercise-row">' +
@@ -809,10 +985,7 @@
       filterFaceHtml(displayExercise, { wide: true, dataAttr: "data-btca-nav-filter" }) +
       "</div>" +
       '<div class="btca-l1-trailing-slot">' +
-      greenArrowHtml({
-        disabled: filterIsAll,
-        dataAttr: 'data-btca-nav-desc aria-label="Описание"',
-      }) +
+      greenArrowHtml({ disabled: filterIsAll, dataAttr: 'data-btca-nav-desc aria-label="Описание"' }) +
       "</div></div></div></div>" +
       '<div class="btca-l1-tab-body btca-l1-nav-cards">' +
       items.map(function (item) {
@@ -834,6 +1007,15 @@
       }).join("") +
       "</div></div></div>";
 
+    content.querySelector("[data-btca-nav-section]").addEventListener("click", function (event) {
+      openPicker("Раздел", sectionOptions, sectionKey, function (value) {
+        state.ui.nav.sectionKey = value;
+        state.ui.nav.exerciseFilterKey = NAV_FILTER_ALL;
+        DB.patchUiState({ nav: { sectionKey: value, exerciseFilterKey: NAV_FILTER_ALL } });
+        renderNavTab(content);
+        renderTitleBar();
+      }, event.currentTarget);
+    });
     content.querySelector("[data-btca-nav-filter]").addEventListener("click", function (event) {
       openPicker("Упражнение", exerciseOptions, filterKey, function (value) {
         state.ui.nav.exerciseFilterKey = value;
@@ -853,10 +1035,12 @@
         btn.disabled = true;
         if (state.pickTimer) window.clearTimeout(state.pickTimer);
         state.pickTimer = window.setTimeout(function () {
+          var sec = sectionKeyForExerciseValue(value);
           state.ui.exerciseValue = value;
+          state.ui.nav.sectionKey = sec;
           state.ui.nav.exerciseFilterKey = value;
           state.ui.tab = "forma";
-          DB.patchUiState({ exerciseValue: value, nav: { exerciseFilterKey: value }, tab: "forma" });
+          DB.patchUiState({ exerciseValue: value, nav: { sectionKey: sec, exerciseFilterKey: value }, tab: "forma" });
           renderActiveTab();
           renderTitleBar();
         }, PICK_DELAY_MS);
@@ -867,7 +1051,8 @@
         var value = btn.getAttribute("data-btca-nav-image");
         if (filterIsAll) {
           state.ui.nav.exerciseFilterKey = value;
-          DB.patchUiState({ nav: { exerciseFilterKey: value } });
+          state.ui.nav.sectionKey = sectionKeyForExerciseValue(value);
+          DB.patchUiState({ nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
           renderNavTab(content);
           return;
         }
@@ -1015,7 +1200,7 @@
   }
 
   function renderActiveTab() {
-    var content = state.root && state.root.querySelector("[data-btca-level1-content]");
+    var content = state.root && state.root.querySelector("[data-btca-level2-content]");
     if (!content) return;
     if (state.ui.tab === "forma") renderFormaTab(content);
     else if (state.ui.tab === "baza") renderBazaTab(content);
@@ -1024,17 +1209,17 @@
   }
 
   function renderSheetMenu(open) {
-    var layer = state.root.querySelector("[data-btca-level1-menu-layer]");
+    var layer = state.root.querySelector("[data-btca-level2-menu-layer]");
     if (!layer) return;
     if (!open) { layer.setAttribute("hidden", "hidden"); return; }
     layer.removeAttribute("hidden");
     layer.innerHTML =
-      '<button class="btca-level1-menu-backdrop" type="button" data-btca-level1-menu-close aria-label="Закрыть меню"></button>' +
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-level2-menu-close aria-label="Закрыть меню"></button>' +
       '<nav class="btca-level1-sheet-menu" aria-label="Меню листов">' +
       SHEETS.map(function (sheet) {
         var active = sheet.key === state.ui.tab;
         return '<button class="btca-level1-sheet-menu__item' + (active ? " btca-level1-sheet-menu__item--active" : "") +
-          '" type="button" data-btca-level1-sheet="' + sheet.key + '">' + escapeHtml(sheet.label) + "</button>";
+          '" type="button" data-btca-level2-sheet="' + sheet.key + '">' + escapeHtml(sheet.label) + "</button>";
       }).join("") + "</nav>";
   }
 
@@ -1073,10 +1258,10 @@
 
   function loadData() {
     return Promise.all([
-      fetchJsonCached(assetPath("level1/data/forma_exercise_list.json")),
-      fetchJsonCached(assetPath("level1/data/polezCatalog.json")),
-      fetchJsonCached(assetPath("level1/data/polezLinks.json")),
-      fetchJsonCached(assetPath("level1/data/polezDescriptions.json")),
+      fetchJsonCached(assetPath("level2/data/forma_exercise_list.json")),
+      fetchJsonCached(assetPath("level2/data/polezCatalog.json")),
+      fetchJsonCached(assetPath("level2/data/polezLinks.json")),
+      fetchJsonCached(assetPath("level2/data/polezDescriptions.json")),
     ]).then(function (parts) {
       var list = parts[0];
       state.data.exercises = list.map(function (r) {
@@ -1096,7 +1281,7 @@
   function boot() {
     if (booted) return Promise.resolve({ ui: state.ui, data: state.data });
     if (bootPromise) return bootPromise;
-    DB = window.BTCA_LEVEL1_DB;
+    DB = window.BTCA_LEVEL2_DB;
     if (!DB) {
       return Promise.reject(new Error("Модуль базы данных не загружен"));
     }
@@ -1122,14 +1307,14 @@
     }).then(function () {
       renderTitleBar();
       renderActiveTab();
-      var menuBtn = rootEl.querySelector("[data-btca-level1-menu]");
-      var menuLayer = rootEl.querySelector("[data-btca-level1-menu-layer]");
+      var menuBtn = rootEl.querySelector("[data-btca-level2-menu]");
+      var menuLayer = rootEl.querySelector("[data-btca-level2-menu-layer]");
       if (menuBtn) menuBtn.addEventListener("click", function () { renderSheetMenu(true); });
       if (menuLayer) {
         menuLayer.addEventListener("click", function (event) {
-          if (event.target.closest("[data-btca-level1-menu-close]")) { renderSheetMenu(false); return; }
-          var item = event.target.closest("[data-btca-level1-sheet]");
-          if (item) setSheet(item.getAttribute("data-btca-level1-sheet"));
+          if (event.target.closest("[data-btca-level2-menu-close]")) { renderSheetMenu(false); return; }
+          var item = event.target.closest("[data-btca-level2-sheet]");
+          if (item) setSheet(item.getAttribute("data-btca-level2-sheet"));
         });
       }
       if (hooks && hooks.onReady) hooks.onReady();
@@ -1142,7 +1327,7 @@
     state.root = null;
   }
 
-  window.BTCA_LEVEL1 = {
+  window.BTCA_LEVEL2 = {
     VERSION: VERSION,
     boot: boot,
     mount: mount,
