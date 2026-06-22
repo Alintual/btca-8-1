@@ -16,11 +16,18 @@
   background: #1a4854;
   --btca-viewport-width: 100vw;
   --btca-viewport-height: 100vh;
+  --btca-comfort-scale: 1;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  font-size: 1rem;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 * {
@@ -144,9 +151,9 @@ a {
   position: absolute;
   margin: 0;
   color: #ffffff;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 500;
-  line-height: 22px;
+  line-height: calc(22rem / 17);
   white-space: pre-wrap;
 }
 
@@ -328,7 +335,7 @@ code {
 }
 
 .btca-work-menu__item span {
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 500;
 }
 
@@ -352,7 +359,7 @@ code {
   border: 0;
   color: rgba(255, 255, 255, 0.92);
   background: transparent;
-  font-size: 17px;
+  font-size: 1rem;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -383,7 +390,7 @@ code {
   padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
   color: #ffffff;
   background: #1a4854;
-  font-size: 17px;
+  font-size: 1rem;
 }
 
 .btca-back-button {
@@ -394,7 +401,7 @@ code {
   border: 0;
   color: #ffffff;
   background: transparent;
-  font-size: 30px;
+  font-size: calc(30rem / 17);
   font-weight: 500;
   line-height: 1;
 }
@@ -409,7 +416,7 @@ code {
 .btca-about-content h1 {
   margin: 0 0 16px;
   color: #0a0a0a;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   letter-spacing: 0.2px;
   text-align: center;
@@ -418,8 +425,8 @@ code {
 .btca-about-content p {
   margin: 0;
   color: #111111;
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
 }
 
 .btca-about-content strong {
@@ -494,7 +501,7 @@ body.btca-boot-mode #root {
 
 .btca-boot-splash__pct-num {
   color: #bb20e8;
-  font-size: 26px;
+  font-size: calc(26rem / 17);
   font-weight: 600;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -502,7 +509,7 @@ body.btca-boot-mode #root {
 
 .btca-boot-splash__pct-sym {
   color: #bb20e8;
-  font-size: 22px;
+  font-size: calc(22rem / 17);
   font-weight: 600;
   line-height: 1.1;
 }
@@ -510,16 +517,16 @@ body.btca-boot-mode #root {
 .btca-boot-splash__status {
   margin: 0;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 500;
-  line-height: 22px;
+  line-height: calc(22rem / 17);
 }
 
 .btca-boot-splash__error {
   margin: 0;
   color: rgba(255, 200, 200, 0.95);
-  font-size: 12px;
-  line-height: 17px;
+  font-size: calc(12rem / 17);
+  line-height: calc(17rem / 17);
 }
 
 .btca-boot-splash__retry {
@@ -528,7 +535,7 @@ body.btca-boot-mode #root {
   border: 0;
   color: rgba(255, 255, 255, 0.92);
   background: transparent;
-  font-size: 14px;
+  font-size: calc(14rem / 17);
   font-weight: 600;
   text-decoration: underline;
 }
@@ -544,18 +551,31 @@ body.btca-boot-mode #root {
   background: #1f4f5c;
   color: #ffffff;
   --btca-l1-gutter: max(1.1vmin, 4px);
-  --btca-l1-font: clamp(14px, 2.2vmin, 17px);
-  --btca-l1-lh: clamp(20px, 3.4vmin, 26px);
-  --btca-l1-field-h: max(5vmin, 40px);
-  --btca-l1-trailing-w: max(28vmin, 112px);
+  --btca-l1-font: clamp(calc(14rem / 17), 2.2vmin, 1rem);
+  --btca-l1-lh: clamp(calc(20rem / 17), 3.4vmin, calc(26rem / 17));
+  --btca-l1-field-h: max(5vmin, calc(40rem / 17));
+  --btca-l1-trailing-w: max(28vmin, calc(112rem / 17));
   --btca-l1-primary-max: 72%;
-  --btca-l1-section-w: min(81vw, 324px);
-  --btca-l1-save-icon: max(4.3vmin, 34px);
-  --btca-l1-arrow: max(4vmin, 32px);
-  --btca-l1-table-row: max(5vmin, 40px);
-  --btca-l1-picker-row: max(6.25vmin, 50px);
-  --btca-l1-picker-polez: max(8.75vmin, 70px);
+  --btca-l1-section-w: min(81vw, calc(324rem / 17));
+  --btca-l1-save-icon: max(4.3vmin, calc(34rem / 17));
+  --btca-l1-arrow: max(4vmin, calc(32rem / 17));
+  --btca-l1-table-row: max(5vmin, calc(40rem / 17));
+  --btca-l1-picker-row: max(6.25vmin, calc(50rem / 17));
+  --btca-l1-picker-polez: max(8.75vmin, calc(70rem / 17));
   --btca-l1-radius: 12px;
+}
+
+body.btca-apple-comfort .btca-level1-screen {
+  --btca-l1-font: 1rem;
+  --btca-l1-lh: calc(26rem / 17);
+  --btca-l1-field-h: max(calc(40rem / 17), 5vmin);
+  --btca-l1-trailing-w: max(calc(112rem / 17), 28vmin);
+  --btca-l1-section-w: min(81vw, calc(324rem / 17));
+  --btca-l1-save-icon: max(calc(34rem / 17), 4.3vmin);
+  --btca-l1-arrow: max(calc(32rem / 17), 4vmin);
+  --btca-l1-table-row: max(calc(40rem / 17), 5vmin);
+  --btca-l1-picker-row: max(calc(50rem / 17), 6.25vmin);
+  --btca-l1-picker-polez: max(calc(70rem / 17), 8.75vmin);
 }
 
 .btca-level1-nav {
@@ -573,9 +593,9 @@ body.btca-boot-mode #root {
 
 .btca-level1-nav__title {
   overflow: hidden;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 24px;
+  line-height: calc(24rem / 17);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -628,17 +648,17 @@ body.btca-boot-mode #root {
 .btca-level1-titlebar__title {
   overflow: hidden;
   color: #ffffff;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 26px;
+  line-height: calc(26rem / 17);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .btca-level1-titlebar__emoji {
   flex-shrink: 0;
-  font-size: 20px;
-  line-height: 20px;
+  font-size: calc(20rem / 17);
+  line-height: calc(20rem / 17);
 }
 
 .btca-level1-titlebar__emoji--forma {
@@ -661,8 +681,8 @@ body.btca-boot-mode #root {
   justify-content: center;
   padding: 8px 56px;
   color: #00ffff;
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
   text-align: center;
   pointer-events: none;
 }
@@ -716,8 +736,8 @@ body.btca-boot-mode #root {
   flex-shrink: 1;
   overflow: hidden;
   color: #00ffff;
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -737,8 +757,8 @@ body.btca-boot-mode #root {
 .btca-l1-empty {
   padding: 12px 4px;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
   text-align: center;
 }
 
@@ -857,7 +877,7 @@ body.btca-boot-mode #root {
 
 .btca-l1-period-face__icon {
   flex-shrink: 0;
-  font-size: clamp(16px, 2.4vmin, 18px);
+  font-size: clamp(calc(16rem / 17), 2.4vmin, calc(18rem / 17));
   line-height: 1;
 }
 
@@ -985,8 +1005,8 @@ body.btca-boot-mode #root {
   top: 50%;
   right: 8px;
   color: rgba(17, 24, 39, 0.95);
-  font-size: 16px;
-  line-height: 20px;
+  font-size: calc(16rem / 17);
+  line-height: calc(20rem / 17);
   pointer-events: none;
   transform: translateY(-50%);
 }
@@ -999,7 +1019,7 @@ body.btca-boot-mode #root {
 
 .btca-l1-date-face__icon {
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: calc(20rem / 17);
   line-height: 1;
 }
 
@@ -1093,8 +1113,8 @@ body.btca-boot-mode #root {
   margin: 4px 0;
   padding: 0 4px;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
   text-align: center;
 }
 
@@ -1173,8 +1193,8 @@ body.btca-boot-mode #root {
 .btca-l1-th,
 .btca-l1-td {
   color: #111827;
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
   text-align: center;
 }
 
@@ -1216,9 +1236,9 @@ body.btca-boot-mode #root {
   border-radius: 0;
   color: #111827;
   background: #ffffff;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 26px;
+  line-height: calc(26rem / 17);
   text-align: center;
 }
 
@@ -1241,7 +1261,7 @@ body.btca-boot-mode #root {
 .btca-l1-chart-title {
   margin-bottom: 10px;
   color: #111827;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   text-align: center;
 }
@@ -1253,7 +1273,7 @@ body.btca-boot-mode #root {
   align-items: center;
   margin-bottom: 8px;
   color: #111827;
-  font-size: 15px;
+  font-size: calc(15rem / 17);
 }
 
 .btca-l1-chart-bar {
@@ -1313,16 +1333,16 @@ body.btca-boot-mode #root {
   border-radius: 10px 10px 0 0;
   color: #000000;
   background: #d0e0e3;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 26px;
+  line-height: calc(26rem / 17);
   transform: translate(-10px, 9px);
   touch-action: manipulation;
 }
 
 .btca-l1-pick__icon {
-  font-size: 20px;
-  line-height: 22px;
+  font-size: calc(20rem / 17);
+  line-height: calc(22rem / 17);
 }
 
 .btca-l1-pick--consumed {
@@ -1355,7 +1375,7 @@ body.btca-boot-mode #root {
   border-radius: 12px;
   color: #ffffff;
   background: rgba(255, 255, 255, 0.08);
-  font-size: 17px;
+  font-size: 1rem;
   text-align: center;
 }
 
@@ -1368,7 +1388,7 @@ body.btca-boot-mode #root {
 
 .btca-l1-links-panel h3 {
   margin: 0 0 10px;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -1376,8 +1396,8 @@ body.btca-boot-mode #root {
   display: block;
   margin-bottom: 8px;
   color: #06038b;
-  font-size: 16px;
-  line-height: 22px;
+  font-size: calc(16rem / 17);
+  line-height: calc(22rem / 17);
   text-decoration: underline;
 }
 
@@ -1391,7 +1411,7 @@ body.btca-boot-mode #root {
   border-radius: 10px 10px 0 0;
   color: #111827;
   background: #d0e0e3;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   text-align: center;
 }
@@ -1478,7 +1498,7 @@ body.btca-boot-mode #root {
 
 .btca-level1-picker__title {
   color: #ffffff;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   text-align: center;
 }
@@ -1496,8 +1516,8 @@ body.btca-boot-mode #root {
   border-radius: 10px;
   color: #ffffff;
   background: transparent;
-  font-size: 16px;
-  line-height: 22px;
+  font-size: calc(16rem / 17);
+  line-height: calc(22rem / 17);
   text-align: center;
   touch-action: manipulation;
 }
@@ -1515,7 +1535,7 @@ body.btca-boot-mode #root {
   border-radius: 10px;
   color: #111827;
   background: #ffffff;
-  font-size: 16px;
+  font-size: calc(16rem / 17);
 }
 
 .btca-l1-picker-done {
@@ -1524,7 +1544,7 @@ body.btca-boot-mode #root {
   border-radius: 10px;
   color: #111827;
   background: #d0e0e3;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -1558,7 +1578,7 @@ body.btca-boot-mode #root {
 
 .btca-l1-overlay__header strong {
   overflow: hidden;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   text-align: center;
   text-overflow: ellipsis;
@@ -1589,8 +1609,8 @@ body.btca-boot-mode #root {
   table-layout: fixed;
   border-collapse: collapse;
   color: #111827;
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
 }
 
 .btca-l1-data-col--date {
@@ -1709,13 +1729,13 @@ body.btca-boot-mode #root {
 .btca-l1-about-body h1 {
   margin: 0 0 12px;
   color: #111827;
-  font-size: 20px;
+  font-size: calc(20rem / 17);
   line-height: 1.25;
 }
 
 .btca-l1-about-text {
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
 }
 
 .btca-level1-content {
@@ -1744,8 +1764,8 @@ body.btca-boot-mode #root {
   gap: 8px;
   align-items: center;
   color: #ffffff;
-  font-size: 17px;
-  line-height: 26px;
+  font-size: 1rem;
+  line-height: calc(26rem / 17);
 }
 
 .btca-level1-field {
@@ -1794,9 +1814,9 @@ body.btca-boot-mode #root {
   border-radius: 10px;
   color: #ffffff;
   background: transparent;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 500;
-  line-height: 26px;
+  line-height: calc(26rem / 17);
   text-align: center;
 }
 
@@ -2064,8 +2084,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.47:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.47:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.48:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.48:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -2095,7 +2115,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.47";
+  var LEVEL1_MODULE_VERSION = "8.1.48";
 
   var CORE_REL_PATHS = [
     "",
@@ -2283,11 +2303,52 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     }
   }
 
+  function getTypographyLayoutWidth() {
+    var viewport = window.visualViewport;
+    var width = Math.round((viewport && viewport.width) || window.innerWidth || document.documentElement.clientWidth || 0);
+    var height = Math.round((viewport && viewport.height) || window.innerHeight || document.documentElement.clientHeight || 0);
+    if (!width || !height) return 390;
+    return Math.min(width, height);
+  }
+
+  function comfortBodyFont(layoutWidth) {
+    if (layoutWidth <= 375) return 17;
+    if (layoutWidth <= 430) return 17 + ((layoutWidth - 375) / 55) * 1.25;
+    if (layoutWidth <= 600) return 18.25 + ((layoutWidth - 430) / 170) * 1.75;
+    if (layoutWidth <= 834) return 20 + ((layoutWidth - 600) / 234) * 1.5;
+    return Math.min(23, 21.5 + ((layoutWidth - 834) / 190) * 1.5);
+  }
+
+  function clearComfortTypography() {
+    document.body.classList.remove("btca-apple-comfort");
+    document.documentElement.style.fontSize = "";
+    document.documentElement.style.removeProperty("--btca-comfort-scale");
+  }
+
+  function updateComfortTypography() {
+    if (!shouldForcePortraitLayout()) {
+      clearComfortTypography();
+      return;
+    }
+    var layoutWidth = getTypographyLayoutWidth();
+    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    document.body.classList.add("btca-apple-comfort");
+    document.documentElement.style.fontSize = bodyFont + "px";
+    document.documentElement.style.setProperty("--btca-comfort-scale", String(bodyFont / 17));
+  }
+
   function syncPortraitMode() {
     applyBrowserLayoutMode();
+    updateComfortTypography();
     updateForcedPortraitLayout();
-    window.setTimeout(updateForcedPortraitLayout, 80);
-    window.setTimeout(updateForcedPortraitLayout, 260);
+    window.setTimeout(function () {
+      updateComfortTypography();
+      updateForcedPortraitLayout();
+    }, 80);
+    window.setTimeout(function () {
+      updateComfortTypography();
+      updateForcedPortraitLayout();
+    }, 260);
   }
 
   function setPanel(html) {

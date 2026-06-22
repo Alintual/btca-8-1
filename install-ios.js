@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.47:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.47:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.48:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.48:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -33,7 +33,7 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.47";
+  var LEVEL1_MODULE_VERSION = "8.1.48";
 
   var CORE_REL_PATHS = [
     "",
@@ -221,11 +221,52 @@
     }
   }
 
+  function getTypographyLayoutWidth() {
+    var viewport = window.visualViewport;
+    var width = Math.round((viewport && viewport.width) || window.innerWidth || document.documentElement.clientWidth || 0);
+    var height = Math.round((viewport && viewport.height) || window.innerHeight || document.documentElement.clientHeight || 0);
+    if (!width || !height) return 390;
+    return Math.min(width, height);
+  }
+
+  function comfortBodyFont(layoutWidth) {
+    if (layoutWidth <= 375) return 17;
+    if (layoutWidth <= 430) return 17 + ((layoutWidth - 375) / 55) * 1.25;
+    if (layoutWidth <= 600) return 18.25 + ((layoutWidth - 430) / 170) * 1.75;
+    if (layoutWidth <= 834) return 20 + ((layoutWidth - 600) / 234) * 1.5;
+    return Math.min(23, 21.5 + ((layoutWidth - 834) / 190) * 1.5);
+  }
+
+  function clearComfortTypography() {
+    document.body.classList.remove("btca-apple-comfort");
+    document.documentElement.style.fontSize = "";
+    document.documentElement.style.removeProperty("--btca-comfort-scale");
+  }
+
+  function updateComfortTypography() {
+    if (!shouldForcePortraitLayout()) {
+      clearComfortTypography();
+      return;
+    }
+    var layoutWidth = getTypographyLayoutWidth();
+    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    document.body.classList.add("btca-apple-comfort");
+    document.documentElement.style.fontSize = bodyFont + "px";
+    document.documentElement.style.setProperty("--btca-comfort-scale", String(bodyFont / 17));
+  }
+
   function syncPortraitMode() {
     applyBrowserLayoutMode();
+    updateComfortTypography();
     updateForcedPortraitLayout();
-    window.setTimeout(updateForcedPortraitLayout, 80);
-    window.setTimeout(updateForcedPortraitLayout, 260);
+    window.setTimeout(function () {
+      updateComfortTypography();
+      updateForcedPortraitLayout();
+    }, 80);
+    window.setTimeout(function () {
+      updateComfortTypography();
+      updateForcedPortraitLayout();
+    }, 260);
   }
 
   function setPanel(html) {
