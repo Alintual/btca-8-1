@@ -145,8 +145,8 @@ a {
 }
 
 .home__phrase--two {
-  top: 56px;
-  left: calc(50% + 29px);
+  top: 60px;
+  left: calc(50% + 25px);
   width: 160px;
   display: flex;
   flex-direction: column;
@@ -163,7 +163,8 @@ a {
 .home__phrase2-line2 {
   align-self: stretch;
   text-align: left;
-  white-space: pre;
+  padding-left: 52px;
+  margin-top: -3px;
 }
 
 .home__intro {
