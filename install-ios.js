@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.84:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.84:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.85:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.85:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -297,6 +297,23 @@
     });
   }
 
+  function isTabletHomePhrasesMode() {
+    if (!document.body.classList.contains("btca-installed-mode")) return false;
+    if (document.body.classList.contains("btca-sim-iphone")) return false;
+    if (!window.matchMedia("(min-width: 744px)").matches) return false;
+    return getEffectiveTypographyWidth() >= IOS_TYPO_TABLET_REF;
+  }
+
+  function applyTabletPhraseOneNudge() {
+    if (!isTabletHomePhrasesMode()) return;
+    var phraseOne = document.querySelector(".home__tagline-slot .home__phrase--one");
+    if (!phraseOne) return;
+    var layoutWidth = getEffectiveTypographyWidth();
+    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    var nudgePx = Math.round(10 * bodyFont / IOS_TYPO_BASE_PX);
+    phraseOne.style.transform = "translate(" + nudgePx + "px, " + nudgePx + "px) rotate(45deg)";
+  }
+
   function resetLoadingHomePhraseLayout() {
     if (!isBrowserLoadingHomePage()) return;
     resetHomePhraseInlineLayout();
@@ -319,6 +336,7 @@
       return;
     }
     resetHomePhraseInlineLayout();
+    applyTabletPhraseOneNudge();
   }
 
   function clearComfortTypography() {
