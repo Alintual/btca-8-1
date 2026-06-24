@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.79:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.79:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.80:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.80:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -302,6 +302,17 @@
     resetHomePhraseInlineLayout();
   }
 
+  function updateHomePhrasesTabletClass() {
+    if (!document.body.classList.contains("btca-installed-mode")) {
+      document.body.classList.remove("btca-home-phrases-tablet");
+      return;
+    }
+    var layoutWidth = getEffectiveTypographyWidth();
+    var useTabletPhrases = layoutWidth >= IOS_TYPO_TABLET_REF &&
+      !document.body.classList.contains("btca-sim-iphone");
+    document.body.classList.toggle("btca-home-phrases-tablet", useTabletPhrases);
+  }
+
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
@@ -312,6 +323,7 @@
 
   function clearComfortTypography() {
     document.body.classList.remove("btca-apple-comfort");
+    document.body.classList.remove("btca-home-phrases-tablet");
     document.documentElement.style.fontSize = "";
     document.documentElement.style.removeProperty("--btca-comfort-scale");
     document.documentElement.style.removeProperty("--btca-layout-scale");
@@ -337,6 +349,7 @@
       document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
       document.documentElement.style.setProperty("--btca-body-font", IOS_TYPO_BASE_PX + "px");
       resetLoadingHomePhraseLayout();
+      updateHomePhrasesTabletClass();
       updateSimIphoneButton();
       return;
     }
@@ -350,6 +363,7 @@
     document.documentElement.style.setProperty("--btca-layout-min", layoutWidth + "px");
     document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
     document.documentElement.style.setProperty("--btca-body-font", bodyFont + "px");
+    updateHomePhrasesTabletClass();
     updateSimIphoneButton();
     window.requestAnimationFrame(syncHomeTaglineLayout);
   }

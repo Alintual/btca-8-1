@@ -121,7 +121,8 @@ a {
   overflow: visible;
 }
 
-.home__phrase {
+/* ===== Фразы 1/2 — БЛОК 1: загрузочная страница (браузер, только px) ===== */
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase {
   position: absolute;
   margin: 0;
   color: #ffffff;
@@ -131,11 +132,11 @@ a {
   white-space: pre-wrap;
 }
 
-.home__phrase span {
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--two span {
   display: block;
 }
 
-.home__phrase--one {
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--one {
   top: 80px;
   right: calc(50% - 26px);
   width: 190px;
@@ -144,7 +145,7 @@ a {
   transform-origin: top right;
 }
 
-.home__phrase--two {
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--two {
   top: 56px;
   left: calc(50% + 26px);
   width: 160px;
@@ -155,12 +156,12 @@ a {
   transform-origin: bottom left;
 }
 
-.home__phrase2-line1 {
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line1 {
   text-align: right;
   white-space: pre;
 }
 
-.home__phrase2-line2 {
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line2 {
   align-self: stretch;
   text-align: left;
   white-space: pre;
