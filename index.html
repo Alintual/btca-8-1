@@ -77,14 +77,14 @@ a {
 
 .home__hero {
   position: relative;
-  height: calc(424rem / 17);
+  height: 424px;
   padding-top: 0;
   overflow: visible;
 }
 
 .home__hero-block {
   position: relative;
-  width: min(calc(520rem / 17), 100%);
+  width: min(520px, 100%);
   margin: 0 auto;
   padding-top: 0;
   overflow: visible;
@@ -92,9 +92,9 @@ a {
 
 .home__logo {
   display: block;
-  width: calc(132rem / 17);
-  height: calc(132rem / 17);
-  margin: 0 auto calc(14rem / 17);
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 14px;
   overflow: visible;
 }
 
@@ -106,55 +106,55 @@ a {
 
 .home__logo-pyramid span {
   position: absolute;
-  width: calc(16rem / 17);
-  height: calc(16rem / 17);
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
   background: #ffffff;
 }
 
 .home__logo-pyramid span:nth-child(1) {
-  left: calc(50% - 25rem / 17);
-  top: calc(182rem / 17);
+  left: calc(50% - 25px);
+  top: 182px;
 }
 
 .home__logo-pyramid span:nth-child(2) {
-  left: calc(50% - 8rem / 17);
-  top: calc(182rem / 17);
+  left: calc(50% - 8px);
+  top: 182px;
 }
 
 .home__logo-pyramid span:nth-child(3) {
-  left: calc(50% + 9rem / 17);
-  top: calc(182rem / 17);
+  left: calc(50% + 9px);
+  top: 182px;
 }
 
 .home__logo-pyramid span:nth-child(4) {
-  left: calc(50% - 16.5rem / 17);
-  top: calc(197rem / 17);
+  left: calc(50% - 16.5px);
+  top: 197px;
 }
 
 .home__logo-pyramid span:nth-child(5) {
-  left: calc(50% + 0.5rem / 17);
-  top: calc(197rem / 17);
+  left: calc(50% + 0.5px);
+  top: 197px;
 }
 
 .home__logo-pyramid span:nth-child(6) {
-  left: calc(50% - 8rem / 17);
-  top: calc(212rem / 17);
+  left: calc(50% - 8px);
+  top: 212px;
 }
 
 .home__tagline-outer {
   position: relative;
   width: 100%;
-  margin-top: calc(10rem / 17);
+  margin-top: 10px;
   overflow: visible;
 }
 
 .home__tagline-slot {
   position: relative;
-  min-height: calc(280rem / 17);
+  min-height: 280px;
   width: 100%;
-  padding-top: calc(28rem / 17);
-  padding-bottom: calc(40rem / 17);
+  padding-top: 28px;
+  padding-bottom: 40px;
   overflow: visible;
 }
 
@@ -162,9 +162,9 @@ a {
   position: absolute;
   margin: 0;
   color: #ffffff;
-  font-size: calc(17rem / 17);
+  font-size: 17px;
   font-weight: 500;
-  line-height: calc(22rem / 17);
+  line-height: 22px;
   white-space: pre-wrap;
 }
 
@@ -173,121 +173,94 @@ a {
 }
 
 .home__phrase--one {
-  top: calc(80rem / 17);
-  right: calc(50% - 26rem / 17);
-  max-width: calc(190rem / 17);
+  top: 80px;
+  right: calc(50% - 26px);
+  width: 190px;
   text-align: left;
   transform: rotate(45deg);
   transform-origin: top right;
 }
 
 .home__phrase--two {
-  top: calc(56rem / 17);
-  left: calc(50% + 29rem / 17);
-  max-width: calc(160rem / 17);
+  top: 56px;
+  left: calc(50% + 29px);
+  width: 160px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  transform: translate(calc(-22rem / 17), calc(8rem / 17)) rotate(-45deg);
+  transform: translate(-22px, 8px) rotate(-45deg);
   transform-origin: bottom left;
 }
 
-/* Загрузочная страница в браузере: фиксированная сетка 17px, без rem-масштаба. */
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo,
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span,
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero,
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero-block,
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-outer,
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-slot {
-  font-size: inherit;
+/* Установленное приложение: rem-масштаб (пропорции планшет→телефон). */
+.btca-installed-mode .home__hero {
+  height: calc(424rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero {
-  height: 424px;
+.btca-installed-mode .home__hero-block {
+  width: min(calc(520rem / 17), 100%);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero-block {
-  width: min(520px, 100%);
+.btca-installed-mode .home__logo {
+  width: calc(132rem / 17);
+  height: calc(132rem / 17);
+  margin: 0 auto calc(14rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo {
-  width: 132px;
-  height: 132px;
-  margin: 0 auto 14px;
+.btca-installed-mode .home__logo-pyramid span {
+  width: calc(16rem / 17);
+  height: calc(16rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span {
-  width: 16px;
-  height: 16px;
+.btca-installed-mode .home__logo-pyramid span:nth-child(1) {
+  left: calc(50% - 25rem / 17);
+  top: calc(182rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(1) {
-  left: calc(50% - 25px);
-  top: 182px;
+.btca-installed-mode .home__logo-pyramid span:nth-child(2) {
+  left: calc(50% - 8rem / 17);
+  top: calc(182rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(2) {
-  left: calc(50% - 8px);
-  top: 182px;
+.btca-installed-mode .home__logo-pyramid span:nth-child(3) {
+  left: calc(50% + 9rem / 17);
+  top: calc(182rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(3) {
-  left: calc(50% + 9px);
-  top: 182px;
+.btca-installed-mode .home__logo-pyramid span:nth-child(4) {
+  left: calc(50% - 16.5rem / 17);
+  top: calc(197rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(4) {
-  left: calc(50% - 16.5px);
-  top: 197px;
+.btca-installed-mode .home__logo-pyramid span:nth-child(5) {
+  left: calc(50% + 0.5rem / 17);
+  top: calc(197rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(5) {
-  left: calc(50% + 0.5px);
-  top: 197px;
+.btca-installed-mode .home__logo-pyramid span:nth-child(6) {
+  left: calc(50% - 8rem / 17);
+  top: calc(212rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(6) {
-  left: calc(50% - 8px);
-  top: 212px;
+.btca-installed-mode .home__tagline-outer {
+  margin-top: calc(10rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-outer {
-  margin-top: 10px;
+.btca-installed-mode .home__tagline-slot {
+  min-height: calc(280rem / 17);
+  padding-top: calc(28rem / 17);
+  padding-bottom: calc(40rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-slot {
-  min-height: 280px;
-  padding-top: 28px;
-  padding-bottom: 40px;
+.btca-installed-mode .home__phrase {
+  font-size: calc(17rem / 17);
+  line-height: calc(22rem / 17);
 }
 
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase {
-  font-size: 17px;
-  line-height: 22px;
-}
-
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase--one {
-  top: 80px;
-  right: calc(50% - 26px);
-  max-width: 190px;
-}
-
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase--two {
-  top: 56px;
-  left: calc(50% + 29px);
-  max-width: 160px;
-  transform: translate(-22px, 8px) rotate(-45deg);
-}
-
-body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__intro {
-  margin-top: -162px;
-}
-
-/* Установленное приложение: Android-якоря, rem-масштаб. */
 .btca-installed-mode .home__phrase--one {
   top: calc(22rem / 17);
   right: calc(50% + 10rem / 17);
-  max-width: calc(190rem / 17);
+  width: calc(190rem / 17);
   transform: rotate(45deg);
   transform-origin: top right;
 }
@@ -295,9 +268,13 @@ body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not
 .btca-installed-mode .home__phrase--two {
   top: calc(9rem / 17);
   left: calc(50% + 41rem / 17);
-  max-width: calc(160rem / 17);
+  width: calc(160rem / 17);
   transform: rotate(-45deg);
   transform-origin: bottom left;
+}
+
+.btca-installed-mode .home__intro {
+  margin-top: calc(-162rem / 17);
 }
 
 .home__phrase2-line1 {
@@ -311,13 +288,8 @@ body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not
   white-space: pre;
 }
 
-body.btca-apple-comfort:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase {
-  font-size: 17px;
-  line-height: 22px;
-}
-
 .home__intro {
-  margin-top: calc(-162rem / 17);
+  margin-top: -162px;
   text-align: center;
 }
 
@@ -416,10 +388,6 @@ code {
 .platform-button--pending {
   opacity: 0.58;
   cursor: not-allowed;
-}
-
-.btca-installed-mode .home__hero {
-  height: calc(424rem / 17);
 }
 
 .btca-installed-mode .app {
@@ -2558,11 +2526,11 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
 }
 
 @media (max-width: 420px) {
-  .home__hero {
+  .btca-installed-mode .home__hero {
     height: calc(382rem / 17);
   }
 
-  .home__intro {
+  .btca-installed-mode .home__intro {
     margin-top: calc(-148rem / 17);
   }
 }
@@ -2654,8 +2622,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.57:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.57:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.58:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.58:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -2939,10 +2907,20 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     return Math.max(IOS_TYPO_PHONE_BODY_PX, proportional);
   }
 
+  function resetLoadingHomePhraseLayout() {
+    if (!isBrowserLoadingHomePage()) return;
+    document.querySelectorAll(".home__phrase--one, .home__phrase--two").forEach(function (el) {
+      el.style.top = "";
+      el.style.left = "";
+      el.style.right = "";
+      el.style.transform = "";
+      el.style.width = "";
+    });
+  }
+
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
-      var stalePhrase2 = document.querySelector(".home__phrase--two");
-      if (stalePhrase2) stalePhrase2.style.top = "";
+      resetLoadingHomePhraseLayout();
       return;
     }
     var phrase1 = document.querySelector(".home__phrase--one");
@@ -2969,6 +2947,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     document.documentElement.style.removeProperty("--btca-layout-min");
     document.documentElement.style.removeProperty("--btca-layout-actual");
     document.documentElement.style.removeProperty("--btca-body-font");
+    resetLoadingHomePhraseLayout();
   }
 
   function updateComfortTypography() {
@@ -2978,10 +2957,20 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     }
     var layoutWidth = getEffectiveTypographyWidth();
     var actualWidth = getTypographyLayoutWidth();
+    if (isBrowserLoadingHomePage()) {
+      document.body.classList.add("btca-apple-comfort");
+      document.documentElement.style.fontSize = "";
+      document.documentElement.style.setProperty("--btca-comfort-scale", "1");
+      document.documentElement.style.setProperty("--btca-layout-scale", "1");
+      document.documentElement.style.setProperty("--btca-layout-min", layoutWidth + "px");
+      document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
+      document.documentElement.style.setProperty("--btca-body-font", IOS_TYPO_BASE_PX + "px");
+      resetLoadingHomePhraseLayout();
+      updateSimIphoneButton();
+      return;
+    }
     var layoutScale = layoutScaleForWidth(layoutWidth);
-    var bodyFont = isBrowserLoadingHomePage()
-      ? IOS_TYPO_BASE_PX
-      : Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
     var scale = bodyFont / IOS_TYPO_BASE_PX;
     document.body.classList.add("btca-apple-comfort");
     document.documentElement.style.fontSize = bodyFont + "px";

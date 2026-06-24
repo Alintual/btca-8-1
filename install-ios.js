@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.57:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.57:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.58:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.58:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -287,10 +287,20 @@
     return Math.max(IOS_TYPO_PHONE_BODY_PX, proportional);
   }
 
+  function resetLoadingHomePhraseLayout() {
+    if (!isBrowserLoadingHomePage()) return;
+    document.querySelectorAll(".home__phrase--one, .home__phrase--two").forEach(function (el) {
+      el.style.top = "";
+      el.style.left = "";
+      el.style.right = "";
+      el.style.transform = "";
+      el.style.width = "";
+    });
+  }
+
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
-      var stalePhrase2 = document.querySelector(".home__phrase--two");
-      if (stalePhrase2) stalePhrase2.style.top = "";
+      resetLoadingHomePhraseLayout();
       return;
     }
     var phrase1 = document.querySelector(".home__phrase--one");
@@ -317,6 +327,7 @@
     document.documentElement.style.removeProperty("--btca-layout-min");
     document.documentElement.style.removeProperty("--btca-layout-actual");
     document.documentElement.style.removeProperty("--btca-body-font");
+    resetLoadingHomePhraseLayout();
   }
 
   function updateComfortTypography() {
@@ -326,10 +337,20 @@
     }
     var layoutWidth = getEffectiveTypographyWidth();
     var actualWidth = getTypographyLayoutWidth();
+    if (isBrowserLoadingHomePage()) {
+      document.body.classList.add("btca-apple-comfort");
+      document.documentElement.style.fontSize = "";
+      document.documentElement.style.setProperty("--btca-comfort-scale", "1");
+      document.documentElement.style.setProperty("--btca-layout-scale", "1");
+      document.documentElement.style.setProperty("--btca-layout-min", layoutWidth + "px");
+      document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
+      document.documentElement.style.setProperty("--btca-body-font", IOS_TYPO_BASE_PX + "px");
+      resetLoadingHomePhraseLayout();
+      updateSimIphoneButton();
+      return;
+    }
     var layoutScale = layoutScaleForWidth(layoutWidth);
-    var bodyFont = isBrowserLoadingHomePage()
-      ? IOS_TYPO_BASE_PX
-      : Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
     var scale = bodyFont / IOS_TYPO_BASE_PX;
     document.body.classList.add("btca-apple-comfort");
     document.documentElement.style.fontSize = bodyFont + "px";
