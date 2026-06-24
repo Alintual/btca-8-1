@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.92:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.92:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.93:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.93:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -128,8 +128,14 @@
   }
 
   function isAppPreparedSync() {
-    if (window.__BTCA_APP_BOOT_READY__) return true;
-    if (readAppPreparedState()) return true;
+    var generation = getCacheGeneration();
+    if (window.__BTCA_APP_BOOT_READY__) {
+      var bootState = readAppPreparedState();
+      if (bootState && bootState.cacheGeneration === generation) return true;
+      window.__BTCA_APP_BOOT_READY__ = false;
+    }
+    var readyState = readAppPreparedState();
+    if (readyState && readyState.cacheGeneration === generation) return true;
     return hasPreparedMediaState();
   }
 
@@ -138,13 +144,59 @@
       var raw = localStorage.getItem(MEDIA_STATE_KEY);
       if (!raw) return false;
       var state = JSON.parse(raw);
-      if (!state || !state.files) return false;
+      if (!state || state.cacheGeneration !== getCacheGeneration() || !state.files) return false;
       return Object.keys(state.files).some(function (key) {
         return (state.files[key] || 0) > 0;
       });
     } catch (_) {
       return false;
     }
+  }
+
+  function clearStaleClientState() {
+    var generation = getCacheGeneration();
+    try {
+      var readyState = readAppPreparedState();
+      if (readyState && readyState.cacheGeneration !== generation) {
+        localStorage.removeItem(APP_READY_KEY);
+        window.__BTCA_APP_BOOT_READY__ = false;
+      }
+      var mediaRaw = localStorage.getItem(MEDIA_STATE_KEY);
+      if (mediaRaw) {
+        var mediaState = JSON.parse(mediaRaw);
+        if (!mediaState || mediaState.cacheGeneration !== generation) {
+          localStorage.removeItem(MEDIA_STATE_KEY);
+        }
+      }
+    } catch (_) {}
+  }
+
+  function purgeObsoleteInstallCaches() {
+    if (!("caches" in window)) return Promise.resolve();
+    var generation = getCacheGeneration();
+    return caches.keys().then(function (names) {
+      return Promise.all(names.filter(function (name) {
+        return name.indexOf("btca-web-") === 0 && name.indexOf(generation) !== 0;
+      }).map(function (name) {
+        return caches.delete(name);
+      }));
+    }).catch(function () {});
+  }
+
+  function ensureFreshShellAfterDeploy() {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
+      if (!registration) return;
+      registration.update().catch(function () {});
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: "SKIP_WAITING" });
+      }
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (window.__BTCA_SHELL_RELOADED__) return;
+        window.__BTCA_SHELL_RELOADED__ = true;
+        window.location.reload();
+      });
+    }).catch(function () {});
   }
 
   function cacheHasUnpackedLevel1Media(cache) {
@@ -158,18 +210,7 @@
 
   function verifyMediaCacheReady() {
     if (!("caches" in window)) return Promise.resolve(false);
-    return caches.keys().then(function (names) {
-      var mediaCaches = names.filter(function (name) {
-        return name.indexOf(":static-media") >= 0 || name.indexOf(":media") >= 0;
-      });
-      if (mediaCaches.indexOf(MEDIA_CACHE) < 0) mediaCaches.push(MEDIA_CACHE);
-      return mediaCaches.reduce(function (promise, cacheName) {
-        return promise.then(function (found) {
-          if (found) return true;
-          return caches.open(cacheName).then(cacheHasUnpackedLevel1Media);
-        });
-      }, Promise.resolve(false));
-    }).catch(function () {
+    return caches.open(MEDIA_CACHE).then(cacheHasUnpackedLevel1Media).catch(function () {
       return false;
     });
   }
@@ -1252,6 +1293,9 @@
   function init() {
     var els = getEls();
     window.__BTCA_IOS_INSTALLER_READY__ = true;
+    clearStaleClientState();
+    purgeObsoleteInstallCaches();
+    ensureFreshShellAfterDeploy();
     cleanupOrphanHomePhraseMarkup();
     syncPortraitMode();
     window.addEventListener("orientationchange", syncPortraitMode);

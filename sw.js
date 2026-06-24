@@ -1,8 +1,14 @@
-const CACHE_VERSION = "btca-web-8.1.92";
+const CACHE_VERSION = "btca-web-8.1.93";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
 const SW_PATH = BASE_PATH + "/sw.js";
+const SHELL_PATHS = new Set([
+  BASE_PATH + "/",
+  BASE_PATH + "/index.html",
+  BASE_PATH + "/install-ios.js",
+  SW_PATH,
+]);
 
 const CORE_ASSETS = [
   "/btca-8-1/",
@@ -27,6 +33,26 @@ const CORE_ASSETS = [
   "/btca-8-1/level2/data/polezLinks.json",
   "/btca-8-1/level2/data/polezDescriptions.json"
 ];
+
+function networkFirst(request, cacheName) {
+  return fetch(request)
+    .then((response) => {
+      if (response && response.status === 200) {
+        const copy = response.clone();
+        caches.open(cacheName).then((cache) => {
+          cache.put(request, copy);
+        });
+      }
+      return response;
+    })
+    .catch(() => caches.match(request));
+}
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -53,18 +79,8 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
-  if (requestUrl.pathname === SW_PATH || event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => {
-            cache.put(event.request, copy);
-          });
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+  if (requestUrl.pathname === SW_PATH || event.request.mode === "navigate" || SHELL_PATHS.has(requestUrl.pathname)) {
+    event.respondWith(networkFirst(event.request, RUNTIME_CACHE));
     return;
   }
 
