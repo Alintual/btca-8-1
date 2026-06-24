@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.66:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.66:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.67:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.67:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -302,12 +302,46 @@
     resetHomePhraseInlineLayout();
   }
 
+  function syncTabletPhrase2Layout() {
+    var layoutWidth = getEffectiveTypographyWidth();
+    var isTablet =
+      layoutWidth >= IOS_TYPO_TABLET_REF &&
+      !document.body.classList.contains("btca-sim-iphone");
+    document.body.classList.toggle("btca-tablet-layout", isTablet);
+
+    if (!document.body.classList.contains("btca-installed-mode") || !isTablet) {
+      return;
+    }
+
+    var phrase2 = document.querySelector(".home__phrase--two");
+    var hero = document.querySelector(".home__hero-block");
+    if (!phrase2 || !hero) return;
+
+    var heroWidth = hero.getBoundingClientRect().width;
+    if (!heroWidth) return;
+
+    var span = heroWidth / IOS_TYPO_IPHONE_MIN;
+    var phoneUnit = IOS_TYPO_PHONE_BODY_PX / IOS_TYPO_BASE_PX;
+
+    function phonePx(designPx) {
+      return designPx * phoneUnit * span;
+    }
+
+    phrase2.style.top = phonePx(56) + "px";
+    phrase2.style.left = "calc(50% + " + phonePx(26) + "px)";
+    phrase2.style.width = phonePx(160) + "px";
+    phrase2.style.transform =
+      "translate(" + phonePx(-22) + "px, " + phonePx(8) + "px) rotate(-45deg)";
+  }
+
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
+      document.body.classList.remove("btca-tablet-layout");
       return;
     }
     resetHomePhraseInlineLayout();
+    syncTabletPhrase2Layout();
   }
 
   function clearComfortTypography() {
