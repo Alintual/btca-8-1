@@ -122,6 +122,11 @@ a {
 }
 
 /* ===== Фразы 1/2 — БЛОК 1: загрузочная страница (браузер, только px) ===== */
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--one-tablet,
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--two-tablet {
+  display: none;
+}
+
 body:not(.btca-installed-mode) .home__tagline-slot .home__phrase {
   position: absolute;
   margin: 0;
@@ -136,7 +141,8 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--two span {
   display: block;
 }
 
-body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--one {
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--one-default,
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--one:not(.home__phrase--one-tablet) {
   top: 80px;
   right: calc(50% - 26px);
   width: 190px;
@@ -145,7 +151,7 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--one {
   transform-origin: top right;
 }
 
-body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--two {
+body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--two:not(.home__phrase--two-tablet) {
   top: 56px;
   left: calc(50% + 26px);
   width: 160px;

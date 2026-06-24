@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.90:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.90:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.91:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.91:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -835,6 +835,33 @@
   var PHRASE_ONE_TABLET_HTML =
     '<span class="home__phrase1-line1">  Бильярдный</span>' +
     '<span class="home__phrase1-line2"> Тренировочный</span>';
+  var PHRASE_TWO_LINE2_BASE = "            Абриколь";
+
+  function cleanupOrphanHomePhraseMarkup() {
+    var slot = document.querySelector(".home__tagline-slot");
+    if (!slot) return;
+
+    var phraseTwoAll = slot.querySelectorAll(".home__phrase--two");
+    if (phraseTwoAll.length > 1) {
+      var keeper = slot.querySelector(".home__phrase--two:not(.home__phrase--two-tablet)") || phraseTwoAll[0];
+      phraseTwoAll.forEach(function (el) {
+        if (el !== keeper && el.parentNode) el.parentNode.removeChild(el);
+      });
+    }
+
+    var phraseTwo = slot.querySelector(".home__phrase--two:not(.home__phrase--two-tablet)");
+    if (phraseTwo) {
+      phraseTwo.classList.remove("home__phrase--two-default", "home__phrase--two-tablet");
+      if (!document.body.classList.contains("btca-installed-mode")) {
+        var line2 = phraseTwo.querySelector(".home__phrase2-line2");
+        if (line2) line2.textContent = PHRASE_TWO_LINE2_BASE;
+      }
+    }
+
+    slot.querySelectorAll(".home__phrase--two-tablet").forEach(function (el) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+  }
 
   function ensurePhraseOneTabletMarkup() {
     var slot = document.querySelector(".home__tagline-slot");
@@ -890,6 +917,7 @@
       footer.innerHTML = "<span>BTCA-mobile v.8.1 © 2026 Alint&apos;s R.lab</span>";
     }
     ensurePhraseOneTabletMarkup();
+    cleanupOrphanHomePhraseMarkup();
     installedHomeSnapshot = "";
     ensureSimIphoneControl();
     syncPortraitMode();
@@ -1196,6 +1224,7 @@
   function init() {
     var els = getEls();
     window.__BTCA_IOS_INSTALLER_READY__ = true;
+    cleanupOrphanHomePhraseMarkup();
     syncPortraitMode();
     window.addEventListener("orientationchange", syncPortraitMode);
     window.addEventListener("resize", syncPortraitMode);
