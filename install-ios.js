@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.53:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.53:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.54:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.54:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -268,6 +268,13 @@
     return getTypographyLayoutWidth();
   }
 
+  function isBrowserLoadingHomePage() {
+    return !document.body.classList.contains("btca-installed-mode") &&
+      !document.body.classList.contains("btca-level1-mode") &&
+      !document.body.classList.contains("btca-level2-mode") &&
+      !document.body.classList.contains("btca-screen-mode");
+  }
+
   function comfortBodyFont(layoutWidth) {
     if (layoutWidth <= IOS_TYPO_IPHONE_MIN) return IOS_TYPO_BASE_PX;
     if (layoutWidth >= IOS_TYPO_IPAD_MINI_MIN) {
@@ -296,7 +303,9 @@
     }
     var layoutWidth = getEffectiveTypographyWidth();
     var actualWidth = getTypographyLayoutWidth();
-    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    var bodyFont = isBrowserLoadingHomePage()
+      ? IOS_TYPO_BASE_PX
+      : Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
     var scale = bodyFont / IOS_TYPO_BASE_PX;
     document.body.classList.add("btca-apple-comfort");
     document.documentElement.style.fontSize = bodyFont + "px";
@@ -318,7 +327,9 @@
     if (!note) return;
     var layoutWidth = shouldForcePortraitLayout() ? getEffectiveTypographyWidth() : getTypographyLayoutWidth();
     var actualWidth = getTypographyLayoutWidth();
-    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    var bodyFont = isBrowserLoadingHomePage()
+      ? IOS_TYPO_BASE_PX
+      : Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
     if (simActive) {
       note.textContent = "iPhone: " + layoutWidth + "px · " + bodyFont + "px (экран " + actualWidth + "px)";
       return;
