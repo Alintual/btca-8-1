@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.56:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.56:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.57:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.57:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -288,6 +288,11 @@
   }
 
   function syncHomeTaglineLayout() {
+    if (!document.body.classList.contains("btca-installed-mode")) {
+      var stalePhrase2 = document.querySelector(".home__phrase--two");
+      if (stalePhrase2) stalePhrase2.style.top = "";
+      return;
+    }
     var phrase1 = document.querySelector(".home__phrase--one");
     var phrase2 = document.querySelector(".home__phrase--two");
     var slot = document.querySelector(".home__tagline-slot");

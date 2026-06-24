@@ -173,8 +173,8 @@ a {
 }
 
 .home__phrase--one {
-  top: calc(22rem / 17);
-  right: calc(50% + 10rem / 17);
+  top: calc(80rem / 17);
+  right: calc(50% - 26rem / 17);
   max-width: calc(190rem / 17);
   text-align: left;
   transform: rotate(45deg);
@@ -182,12 +182,120 @@ a {
 }
 
 .home__phrase--two {
-  top: calc(9rem / 17);
-  left: calc(50% + 41rem / 17);
+  top: calc(56rem / 17);
+  left: calc(50% + 29rem / 17);
   max-width: calc(160rem / 17);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  transform: translate(calc(-22rem / 17), calc(8rem / 17)) rotate(-45deg);
+  transform-origin: bottom left;
+}
+
+/* Загрузочная страница в браузере: фиксированная сетка 17px, без rem-масштаба. */
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo,
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span,
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero,
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero-block,
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-outer,
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-slot {
+  font-size: inherit;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero {
+  height: 424px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__hero-block {
+  width: min(520px, 100%);
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo {
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 14px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span {
+  width: 16px;
+  height: 16px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(1) {
+  left: calc(50% - 25px);
+  top: 182px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(2) {
+  left: calc(50% - 8px);
+  top: 182px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(3) {
+  left: calc(50% + 9px);
+  top: 182px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(4) {
+  left: calc(50% - 16.5px);
+  top: 197px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(5) {
+  left: calc(50% + 0.5px);
+  top: 197px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__logo-pyramid span:nth-child(6) {
+  left: calc(50% - 8px);
+  top: 212px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-outer {
+  margin-top: 10px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__tagline-slot {
+  min-height: 280px;
+  padding-top: 28px;
+  padding-bottom: 40px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase--one {
+  top: 80px;
+  right: calc(50% - 26px);
+  max-width: 190px;
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase--two {
+  top: 56px;
+  left: calc(50% + 29px);
+  max-width: 160px;
+  transform: translate(-22px, 8px) rotate(-45deg);
+}
+
+body:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__intro {
+  margin-top: -162px;
+}
+
+/* Установленное приложение: Android-якоря, rem-масштаб. */
+.btca-installed-mode .home__phrase--one {
+  top: calc(22rem / 17);
+  right: calc(50% + 10rem / 17);
+  max-width: calc(190rem / 17);
+  transform: rotate(45deg);
+  transform-origin: top right;
+}
+
+.btca-installed-mode .home__phrase--two {
+  top: calc(9rem / 17);
+  left: calc(50% + 41rem / 17);
+  max-width: calc(160rem / 17);
   transform: rotate(-45deg);
   transform-origin: bottom left;
 }
@@ -204,8 +312,8 @@ a {
 }
 
 body.btca-apple-comfort:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase {
-  font-size: calc(17rem / 17);
-  line-height: calc(22rem / 17);
+  font-size: 17px;
+  line-height: 22px;
 }
 
 .home__intro {
@@ -2546,8 +2654,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.56:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.56:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.57:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.57:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -2832,6 +2940,11 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   }
 
   function syncHomeTaglineLayout() {
+    if (!document.body.classList.contains("btca-installed-mode")) {
+      var stalePhrase2 = document.querySelector(".home__phrase--two");
+      if (stalePhrase2) stalePhrase2.style.top = "";
+      return;
+    }
     var phrase1 = document.querySelector(".home__phrase--one");
     var phrase2 = document.querySelector(".home__phrase--two");
     var slot = document.querySelector(".home__tagline-slot");
