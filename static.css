@@ -140,7 +140,7 @@ a {
   right: calc(50% - 26px);
   width: 190px;
   text-align: left;
-  transform: translate(10px, 10px) rotate(45deg);
+  transform: rotate(45deg);
   transform-origin: top right;
 }
 
