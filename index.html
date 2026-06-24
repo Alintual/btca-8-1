@@ -365,6 +365,12 @@ body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__phrase-
   transform-origin: bottom left;
 }
 
+body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__phrase2-line2 {
+  position: relative;
+  top: calc(-2em / 17);
+  left: calc(3em / 17);
+}
+
 .btca-installed-mode .home__intro {
   margin-top: calc(-162rem / 17);
 }
@@ -2714,8 +2720,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.68:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.68:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.69:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.69:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
