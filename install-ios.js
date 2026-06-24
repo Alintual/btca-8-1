@@ -2,17 +2,17 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.54:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.54:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.55:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.55:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var IFHONE_SIM_KEY = "btca-ifhone-sim";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
-  var IOS_TYPO_IPAD_MINI_MIN = 744;
-  var IOS_TYPO_IPAD_BODY_PX = 21;
-  var IOS_TYPO_MAX_BODY_PX = 23;
+  // Reference tablet short side (744 CSS px = 1488 design grid @2x).
+  var IOS_TYPO_TABLET_REF = 744;
+  var IOS_TYPO_TABLET_BODY_PX = 21;
   var IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
   var OFFLINE_PREPARE_URL = "https://alintual.github.io/btca-8-1/";
   var ABOUT_HEADING = "ПРОЕКТ BTCA-mobile v.8.1";
@@ -275,22 +275,20 @@
       !document.body.classList.contains("btca-screen-mode");
   }
 
+  function layoutScaleForWidth(layoutWidth) {
+    if (!layoutWidth || layoutWidth >= IOS_TYPO_TABLET_REF) return 1;
+    return layoutWidth / IOS_TYPO_TABLET_REF;
+  }
+
   function comfortBodyFont(layoutWidth) {
-    if (layoutWidth <= IOS_TYPO_IPHONE_MIN) return IOS_TYPO_BASE_PX;
-    if (layoutWidth >= IOS_TYPO_IPAD_MINI_MIN) {
-      return Math.min(
-        IOS_TYPO_MAX_BODY_PX,
-        IOS_TYPO_IPAD_BODY_PX + (layoutWidth - IOS_TYPO_IPAD_MINI_MIN) * 0.003
-      );
-    }
-    var ratio = (layoutWidth - IOS_TYPO_IPHONE_MIN) / (IOS_TYPO_IPAD_MINI_MIN - IOS_TYPO_IPHONE_MIN);
-    return IOS_TYPO_BASE_PX + ratio * (IOS_TYPO_IPAD_BODY_PX - IOS_TYPO_BASE_PX);
+    return IOS_TYPO_TABLET_BODY_PX * layoutScaleForWidth(layoutWidth);
   }
 
   function clearComfortTypography() {
     document.body.classList.remove("btca-apple-comfort");
     document.documentElement.style.fontSize = "";
     document.documentElement.style.removeProperty("--btca-comfort-scale");
+    document.documentElement.style.removeProperty("--btca-layout-scale");
     document.documentElement.style.removeProperty("--btca-layout-min");
     document.documentElement.style.removeProperty("--btca-layout-actual");
     document.documentElement.style.removeProperty("--btca-body-font");
@@ -303,6 +301,7 @@
     }
     var layoutWidth = getEffectiveTypographyWidth();
     var actualWidth = getTypographyLayoutWidth();
+    var layoutScale = layoutScaleForWidth(layoutWidth);
     var bodyFont = isBrowserLoadingHomePage()
       ? IOS_TYPO_BASE_PX
       : Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
@@ -310,6 +309,7 @@
     document.body.classList.add("btca-apple-comfort");
     document.documentElement.style.fontSize = bodyFont + "px";
     document.documentElement.style.setProperty("--btca-comfort-scale", String(scale));
+    document.documentElement.style.setProperty("--btca-layout-scale", String(Math.round(layoutScale * 1000) / 1000));
     document.documentElement.style.setProperty("--btca-layout-min", layoutWidth + "px");
     document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
     document.documentElement.style.setProperty("--btca-body-font", bodyFont + "px");
@@ -330,11 +330,13 @@
     var bodyFont = isBrowserLoadingHomePage()
       ? IOS_TYPO_BASE_PX
       : Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
+    var layoutScale = layoutScaleForWidth(layoutWidth);
+    var scalePct = Math.round(layoutScale * 100);
     if (simActive) {
-      note.textContent = "iPhone: " + layoutWidth + "px · " + bodyFont + "px (экран " + actualWidth + "px)";
+      note.textContent = "iPhone: " + layoutWidth + "px · " + scalePct + "% · " + bodyFont + "px (экран " + actualWidth + "px)";
       return;
     }
-    note.textContent = "iOS: " + actualWidth + "px · " + bodyFont + "px";
+    note.textContent = "iOS: " + actualWidth + "px · " + scalePct + "% · " + bodyFont + "px";
   }
 
   function ensureSimIphoneControl() {
