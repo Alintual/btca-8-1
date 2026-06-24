@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.58:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.58:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.59:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.59:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -287,8 +287,7 @@
     return Math.max(IOS_TYPO_PHONE_BODY_PX, proportional);
   }
 
-  function resetLoadingHomePhraseLayout() {
-    if (!isBrowserLoadingHomePage()) return;
+  function resetHomePhraseInlineLayout() {
     document.querySelectorAll(".home__phrase--one, .home__phrase--two").forEach(function (el) {
       el.style.top = "";
       el.style.left = "";
@@ -298,25 +297,17 @@
     });
   }
 
+  function resetLoadingHomePhraseLayout() {
+    if (!isBrowserLoadingHomePage()) return;
+    resetHomePhraseInlineLayout();
+  }
+
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
       return;
     }
-    var phrase1 = document.querySelector(".home__phrase--one");
-    var phrase2 = document.querySelector(".home__phrase--two");
-    var slot = document.querySelector(".home__tagline-slot");
-    if (!phrase1 || !phrase2 || !slot) return;
-    var rootFont = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || IOS_TYPO_BASE_PX;
-    var gap = (13 * rootFont) / IOS_TYPO_BASE_PX;
-    var slotRect = slot.getBoundingClientRect();
-    var phrase1Rect = phrase1.getBoundingClientRect();
-    var phrase2Height = phrase2.offsetHeight;
-    if (!slotRect.height || !phrase1Rect.height || !phrase2Height) return;
-    var phrase1Bottom = phrase1Rect.bottom - slotRect.top;
-    var topPx = phrase1Bottom - phrase2Height - gap;
-    if (topPx < 0) topPx = (9 * rootFont) / IOS_TYPO_BASE_PX;
-    phrase2.style.top = (topPx / rootFont) + "rem";
+    resetHomePhraseInlineLayout();
   }
 
   function clearComfortTypography() {
