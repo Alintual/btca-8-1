@@ -77,14 +77,14 @@ a {
 
 .home__hero {
   position: relative;
-  height: 424px;
+  height: calc(424rem / 17);
   padding-top: 0;
   overflow: visible;
 }
 
 .home__hero-block {
   position: relative;
-  width: min(520px, 100%);
+  width: min(calc(520rem / 17), 100%);
   margin: 0 auto;
   padding-top: 0;
   overflow: visible;
@@ -92,9 +92,9 @@ a {
 
 .home__logo {
   display: block;
-  width: 132px;
-  height: 132px;
-  margin: 0 auto 14px;
+  width: calc(132rem / 17);
+  height: calc(132rem / 17);
+  margin: 0 auto calc(14rem / 17);
   overflow: visible;
 }
 
@@ -106,55 +106,55 @@ a {
 
 .home__logo-pyramid span {
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: calc(16rem / 17);
+  height: calc(16rem / 17);
   border-radius: 999px;
   background: #ffffff;
 }
 
 .home__logo-pyramid span:nth-child(1) {
-  left: calc(50% - 25px);
-  top: 182px;
+  left: calc(50% - 25rem / 17);
+  top: calc(182rem / 17);
 }
 
 .home__logo-pyramid span:nth-child(2) {
-  left: calc(50% - 8px);
-  top: 182px;
+  left: calc(50% - 8rem / 17);
+  top: calc(182rem / 17);
 }
 
 .home__logo-pyramid span:nth-child(3) {
-  left: calc(50% + 9px);
-  top: 182px;
+  left: calc(50% + 9rem / 17);
+  top: calc(182rem / 17);
 }
 
 .home__logo-pyramid span:nth-child(4) {
-  left: calc(50% - 16.5px);
-  top: 197px;
+  left: calc(50% - 16.5rem / 17);
+  top: calc(197rem / 17);
 }
 
 .home__logo-pyramid span:nth-child(5) {
-  left: calc(50% + .5px);
-  top: 197px;
+  left: calc(50% + 0.5rem / 17);
+  top: calc(197rem / 17);
 }
 
 .home__logo-pyramid span:nth-child(6) {
-  left: calc(50% - 8px);
-  top: 212px;
+  left: calc(50% - 8rem / 17);
+  top: calc(212rem / 17);
 }
 
 .home__tagline-outer {
   position: relative;
   width: 100%;
-  margin-top: 10px;
+  margin-top: calc(10rem / 17);
   overflow: visible;
 }
 
 .home__tagline-slot {
   position: relative;
-  min-height: 280px;
+  min-height: calc(280rem / 17);
   width: 100%;
-  padding-top: 28px;
-  padding-bottom: 40px;
+  padding-top: calc(28rem / 17);
+  padding-bottom: calc(40rem / 17);
   overflow: visible;
 }
 
@@ -162,7 +162,7 @@ a {
   position: absolute;
   margin: 0;
   color: #ffffff;
-  font-size: 1rem;
+  font-size: calc(17rem / 17);
   font-weight: 500;
   line-height: calc(22rem / 17);
   white-space: pre-wrap;
@@ -173,22 +173,22 @@ a {
 }
 
 .home__phrase--one {
-  top: 80px;
-  right: calc(50% - 26px);
-  width: 190px;
+  top: calc(22rem / 17);
+  right: calc(50% + 10rem / 17);
+  max-width: calc(190rem / 17);
   text-align: left;
   transform: rotate(45deg);
   transform-origin: top right;
 }
 
 .home__phrase--two {
-  top: 56px;
-  left: calc(50% + 29px);
-  width: 160px;
+  top: calc(9rem / 17);
+  left: calc(50% + 41rem / 17);
+  max-width: calc(160rem / 17);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  transform: translate(-25px, 8px) rotate(-45deg);
+  transform: rotate(-45deg);
   transform-origin: bottom left;
 }
 
@@ -204,12 +204,12 @@ a {
 }
 
 body.btca-apple-comfort:not(.btca-installed-mode):not(.btca-level1-mode):not(.btca-level2-mode):not(.btca-screen-mode) .home__phrase {
-  font-size: 17px;
-  line-height: 22px;
+  font-size: calc(17rem / 17);
+  line-height: calc(22rem / 17);
 }
 
 .home__intro {
-  margin-top: -162px;
+  margin-top: calc(-162rem / 17);
   text-align: center;
 }
 
@@ -311,7 +311,7 @@ code {
 }
 
 .btca-installed-mode .home__hero {
-  height: 424px;
+  height: calc(424rem / 17);
 }
 
 .btca-installed-mode .app {
@@ -336,7 +336,7 @@ code {
   position: relative;
   z-index: 5;
   width: 100%;
-  margin-top: -118px;
+  margin-top: calc(-118rem / 17);
   padding-right: 0;
   padding-left: 0;
 }
@@ -2451,13 +2451,12 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
 
 @media (max-width: 420px) {
   .home__hero {
-    height: 382px;
+    height: calc(382rem / 17);
   }
 
   .home__intro {
-    margin-top: -148px;
+    margin-top: calc(-148rem / 17);
   }
-
 }
     </style>
     <title>БТКА 8.1 Web</title>
@@ -2547,13 +2546,14 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.55:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.55:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.56:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.56:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var IFHONE_SIM_KEY = "btca-ifhone-sim";
   var IOS_TYPO_BASE_PX = 17;
+  var IOS_TYPO_PHONE_BODY_PX = 15;
   var IOS_TYPO_IPHONE_MIN = 390;
   // Reference tablet short side (744 CSS px = 1488 design grid @2x).
   var IOS_TYPO_TABLET_REF = 744;
@@ -2804,6 +2804,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     document.body.classList.toggle("btca-sim-iphone", active);
     syncPortraitMode();
     updateSimIphoneButton();
+    window.requestAnimationFrame(syncHomeTaglineLayout);
   }
 
   function getEffectiveTypographyWidth() {
@@ -2826,7 +2827,25 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   }
 
   function comfortBodyFont(layoutWidth) {
-    return IOS_TYPO_TABLET_BODY_PX * layoutScaleForWidth(layoutWidth);
+    var proportional = IOS_TYPO_TABLET_BODY_PX * layoutScaleForWidth(layoutWidth);
+    return Math.max(IOS_TYPO_PHONE_BODY_PX, proportional);
+  }
+
+  function syncHomeTaglineLayout() {
+    var phrase1 = document.querySelector(".home__phrase--one");
+    var phrase2 = document.querySelector(".home__phrase--two");
+    var slot = document.querySelector(".home__tagline-slot");
+    if (!phrase1 || !phrase2 || !slot) return;
+    var rootFont = parseFloat(window.getComputedStyle(document.documentElement).fontSize) || IOS_TYPO_BASE_PX;
+    var gap = (13 * rootFont) / IOS_TYPO_BASE_PX;
+    var slotRect = slot.getBoundingClientRect();
+    var phrase1Rect = phrase1.getBoundingClientRect();
+    var phrase2Height = phrase2.offsetHeight;
+    if (!slotRect.height || !phrase1Rect.height || !phrase2Height) return;
+    var phrase1Bottom = phrase1Rect.bottom - slotRect.top;
+    var topPx = phrase1Bottom - phrase2Height - gap;
+    if (topPx < 0) topPx = (9 * rootFont) / IOS_TYPO_BASE_PX;
+    phrase2.style.top = (topPx / rootFont) + "rem";
   }
 
   function clearComfortTypography() {
@@ -2859,6 +2878,7 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
     document.documentElement.style.setProperty("--btca-body-font", bodyFont + "px");
     updateSimIphoneButton();
+    window.requestAnimationFrame(syncHomeTaglineLayout);
   }
 
   function updateSimIphoneButton() {
@@ -2915,10 +2935,12 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     window.setTimeout(function () {
       updateComfortTypography();
       updateForcedPortraitLayout();
+      syncHomeTaglineLayout();
     }, 80);
     window.setTimeout(function () {
       updateComfortTypography();
       updateForcedPortraitLayout();
+      syncHomeTaglineLayout();
     }, 260);
   }
 
