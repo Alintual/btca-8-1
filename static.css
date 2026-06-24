@@ -146,7 +146,7 @@ a {
 
 .home__phrase--two {
   top: 56px;
-  left: calc(50% + 29px);
+  left: calc(50% + 26px);
   width: 160px;
   display: flex;
   flex-direction: column;
