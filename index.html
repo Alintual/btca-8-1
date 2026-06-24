@@ -265,7 +265,7 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line2 {
 }
 
 /* ===== Фразы 1/2 — БЛОК 2: PWA смартфон (rem, изолировано) ===== */
-body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .home__phrase {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase {
   position: absolute;
   margin: 0;
   color: #ffffff;
@@ -275,11 +275,11 @@ body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .hom
   white-space: pre-wrap;
 }
 
-body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .home__phrase--two span {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--two span {
   display: block;
 }
 
-body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .home__phrase--one {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--one {
   top: calc(80rem / 17);
   right: calc(50% - 26rem / 17);
   width: calc(190rem / 17);
@@ -288,7 +288,7 @@ body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .hom
   transform-origin: top right;
 }
 
-body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .home__phrase--two {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--two {
   top: calc(56rem / 17);
   left: calc(50% + 26rem / 17);
   width: calc(160rem / 17);
@@ -299,65 +299,114 @@ body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .hom
   transform-origin: bottom left;
 }
 
-body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .home__phrase2-line1 {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase2-line1 {
   text-align: right;
   white-space: pre;
 }
 
-body.btca-installed-mode:not(.btca-home-phrases-tablet) .home__tagline-slot .home__phrase2-line2 {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase2-line2 {
   align-self: stretch;
   text-align: left;
   white-space: pre;
 }
 
-/* ===== Фразы 1/2 — БЛОК 3: PWA планшет (em @ 15px в tagline-slot, изолировано) ===== */
-body.btca-installed-mode.btca-home-phrases-tablet:not(.btca-sim-iphone) .home__tagline-slot {
-  font-size: 15px;
+@media (max-width: 743px) {
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase {
+    position: absolute;
+    margin: 0;
+    color: #ffffff;
+    font-size: calc(17rem / 17);
+    font-weight: 500;
+    line-height: calc(22rem / 17);
+    white-space: pre-wrap;
+  }
+
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two span {
+    display: block;
+  }
+
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--one {
+    top: calc(80rem / 17);
+    right: calc(50% - 26rem / 17);
+    width: calc(190rem / 17);
+    text-align: left;
+    transform: rotate(45deg);
+    transform-origin: top right;
+  }
+
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two {
+    top: calc(56rem / 17);
+    left: calc(50% + 26rem / 17);
+    width: calc(160rem / 17);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    transform: translate(calc(-22rem / 17), calc(8rem / 17)) rotate(-45deg);
+    transform-origin: bottom left;
+  }
+
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase2-line1 {
+    text-align: right;
+    white-space: pre;
+  }
+
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase2-line2 {
+    align-self: stretch;
+    text-align: left;
+    white-space: pre;
+  }
 }
 
-body.btca-installed-mode.btca-home-phrases-tablet:not(.btca-sim-iphone) .home__tagline-slot .home__phrase {
-  position: absolute;
-  margin: 0;
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 400;
-  line-height: 1.3;
-  white-space: pre-wrap;
-}
+/* ===== Фразы 1/2 — БЛОК 3: PWA планшет (em @ 15px, min-width 744px, изолировано) ===== */
+@media (min-width: 744px) {
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot {
+    font-size: 15px;
+  }
 
-body.btca-installed-mode.btca-home-phrases-tablet:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two span {
-  display: block;
-}
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase {
+    position: absolute;
+    margin: 0;
+    color: #ffffff;
+    font-size: calc(21em / 15);
+    font-weight: 400;
+    line-height: 1.3;
+    white-space: pre-wrap;
+  }
 
-body.btca-installed-mode.btca-home-phrases-tablet:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--one {
-  top: calc(80em / 17);
-  right: calc(50% - 26em / 17);
-  width: calc(190em / 17);
-  text-align: left;
-  transform: rotate(45deg);
-  transform-origin: top right;
-}
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two span {
+    display: block;
+  }
 
-body.btca-installed-mode.btca-home-phrases-tablet:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two {
-  top: calc(56em / 17);
-  left: calc(50% + 26em / 17);
-  width: calc(160em / 17);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  transform: translate(calc(-22em / 17), calc(8em / 17)) rotate(-45deg);
-  transform-origin: bottom left;
-}
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--one {
+    top: calc(80em / 17);
+    right: calc(50% - 26em / 17);
+    width: calc(190em / 17);
+    text-align: left;
+    transform: rotate(45deg);
+    transform-origin: top right;
+  }
 
-body.btca-installed-mode.btca-home-phrases-tablet:not(.btca-sim-iphone) .home__tagline-slot .home__phrase2-line1 {
-  text-align: right;
-  white-space: pre;
-}
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two {
+    top: calc(56em / 17);
+    left: calc(50% + 26em / 17);
+    width: calc(160em / 17);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    transform: translate(calc(-22em / 17), calc(8em / 17)) rotate(-45deg);
+    transform-origin: bottom left;
+  }
 
-body.btca-installed-mode.btca-home-phrases-tablet:not(.btca-sim-iphone) .home__tagline-slot .home__phrase2-line2 {
-  align-self: stretch;
-  text-align: left;
-  white-space: pre;
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase2-line1 {
+    text-align: right;
+    white-space: pre;
+  }
+
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase2-line2 {
+    align-self: stretch;
+    text-align: left;
+    white-space: pre;
+  }
 }
 
 .btca-installed-mode .home__intro {
@@ -2698,8 +2747,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.81:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.81:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.82:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.82:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
