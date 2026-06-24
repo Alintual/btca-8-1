@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.86:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.86:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.87:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.87:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -832,6 +832,38 @@
     if (route === "about") renderAboutScreen();
   }
 
+  var PHRASE_ONE_TABLET_HTML =
+    '<span class="home__phrase1-line1">  Бильярдный</span>' +
+    '<span class="home__phrase1-line2"> Тренировочный</span>';
+
+  function ensurePhraseOneTabletMarkup() {
+    var slot = document.querySelector(".home__tagline-slot");
+    if (!slot) return;
+    var defaultPhrase = slot.querySelector(".home__phrase--one-default");
+    if (!defaultPhrase) {
+      var legacy = slot.querySelector(".home__phrase--one:not(.home__phrase--one-tablet)");
+      if (legacy) {
+        legacy.classList.add("home__phrase--one-default");
+        defaultPhrase = legacy;
+      }
+    }
+    var tablet = slot.querySelector(".home__phrase--one-tablet");
+    if (!tablet) {
+      tablet = document.createElement("p");
+      tablet.className = "home__phrase home__phrase--one home__phrase--one-tablet";
+      tablet.innerHTML = PHRASE_ONE_TABLET_HTML;
+      if (defaultPhrase && defaultPhrase.parentNode) {
+        defaultPhrase.parentNode.insertBefore(tablet, defaultPhrase.nextSibling);
+      } else {
+        slot.appendChild(tablet);
+      }
+      return;
+    }
+    if (!tablet.querySelector(".home__phrase1-line1")) {
+      tablet.innerHTML = PHRASE_ONE_TABLET_HTML;
+    }
+  }
+
   function renderInstalledHome() {
     var intro = document.querySelector(".home__intro");
     var menu = document.querySelector(".platform-menu");
@@ -857,6 +889,8 @@
     if (footer) {
       footer.innerHTML = "<span>BTCA-mobile v.8.1 © 2026 Alint&apos;s R.lab</span>";
     }
+    ensurePhraseOneTabletMarkup();
+    installedHomeSnapshot = "";
     ensureSimIphoneControl();
     syncPortraitMode();
   }
