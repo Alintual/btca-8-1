@@ -294,6 +294,7 @@
       el.style.right = "";
       el.style.transform = "";
       el.style.width = "";
+      el.style.transformOrigin = "";
     });
   }
 
@@ -311,7 +312,8 @@
     var layoutWidth = getEffectiveTypographyWidth();
     var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
     var nudgePx = Math.round(10 * bodyFont / IOS_TYPO_BASE_PX);
-    phraseOne.style.transform = "translate(" + nudgePx + "px, " + nudgePx + "px) rotate(45deg)";
+    phraseOne.style.transformOrigin = "top right";
+    phraseOne.style.transform = "rotate(45deg) translate(" + nudgePx + "px, 0)";
   }
 
   function resetLoadingHomePhraseLayout() {
