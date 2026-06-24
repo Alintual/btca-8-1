@@ -277,94 +277,6 @@ a {
   transform-origin: bottom left;
 }
 
-/* Планшет: блок hero как на смартфоне (15px + 390px), смартфон и загрузка без изменений. */
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__hero {
-  font-size: 15px;
-  height: calc(424em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__hero-block {
-  width: min(calc(520em / 17), 100%);
-  max-width: 390px;
-  margin-inline: auto;
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo {
-  width: calc(132em / 17);
-  height: calc(132em / 17);
-  margin: 0 auto calc(14em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo-pyramid span {
-  width: calc(16em / 17);
-  height: calc(16em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo-pyramid span:nth-child(1) {
-  left: calc(50% - 25em / 17);
-  top: calc(182em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo-pyramid span:nth-child(2) {
-  left: calc(50% - 8em / 17);
-  top: calc(182em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo-pyramid span:nth-child(3) {
-  left: calc(50% + 9em / 17);
-  top: calc(182em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo-pyramid span:nth-child(4) {
-  left: calc(50% - 16.5em / 17);
-  top: calc(197em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo-pyramid span:nth-child(5) {
-  left: calc(50% + 0.5em / 17);
-  top: calc(197em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__logo-pyramid span:nth-child(6) {
-  left: calc(50% - 8em / 17);
-  top: calc(212em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-outer {
-  margin-top: calc(10em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot {
-  min-height: calc(280em / 17);
-  padding-top: calc(28em / 17);
-  padding-bottom: calc(40em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__phrase {
-  font-size: calc(17em / 17);
-  line-height: calc(22em / 17);
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__phrase--one {
-  top: calc(80em / 17);
-  right: calc(50% - 26em / 17);
-  width: calc(190em / 17);
-  text-align: left;
-  transform: rotate(45deg);
-  transform-origin: top right;
-}
-
-body.btca-tablet-layout.btca-installed-mode:not(.btca-sim-iphone) .home__phrase--two {
-  top: calc(56em / 17);
-  left: calc(50% + 26em / 17);
-  width: calc(160em / 17);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  transform: translate(calc(-22em / 17), calc(8em / 17)) rotate(-45deg);
-  transform-origin: bottom left;
-}
-
 .btca-installed-mode .home__intro {
   margin-top: calc(-162rem / 17);
 }
@@ -2714,8 +2626,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.75:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.75:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.76:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.76:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3014,18 +2926,9 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     resetHomePhraseInlineLayout();
   }
 
-  function updateTabletHomeLayoutClass() {
-    var layoutWidth = getEffectiveTypographyWidth();
-    var isTablet =
-      layoutWidth >= IOS_TYPO_TABLET_REF &&
-      !document.body.classList.contains("btca-sim-iphone");
-    document.body.classList.toggle("btca-tablet-layout", isTablet);
-  }
-
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
-      document.body.classList.remove("btca-tablet-layout");
       return;
     }
     resetHomePhraseInlineLayout();
@@ -3039,7 +2942,6 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
     document.documentElement.style.removeProperty("--btca-layout-min");
     document.documentElement.style.removeProperty("--btca-layout-actual");
     document.documentElement.style.removeProperty("--btca-body-font");
-    document.body.classList.remove("btca-tablet-layout");
     resetLoadingHomePhraseLayout();
   }
 

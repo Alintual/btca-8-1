@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.75:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.75:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.76:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.76:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -302,18 +302,9 @@
     resetHomePhraseInlineLayout();
   }
 
-  function updateTabletHomeLayoutClass() {
-    var layoutWidth = getEffectiveTypographyWidth();
-    var isTablet =
-      layoutWidth >= IOS_TYPO_TABLET_REF &&
-      !document.body.classList.contains("btca-sim-iphone");
-    document.body.classList.toggle("btca-tablet-layout", isTablet);
-  }
-
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
-      document.body.classList.remove("btca-tablet-layout");
       return;
     }
     resetHomePhraseInlineLayout();
@@ -327,7 +318,6 @@
     document.documentElement.style.removeProperty("--btca-layout-min");
     document.documentElement.style.removeProperty("--btca-layout-actual");
     document.documentElement.style.removeProperty("--btca-body-font");
-    document.body.classList.remove("btca-tablet-layout");
     resetLoadingHomePhraseLayout();
   }
 
