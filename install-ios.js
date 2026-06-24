@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.71:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.71:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.72:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.72:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -302,41 +302,21 @@
     resetHomePhraseInlineLayout();
   }
 
-  var PHRASE_2_LINE2_TEXT = "            Абриколь";
-
-  function resetPhrase2Line2Text() {
-    var line2 = document.querySelector(".home__phrase2-line2");
-    if (line2) line2.textContent = PHRASE_2_LINE2_TEXT;
-  }
-
-  function syncPhrase2Line2TabletSpace() {
-    var line2 = document.querySelector(".home__phrase2-line2");
-    if (!line2) return;
-    var useTabletSpace =
-      document.body.classList.contains("btca-tablet-layout") &&
-      document.body.classList.contains("btca-installed-mode") &&
-      !document.body.classList.contains("btca-sim-iphone");
-    line2.textContent = useTabletSpace ? "   " + PHRASE_2_LINE2_TEXT : PHRASE_2_LINE2_TEXT;
-  }
-
   function updateTabletHomeLayoutClass() {
     var layoutWidth = getEffectiveTypographyWidth();
     var isTablet =
       layoutWidth >= IOS_TYPO_TABLET_REF &&
       !document.body.classList.contains("btca-sim-iphone");
     document.body.classList.toggle("btca-tablet-layout", isTablet);
-    syncPhrase2Line2TabletSpace();
   }
 
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
-      resetPhrase2Line2Text();
       document.body.classList.remove("btca-tablet-layout");
       return;
     }
     resetHomePhraseInlineLayout();
-    syncPhrase2Line2TabletSpace();
   }
 
   function clearComfortTypography() {
