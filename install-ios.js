@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.88:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.88:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.89:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.89:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -838,7 +838,7 @@
 
   var PHRASE_TWO_TABLET_HTML =
     '<span class="home__phrase2-line1">Комплекс</span>' +
-    '<span class="home__phrase2-line2">             Абриколь</span>';
+    '<span class="home__phrase2-line2">              Абриколь</span>';
 
   function ensurePhraseTwoTabletMarkup() {
     var slot = document.querySelector(".home__tagline-slot");
@@ -864,7 +864,7 @@
       return;
     }
     var line2 = tablet.querySelector(".home__phrase2-line2");
-    if (!line2 || line2.textContent.indexOf("Абриколь") < 0) {
+    if (!line2 || line2.textContent !== "              Абриколь") {
       tablet.innerHTML = PHRASE_TWO_TABLET_HTML;
     }
   }
