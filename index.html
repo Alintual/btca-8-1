@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.93" />
+    <meta name="btca-cache-version" content="btca-web-8.1.94" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -276,6 +276,11 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line2 {
 }
 
 /* ===== Фразы 1/2 — БЛОК 2: PWA смартфон (rem, изолировано) ===== */
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--one-tablet,
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--two-tablet {
+  display: none;
+}
+
 body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase {
   position: absolute;
   margin: 0;
@@ -290,7 +295,7 @@ body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--two 
   display: block;
 }
 
-body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--one {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--one:not(.home__phrase--one-tablet) {
   top: calc(80rem / 17);
   right: calc(50% - 26rem / 17);
   width: calc(190rem / 17);
@@ -299,7 +304,7 @@ body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--one 
   transform-origin: top right;
 }
 
-body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--two {
+body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase--two:not(.home__phrase--two-tablet) {
   top: calc(56rem / 17);
   left: calc(50% + 26rem / 17);
   width: calc(160rem / 17);
@@ -322,6 +327,11 @@ body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase2-line
 }
 
 @media (max-width: 743px) {
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--one-tablet,
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two-tablet {
+    display: none;
+  }
+
   body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase {
     position: absolute;
     margin: 0;
@@ -336,7 +346,7 @@ body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase2-line
     display: block;
   }
 
-  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--one {
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--one:not(.home__phrase--one-tablet) {
     top: calc(80rem / 17);
     right: calc(50% - 26rem / 17);
     width: calc(190rem / 17);
@@ -345,7 +355,7 @@ body.btca-installed-mode.btca-sim-iphone .home__tagline-slot .home__phrase2-line
     transform-origin: top right;
   }
 
-  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two {
+  body.btca-installed-mode:not(.btca-sim-iphone) .home__tagline-slot .home__phrase--two:not(.home__phrase--two-tablet) {
     top: calc(56rem / 17);
     left: calc(50% + 26rem / 17);
     width: calc(160rem / 17);
@@ -2775,8 +2785,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.93:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.93:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.94:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.94:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
