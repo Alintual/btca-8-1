@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.70:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.70:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.71:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.71:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -316,7 +316,7 @@
       document.body.classList.contains("btca-tablet-layout") &&
       document.body.classList.contains("btca-installed-mode") &&
       !document.body.classList.contains("btca-sim-iphone");
-    line2.textContent = useTabletSpace ? " " + PHRASE_2_LINE2_TEXT : PHRASE_2_LINE2_TEXT;
+    line2.textContent = useTabletSpace ? "   " + PHRASE_2_LINE2_TEXT : PHRASE_2_LINE2_TEXT;
   }
 
   function updateTabletHomeLayoutClass() {
