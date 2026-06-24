@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.85:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.85:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.86:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.86:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -297,23 +297,6 @@
     });
   }
 
-  var PHRASE_ONE_TEXT_BASE = " Бильярдный\nТренировочный";
-  var PHRASE_ONE_TEXT_TABLET = "  Бильярдный\n Тренировочный";
-
-  function isTabletHomePhrasesMode() {
-    if (!document.body.classList.contains("btca-installed-mode")) return false;
-    if (document.body.classList.contains("btca-sim-iphone")) return false;
-    return window.matchMedia("(min-width: 744px)").matches;
-  }
-
-  function syncPhraseOneTabletSpacing() {
-    var phraseOne = document.querySelector(".home__tagline-slot .home__phrase--one");
-    if (!phraseOne) return;
-    phraseOne.textContent = isTabletHomePhrasesMode()
-      ? PHRASE_ONE_TEXT_TABLET
-      : PHRASE_ONE_TEXT_BASE;
-  }
-
   function resetLoadingHomePhraseLayout() {
     if (!isBrowserLoadingHomePage()) return;
     resetHomePhraseInlineLayout();
@@ -333,11 +316,9 @@
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
-      syncPhraseOneTabletSpacing();
       return;
     }
     resetHomePhraseInlineLayout();
-    syncPhraseOneTabletSpacing();
   }
 
   function clearComfortTypography() {
