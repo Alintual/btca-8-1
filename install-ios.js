@@ -294,26 +294,24 @@
       el.style.right = "";
       el.style.transform = "";
       el.style.width = "";
-      el.style.transformOrigin = "";
     });
   }
+
+  var PHRASE_ONE_TEXT_BASE = " Бильярдный\nТренировочный";
+  var PHRASE_ONE_TEXT_TABLET = "  Бильярдный\n Тренировочный";
 
   function isTabletHomePhrasesMode() {
     if (!document.body.classList.contains("btca-installed-mode")) return false;
     if (document.body.classList.contains("btca-sim-iphone")) return false;
-    if (!window.matchMedia("(min-width: 744px)").matches) return false;
-    return getEffectiveTypographyWidth() >= IOS_TYPO_TABLET_REF;
+    return window.matchMedia("(min-width: 744px)").matches;
   }
 
-  function applyTabletPhraseOneNudge() {
-    if (!isTabletHomePhrasesMode()) return;
+  function syncPhraseOneTabletSpacing() {
     var phraseOne = document.querySelector(".home__tagline-slot .home__phrase--one");
     if (!phraseOne) return;
-    var layoutWidth = getEffectiveTypographyWidth();
-    var bodyFont = Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
-    var nudgePx = Math.round(10 * bodyFont / IOS_TYPO_BASE_PX);
-    phraseOne.style.transformOrigin = "top right";
-    phraseOne.style.transform = "rotate(45deg) translate(" + nudgePx + "px, 0)";
+    phraseOne.textContent = isTabletHomePhrasesMode()
+      ? PHRASE_ONE_TEXT_TABLET
+      : PHRASE_ONE_TEXT_BASE;
   }
 
   function resetLoadingHomePhraseLayout() {
@@ -335,10 +333,11 @@
   function syncHomeTaglineLayout() {
     if (!document.body.classList.contains("btca-installed-mode")) {
       resetLoadingHomePhraseLayout();
+      syncPhraseOneTabletSpacing();
       return;
     }
     resetHomePhraseInlineLayout();
-    applyTabletPhraseOneNudge();
+    syncPhraseOneTabletSpacing();
   }
 
   function clearComfortTypography() {
