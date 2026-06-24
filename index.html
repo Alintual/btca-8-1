@@ -905,29 +905,35 @@ body.btca-boot-mode #root {
   --btca-l1-gutter: max(1.1vmin, 4px);
   --btca-l1-font: clamp(calc(14rem / 17), 2.2vmin, 1rem);
   --btca-l1-lh: clamp(calc(20rem / 17), 3.4vmin, calc(26rem / 17));
-  --btca-l1-field-h: max(5vmin, calc(40rem / 17));
-  --btca-l1-trailing-w: max(28vmin, calc(112rem / 17));
+  --btca-l1-baza-icon-h: calc(20rem / 17);
+  --btca-l1-field-h: calc(40rem / 17);
+  --btca-l1-chrome-btn-h: calc(40rem / 17);
+  --btca-l1-chrome-btn-shift-x: calc(-10rem / 17);
+  --btca-l1-chrome-btn-shift-y: calc(9rem / 17);
+  --btca-l1-trailing-w: calc(112rem / 17);
   --btca-l1-primary-max: 72%;
   --btca-l1-section-w: min(81vw, calc(324rem / 17));
-  --btca-l1-save-icon: max(4.3vmin, calc(34rem / 17));
-  --btca-l1-arrow: max(4vmin, calc(32rem / 17));
-  --btca-l1-table-row: max(5vmin, calc(40rem / 17));
-  --btca-l1-picker-row: max(6.25vmin, calc(50rem / 17));
-  --btca-l1-picker-polez: max(8.75vmin, calc(70rem / 17));
+  --btca-l1-arrow: calc(32rem / 17);
+  --btca-l1-table-row: calc(40rem / 17);
+  --btca-l1-picker-row: calc(50rem / 17);
+  --btca-l1-picker-polez: calc(70rem / 17);
   --btca-l1-radius: var(--btca-r-md, 12px);
 }
 
 body.btca-apple-comfort .btca-level1-screen {
   --btca-l1-font: 1rem;
   --btca-l1-lh: calc(26rem / 17);
-  --btca-l1-field-h: max(calc(40rem / 17), 5vmin);
-  --btca-l1-trailing-w: max(calc(112rem / 17), 28vmin);
+  --btca-l1-baza-icon-h: calc(20rem / 17);
+  --btca-l1-field-h: calc(40rem / 17);
+  --btca-l1-chrome-btn-h: calc(40rem / 17);
+  --btca-l1-chrome-btn-shift-x: calc(-10rem / 17);
+  --btca-l1-chrome-btn-shift-y: calc(9rem / 17);
+  --btca-l1-trailing-w: calc(112rem / 17);
   --btca-l1-section-w: min(81vw, calc(324rem / 17));
-  --btca-l1-save-icon: max(calc(34rem / 17), 4.3vmin);
-  --btca-l1-arrow: max(calc(32rem / 17), 4vmin);
-  --btca-l1-table-row: max(calc(40rem / 17), 5vmin);
-  --btca-l1-picker-row: max(calc(50rem / 17), 6.25vmin);
-  --btca-l1-picker-polez: max(calc(70rem / 17), 8.75vmin);
+  --btca-l1-arrow: calc(32rem / 17);
+  --btca-l1-table-row: calc(40rem / 17);
+  --btca-l1-picker-row: calc(50rem / 17);
+  --btca-l1-picker-polez: calc(70rem / 17);
   --btca-l1-radius: var(--btca-r-md);
 }
 
@@ -1087,7 +1093,7 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 .btca-level1-titlebar__baza-icon {
   flex-shrink: 0;
   width: auto;
-  height: calc(20rem / 17);
+  height: var(--btca-l1-baza-icon-h);
   margin-top: 3px;
 }
 
@@ -1202,15 +1208,36 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 .btca-l1-trailing-wrap {
   flex-shrink: 0;
   display: flex;
-  justify-content: center;
-}
-
-.btca-l1-trailing-slot {
-  flex-shrink: 0;
-  display: flex;
   width: var(--btca-l1-trailing-w);
   justify-content: center;
+  align-items: flex-end;
+}
+
+.btca-l1-save {
+  display: inline-flex;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--btca-l1-chrome-btn-h);
+  height: var(--btca-l1-chrome-btn-h);
   align-items: center;
+  justify-content: center;
+  gap: calc(4rem / 17);
+  padding: 0 calc(4rem / 17);
+  border: 1px solid rgba(17, 24, 39, 0.18);
+  border-radius: var(--btca-l1-radius);
+  color: #000000;
+  background: #d0e0e3;
+  font-size: var(--btca-l1-font);
+  font-weight: 600;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.btca-l1-save__icon {
+  flex-shrink: 0;
+  width: auto;
+  height: var(--btca-l1-baza-icon-h);
 }
 
 .btca-l1-tab {
@@ -1445,34 +1472,13 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   opacity: 0.55;
 }
 
-.btca-l1-save {
-  display: inline-flex;
-  min-height: var(--btca-l1-field-h);
-  align-items: center;
-  gap: 4px;
-  padding: 0 4px;
-  border: 1px solid rgba(17, 24, 39, 0.18);
-  border-radius: var(--btca-l1-radius);
-  color: #000000;
-  background: #d0e0e3;
-  font-size: var(--btca-l1-font);
-  font-weight: 600;
-  line-height: var(--btca-l1-lh);
-  touch-action: manipulation;
-}
-
-.btca-l1-save__icon {
-  flex-shrink: 0;
-  width: var(--btca-l1-save-icon);
-  height: var(--btca-l1-save-icon);
-}
-
 .btca-l1-save__icon--disabled {
   opacity: 0.55;
 }
 
 .btca-l1-save__label {
-  margin-left: -4px;
+  margin-left: calc(-4rem / 17);
+  white-space: nowrap;
 }
 
 .btca-l1-save__label--disabled {
@@ -1482,6 +1488,14 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 .btca-l1-save--disabled {
   border-color: rgba(17, 24, 39, 0.12);
   background: #e2ecee;
+}
+
+.btca-l1-trailing-slot {
+  flex-shrink: 0;
+  display: flex;
+  width: var(--btca-l1-trailing-w);
+  justify-content: center;
+  align-items: center;
 }
 
 .btca-l1-exercise-row {
@@ -1748,26 +1762,28 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   position: relative;
   z-index: 1;
   display: inline-flex;
-  height: 40px;
-  min-height: 40px;
+  box-sizing: border-box;
+  height: var(--btca-l1-chrome-btn-h);
+  min-height: var(--btca-l1-chrome-btn-h);
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 0 12px;
+  gap: calc(5rem / 17);
+  padding: 0 calc(12rem / 17);
   border: 1px solid rgba(17, 24, 39, 0.18);
-  border-radius: 10px 10px 0 0;
+  border-radius: calc(10rem / 17) calc(10rem / 17) 0 0;
   color: #000000;
   background: #d0e0e3;
-  font-size: 1rem;
+  font-size: var(--btca-l1-font);
   font-weight: 600;
-  line-height: calc(26rem / 17);
-  transform: translate(-10px, 9px);
+  line-height: 1;
+  transform: translate(var(--btca-l1-chrome-btn-shift-x), var(--btca-l1-chrome-btn-shift-y));
   touch-action: manipulation;
+  white-space: nowrap;
 }
 
 .btca-l1-pick__icon {
-  font-size: calc(20rem / 17);
-  line-height: calc(22rem / 17);
+  font-size: var(--btca-l1-baza-icon-h);
+  line-height: 1;
 }
 
 .btca-l1-pick--consumed {
@@ -2518,8 +2534,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.52:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.52:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.53:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.53:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
