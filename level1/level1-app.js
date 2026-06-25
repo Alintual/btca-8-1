@@ -565,29 +565,37 @@
     });
   }
 
-  function openDateInput(currentIso, onPick) {
+  function openDateInput(currentIso, onPick, title) {
     var input = document.createElement("input");
     input.type = "date";
     input.value = String(currentIso || "").trim();
     input.className = "btca-l1-date-native-hidden";
-    input.setAttribute("aria-hidden", "true");
+    input.setAttribute("aria-label", title || "Выбор даты");
     document.body.appendChild(input);
     var done = false;
     function finish(value) {
       if (done) return;
       done = true;
+      input.removeEventListener("change", onChange);
+      input.removeEventListener("cancel", onCancel);
       if (input.parentNode) input.parentNode.removeChild(input);
       if (value) onPick(value);
     }
-    input.addEventListener("change", function () { finish(input.value); });
-    input.addEventListener("cancel", function () { finish(""); });
+    function onChange() { finish(input.value); }
+    function onCancel() { finish(""); }
+    input.addEventListener("change", onChange);
+    input.addEventListener("cancel", onCancel);
     window.setTimeout(function () {
       if (done) return;
       if (input.parentNode) input.parentNode.removeChild(input);
       done = true;
-    }, 60000);
+    }, 120000);
+    input.focus({ preventScroll: true });
     if (typeof input.showPicker === "function") {
-      try { input.showPicker(); return; } catch (_) {}
+      try {
+        input.showPicker();
+        return;
+      } catch (_) {}
     }
     input.click();
   }

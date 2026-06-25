@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.97" />
+    <meta name="btca-cache-version" content="btca-web-8.1.98" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1162,6 +1162,10 @@ body.btca-boot-mode #root {
 
 body.btca-apple-comfort .btca-level1-screen {
   --btca-l1-gutter: calc(4rem / 17);
+  --btca-l1-baza-inner: calc(
+    var(--btca-layout-min) - 2 * var(--btca-l1-gutter) -
+    env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+  );
   --btca-l1-font: 1rem;
   --btca-l1-lh: calc(26rem / 17);
   --btca-l1-baza-icon-h: calc(20rem / 17);
@@ -1446,6 +1450,12 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   max-width: none;
 }
 
+.btca-l1-baza-fields-row .btca-l1-exercise-col {
+  flex: 0 0 calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  max-width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+}
+
 .btca-l1-trailing-wrap {
   flex-shrink: 0;
   display: flex;
@@ -1576,6 +1586,30 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   flex-shrink: 0;
 }
 
+.btca-l1-baza-labels-row > .btca-l1-field-label:first-child {
+  flex: 0 0 calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  max-width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  min-width: 0;
+}
+
+.btca-l1-baza-labels-row .btca-l1-task-label-col,
+.btca-l1-baza-fields-row .btca-l1-task-field-col {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.btca-l1-baza-chart-header .btca-l1-chart-arrow-slot {
+  width: calc(0.25 * var(--btca-l1-baza-inner, 25vw));
+  min-width: calc(0.25 * var(--btca-l1-baza-inner, 25vw));
+}
+
+.btca-l1-baza-chart-header .btca-l1-baza-chart-title {
+  padding-right: calc(0.25 * var(--btca-l1-baza-inner, 25vw) + 8px);
+}
+
 .btca-l1-baza-chart-header {
   position: relative;
   display: flex;
@@ -1587,7 +1621,6 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 
 .btca-l1-baza-chart-title {
   width: 100%;
-  padding-right: calc(var(--btca-l1-trailing-w) + 8px);
   color: rgba(255, 255, 255, 0.95);
   font-size: var(--btca-l1-font);
   line-height: var(--btca-l1-lh);
@@ -2230,11 +2263,15 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 
 .btca-l1-date-native-hidden {
   position: fixed;
-  left: -9999px;
+  top: 0;
+  left: 0;
+  z-index: 2147483647;
   width: 1px;
   height: 1px;
-  opacity: 0;
-  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0.01;
 }
 
 .btca-l1-picker-done {
@@ -2778,8 +2815,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.97:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.97:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.98:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.98:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
