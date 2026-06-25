@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.52";
+  var VERSION = "8.1.53";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -11,6 +11,7 @@
   var POLEZ_ALL = "all";
     var PICK_DELAY_MS = 1500;
   var PICKER_ROW_SIMPLE = 50;
+  var PICKER_ROW_GROUP = 40;
   var PICKER_ROW_POLEZ = 70;
   var PICKER_LIST_PAD = 4;
   var SCREEN_EDGE_GUTTER = 4;
@@ -248,9 +249,11 @@
       bySection[sec].push({ value: it.value, label: it.label });
     });
     var secOrder = NAV_TRAINING_KIND_ORDER.filter(function (s) { return bySection[s]; });
-    Object.keys(bySection).forEach(function (s) {
-      if (secOrder.indexOf(s) < 0) secOrder.push(s);
+    var extraSections = Object.keys(bySection).filter(function (s) {
+      return NAV_TRAINING_KIND_ORDER.indexOf(s) < 0;
     });
+    extraSections.sort(function (a, b) { return a.localeCompare(b, "ru"); });
+    extraSections.forEach(function (s) { secOrder.push(s); });
     var grouped = [];
     secOrder.forEach(function (sec) {
       grouped.push({ value: "__group:" + sec, label: sec, groupHeader: true });
@@ -525,13 +528,29 @@
     };
   }
 
+  function pickerOptionRowHeight(opt, rowHeight) {
+    if (opt && opt.groupHeader) return PICKER_ROW_GROUP;
+    return rowHeight || PICKER_ROW_SIMPLE;
+  }
+
+  function indexInPickerOptions(options, currentValue) {
+    var v = String(currentValue || "").trim();
+    if (!v) return -1;
+    var i;
+    for (i = 0; i < options.length; i += 1) {
+      if (!options[i].groupHeader && options[i].value === v) return i;
+    }
+    return -1;
+  }
+
   function pickerScrollOffset(options, index, viewportHeight, rowHeight) {
     if (index < 0 || index >= options.length || viewportHeight <= 0) return 0;
     var offset = PICKER_LIST_PAD;
     var i;
-    for (i = 0; i < index; i += 1) offset += rowHeight;
-    var length = rowHeight;
-    var contentHeight = PICKER_LIST_PAD * 2 + options.length * rowHeight;
+    for (i = 0; i < index; i += 1) offset += pickerOptionRowHeight(options[i], rowHeight);
+    var length = pickerOptionRowHeight(options[index], rowHeight);
+    var contentHeight = PICKER_LIST_PAD * 2;
+    for (i = 0; i < options.length; i += 1) contentHeight += pickerOptionRowHeight(options[i], rowHeight);
     var maxScroll = Math.max(0, contentHeight - viewportHeight);
     var centered = offset - (viewportHeight - length) / 2;
     return Math.min(maxScroll, Math.max(0, centered));
@@ -539,11 +558,7 @@
 
   function scrollPickerToActive(listEl, options, currentValue, rowHeight) {
     if (!listEl) return;
-    var index = -1;
-    var i;
-    for (i = 0; i < options.length; i += 1) {
-      if (options[i].value === currentValue) { index = i; break; }
-    }
+    var index = indexInPickerOptions(options, currentValue);
     if (index < 0) return;
     var run = function () {
       listEl.scrollTop = pickerScrollOffset(options, index, listEl.clientHeight, rowHeight);
@@ -662,7 +677,10 @@
       '<div class="btca-level1-picker__list" data-btca-picker-list>' +
       options.map(function (opt) {
         if (opt.groupHeader) {
-          return '<div class="btca-level1-picker__group">' + escapeHtml(opt.label) + "</div>";
+          var groupClass = "btca-level1-picker__group";
+          if (opt.sectionHeader) groupClass += " btca-level1-picker__group--section";
+          if (opt.disabledHeader) groupClass += " btca-level1-picker__group--disabled";
+          return '<div class="' + groupClass + '">' + escapeHtml(opt.label) + "</div>";
         }
         var active = opt.value === current;
         return '<button type="button" class="btca-level1-picker__item' + itemExtraClass +
@@ -1863,7 +1881,11 @@
         };
       });
       if (!state.data.exercises.some(function (it) { return it.value === "Тест1"; })) {
-        state.data.exercises.push({ value: "Тест1", label: "Тест1" });
+        state.data.exercises.push({
+          value: "Тест1",
+          label: "Тест1",
+          section: exerciseSectionNameL2("Тест1"),
+        });
       }
       state.data.polezCatalog = parts[1];
       state.data.polezLinks = parts[2];
