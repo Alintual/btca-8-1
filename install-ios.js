@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.98:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.98:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.99:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.99:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -470,6 +470,118 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  var DATE_PICKER_MONTHS = [
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+  ];
+  var DATE_PICKER_WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+  function dateIsoParts(iso) {
+    var match = String(iso || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    return { y: Number(match[1]), m: Number(match[2]), d: Number(match[3]) };
+  }
+
+  function dateIsoFromParts(y, m, d) {
+    return String(y) + "-" + (m < 10 ? "0" : "") + m + "-" + (d < 10 ? "0" : "") + d;
+  }
+
+  function openCenteredDatePicker(currentIso, onPick, title) {
+    var existing = document.getElementById("btca-date-picker-layer");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    var today = new Date();
+    var todayIso = dateIsoFromParts(today.getFullYear(), today.getMonth() + 1, today.getDate());
+    var selected = dateIsoParts(currentIso) || dateIsoParts(todayIso);
+    var viewYear = selected.y;
+    var viewMonth = selected.m;
+    var selectedIso = dateIsoFromParts(selected.y, selected.m, selected.d);
+
+    var layer = document.createElement("div");
+    layer.id = "btca-date-picker-layer";
+    layer.className = "btca-date-picker-layer";
+    layer.setAttribute("role", "dialog");
+    layer.setAttribute("aria-modal", "true");
+    layer.setAttribute("aria-label", title || "Выбор даты");
+    layer.innerHTML =
+      '<button type="button" class="btca-date-picker-layer__backdrop" data-btca-date-close aria-label="Закрыть"></button>' +
+      '<div class="btca-date-picker-panel">' +
+      '<div class="btca-date-picker-panel__title">' + escapeHtml(title || "Дата") + "</div>" +
+      '<div class="btca-date-picker-panel__nav">' +
+      '<button type="button" class="btca-date-picker-panel__nav-btn" data-btca-date-prev aria-label="Предыдущий месяц">‹</button>' +
+      '<div class="btca-date-picker-panel__month" data-btca-date-month></div>' +
+      '<button type="button" class="btca-date-picker-panel__nav-btn" data-btca-date-next aria-label="Следующий месяц">›</button>' +
+      "</div>" +
+      '<div class="btca-date-picker-panel__week" aria-hidden="true">' +
+      DATE_PICKER_WEEKDAYS.map(function (day) { return "<span>" + day + "</span>"; }).join("") +
+      "</div>" +
+      '<div class="btca-date-picker-panel__grid" data-btca-date-grid></div>' +
+      '<button type="button" class="btca-l1-picker-done btca-date-picker-panel__done" data-btca-date-done>Готово</button>' +
+      "</div>";
+    document.body.appendChild(layer);
+
+    var monthEl = layer.querySelector("[data-btca-date-month]");
+    var gridEl = layer.querySelector("[data-btca-date-grid]");
+    var closed = false;
+
+    function close() {
+      if (closed) return;
+      closed = true;
+      if (layer.parentNode) layer.parentNode.removeChild(layer);
+    }
+
+    function confirm() {
+      close();
+      if (selectedIso) onPick(selectedIso);
+    }
+
+    function renderMonth() {
+      monthEl.textContent = DATE_PICKER_MONTHS[viewMonth - 1] + " " + viewYear;
+      var first = new Date(viewYear, viewMonth - 1, 1);
+      var offset = (first.getDay() + 6) % 7;
+      var daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+      var cells = [];
+      var i;
+      for (i = 0; i < offset; i += 1) {
+        cells.push('<span class="btca-date-picker-day btca-date-picker-day--empty"></span>');
+      }
+      for (i = 1; i <= daysInMonth; i += 1) {
+        var iso = dateIsoFromParts(viewYear, viewMonth, i);
+        var cls = "btca-date-picker-day";
+        if (iso === selectedIso) cls += " btca-date-picker-day--selected";
+        if (iso === todayIso) cls += " btca-date-picker-day--today";
+        cells.push('<button type="button" class="' + cls + '" data-btca-date-day="' + iso + '">' + i + "</button>");
+      }
+      gridEl.innerHTML = cells.join("");
+      gridEl.querySelectorAll("[data-btca-date-day]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          selectedIso = btn.getAttribute("data-btca-date-day");
+          renderMonth();
+        });
+      });
+    }
+
+    layer.querySelector("[data-btca-date-prev]").addEventListener("click", function () {
+      viewMonth -= 1;
+      if (viewMonth < 1) {
+        viewMonth = 12;
+        viewYear -= 1;
+      }
+      renderMonth();
+    });
+    layer.querySelector("[data-btca-date-next]").addEventListener("click", function () {
+      viewMonth += 1;
+      if (viewMonth > 12) {
+        viewMonth = 1;
+        viewYear += 1;
+      }
+      renderMonth();
+    });
+    layer.querySelector("[data-btca-date-close]").addEventListener("click", close);
+    layer.querySelector("[data-btca-date-done]").addEventListener("click", confirm);
+    renderMonth();
   }
 
   function renderRichText(value) {
@@ -1276,6 +1388,7 @@
   function init() {
     var els = getEls();
     window.__BTCA_IOS_INSTALLER_READY__ = true;
+    window.__BTCA_OPEN_DATE_INPUT__ = openCenteredDatePicker;
     clearStaleClientState();
     purgeObsoleteInstallCaches();
     ensureFreshShellAfterDeploy();
