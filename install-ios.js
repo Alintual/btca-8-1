@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.96:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.96:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.97:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.97:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -227,8 +227,8 @@
     document.body.classList.toggle("btca-desktop-browser", isDesktopBrowser());
   }
 
-  function clearForcedPortraitLayout() {
-    document.body.classList.remove("btca-force-portrait");
+  function clearLandscapeWindowLayout() {
+    document.body.classList.remove("btca-landscape-mode", "btca-force-portrait");
     var root = document.getElementById("root");
     if (!root) return;
     root.style.top = "";
@@ -236,45 +236,27 @@
     root.style.transform = "";
   }
 
-  function updateForcedPortraitLayout() {
+  function updateLandscapeWindowLayout() {
     if (!shouldForcePortraitLayout()) {
-      clearForcedPortraitLayout();
+      clearLandscapeWindowLayout();
       return;
     }
 
-    var root = document.getElementById("root");
     var viewport = window.visualViewport;
     var width = Math.round((viewport && viewport.width) || window.innerWidth || document.documentElement.clientWidth || 0);
     var height = Math.round((viewport && viewport.height) || window.innerHeight || document.documentElement.clientHeight || 0);
-    if (!root || !width || !height) return;
+    if (!width || !height) return;
 
     document.documentElement.style.setProperty("--btca-viewport-width", width + "px");
     document.documentElement.style.setProperty("--btca-viewport-height", height + "px");
-    var isLandscape = width > height;
-    document.body.classList.toggle("btca-force-portrait", isLandscape);
-    if (!isLandscape || document.body.classList.contains("btca-allow-landscape")) {
-      root.style.top = "";
-      root.style.left = "";
-      root.style.transform = "";
-      return;
-    }
+    document.body.classList.toggle("btca-landscape-mode", width > height);
+    document.body.classList.remove("btca-force-portrait");
 
-    var angle = 0;
-    if (typeof window.orientation === "number") {
-      angle = window.orientation;
-    } else if (screen && screen.orientation && typeof screen.orientation.angle === "number") {
-      angle = screen.orientation.angle;
-    }
-    var normalizedAngle = ((angle % 360) + 360) % 360;
-    if (normalizedAngle === 270) {
-      root.style.top = "0px";
-      root.style.left = width + "px";
-      root.style.transform = "rotate(90deg)";
-    } else {
-      root.style.top = height + "px";
-      root.style.left = "0px";
-      root.style.transform = "rotate(-90deg)";
-    }
+    var root = document.getElementById("root");
+    if (!root) return;
+    root.style.top = "";
+    root.style.left = "";
+    root.style.transform = "";
   }
 
   function getTypographyLayoutWidth() {
@@ -459,15 +441,15 @@
   function syncPortraitMode() {
     applyBrowserLayoutMode();
     updateComfortTypography();
-    updateForcedPortraitLayout();
+    updateLandscapeWindowLayout();
     window.setTimeout(function () {
       updateComfortTypography();
-      updateForcedPortraitLayout();
+      updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
     }, 80);
     window.setTimeout(function () {
       updateComfortTypography();
-      updateForcedPortraitLayout();
+      updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
     }, 260);
   }
