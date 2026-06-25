@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.102:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.102:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.103:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.103:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -107,6 +107,40 @@
     return MEDIA_CACHE.split(":")[0];
   }
 
+  function readMetaCacheVersion() {
+    var meta = document.querySelector('meta[name="btca-cache-version"]');
+    return meta ? String(meta.getAttribute("content") || "").trim() : "";
+  }
+
+  function readPreparedModuleVersions(state) {
+    if (!state) return { level1: "", level2: "" };
+    return {
+      level1: String(state.level1ModuleVersion || ""),
+      level2: String(state.level2ModuleVersion || ""),
+    };
+  }
+
+  function isPreparedStateCurrent(state) {
+    if (!state || state.cacheGeneration !== getCacheGeneration()) return false;
+    var modules = readPreparedModuleVersions(state);
+    if (modules.level1 !== LEVEL1_MODULE_VERSION) return false;
+    if (modules.level2 !== LEVEL2_MODULE_VERSION) return false;
+    return true;
+  }
+
+  function invalidatePreparedClientState() {
+    try {
+      localStorage.removeItem(APP_READY_KEY);
+      localStorage.removeItem(MEDIA_STATE_KEY);
+    } catch (_) {}
+    window.__BTCA_APP_BOOT_READY__ = false;
+  }
+
+  function purgeGenerationRuntimeCache() {
+    if (!("caches" in window)) return Promise.resolve();
+    return caches.delete(getCacheGeneration() + ":runtime").catch(function () {});
+  }
+
   function readAppPreparedState() {
     try {
       var raw = localStorage.getItem(APP_READY_KEY);
@@ -121,6 +155,8 @@
     try {
       localStorage.setItem(APP_READY_KEY, JSON.stringify({
         cacheGeneration: getCacheGeneration(),
+        level1ModuleVersion: LEVEL1_MODULE_VERSION,
+        level2ModuleVersion: LEVEL2_MODULE_VERSION,
         preparedAt: new Date().toISOString(),
       }));
     } catch (_) {}
@@ -128,15 +164,9 @@
   }
 
   function isAppPreparedSync() {
-    var generation = getCacheGeneration();
-    if (window.__BTCA_APP_BOOT_READY__) {
-      var bootState = readAppPreparedState();
-      if (bootState && bootState.cacheGeneration === generation) return true;
-      window.__BTCA_APP_BOOT_READY__ = false;
-    }
-    var readyState = readAppPreparedState();
-    if (readyState && readyState.cacheGeneration === generation) return true;
-    return hasPreparedMediaState();
+    if (!isPreparedStateCurrent(readAppPreparedState())) return false;
+    if (!hasPreparedMediaState()) return false;
+    return true;
   }
 
   function hasPreparedMediaState() {
@@ -155,12 +185,20 @@
 
   function clearStaleClientState() {
     var generation = getCacheGeneration();
+    var metaGen = readMetaCacheVersion();
+    if (metaGen && metaGen !== generation && !window.__BTCA_META_RELOAD__) {
+      window.__BTCA_META_RELOAD__ = true;
+      window.location.reload();
+      return;
+    }
+
     try {
       var readyState = readAppPreparedState();
-      if (readyState && readyState.cacheGeneration !== generation) {
+      if (readyState && !isPreparedStateCurrent(readyState)) {
         localStorage.removeItem(APP_READY_KEY);
         window.__BTCA_APP_BOOT_READY__ = false;
       }
+
       var mediaRaw = localStorage.getItem(MEDIA_STATE_KEY);
       if (mediaRaw) {
         var mediaState = JSON.parse(mediaRaw);
@@ -168,7 +206,9 @@
           localStorage.removeItem(MEDIA_STATE_KEY);
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      invalidatePreparedClientState();
+    }
   }
 
   function purgeObsoleteInstallCaches() {
@@ -181,6 +221,20 @@
         return caches.delete(name);
       }));
     }).catch(function () {});
+  }
+
+  function purgeShellInstallCache() {
+    if (!("caches" in window)) return Promise.resolve();
+    return caches.delete(INSTALL_CACHE).catch(function () {});
+  }
+
+  function cachePutAsset(cache, assetUrl) {
+    return fetch(assetUrl, { cache: "no-store" })
+      .then(function (response) {
+        if (!response || !response.ok) return;
+        return cache.put(assetUrl, response);
+      })
+      .catch(function () {});
   }
 
   function ensureFreshShellAfterDeploy() {
@@ -654,7 +708,17 @@
   }
 
   function level1ModuleReady() {
-    return Boolean(window.BTCA_LEVEL1_DB && window.BTCA_LEVEL1 && window.BTCA_LEVEL1.boot);
+    return Boolean(
+      window.BTCA_LEVEL1_DB &&
+      window.BTCA_LEVEL1 &&
+      window.BTCA_LEVEL1.boot &&
+      window.BTCA_LEVEL1.VERSION === LEVEL1_MODULE_VERSION
+    );
+  }
+
+  function removeInjectedScript(attr, src) {
+    var old = document.querySelector('script[' + attr + '="' + src + '"]');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
   function loadLevel1Script(src) {
@@ -662,14 +726,18 @@
       var isDb = src.indexOf("level1-db") >= 0;
       var isApp = src.indexOf("level1-app") >= 0;
 
-      if (isDb && window.BTCA_LEVEL1_DB) {
+      if (isDb && window.BTCA_LEVEL1_DB && document.querySelector('script[data-btca-level1-src="' + src + '"]')) {
         resolve();
         return;
       }
-      if (isApp && window.BTCA_LEVEL1 && window.BTCA_LEVEL1.boot) {
+      if (isApp && window.BTCA_LEVEL1 && window.BTCA_LEVEL1.boot &&
+          window.BTCA_LEVEL1.VERSION === LEVEL1_MODULE_VERSION) {
         resolve();
         return;
       }
+
+      if (isDb) delete window.BTCA_LEVEL1_DB;
+      if (isApp) delete window.BTCA_LEVEL1;
 
       fetch(src, { cache: "no-store" })
         .then(function (response) {
@@ -680,8 +748,7 @@
           if (!/\(function\s*\(\)/.test(code)) {
             throw new Error("Неверный ответ для " + src);
           }
-          var old = document.querySelector('script[data-btca-level1-src="' + src + '"]');
-          if (old && old.parentNode) old.parentNode.removeChild(old);
+          removeInjectedScript("data-btca-level1-src", src);
           var script = document.createElement("script");
           script.setAttribute("data-btca-level1-src", src);
           script.textContent = code;
@@ -725,7 +792,13 @@
   }
 
   function level2ModuleReady() {
-    return Boolean(window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_BAZA && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot);
+    return Boolean(
+      window.BTCA_LEVEL2_DB &&
+      window.BTCA_LEVEL2_BAZA &&
+      window.BTCA_LEVEL2 &&
+      window.BTCA_LEVEL2.boot &&
+      window.BTCA_LEVEL2.VERSION === LEVEL2_MODULE_VERSION
+    );
   }
 
   function loadLevel2Script(src) {
@@ -734,18 +807,23 @@
       var isBaza = src.indexOf("level2-baza") >= 0;
       var isApp = src.indexOf("level2-app") >= 0;
 
-      if (isDb && window.BTCA_LEVEL2_DB) {
+      if (isDb && window.BTCA_LEVEL2_DB && document.querySelector('script[data-btca-level2-src="' + src + '"]')) {
         resolve();
         return;
       }
-      if (isBaza && window.BTCA_LEVEL2_BAZA) {
+      if (isBaza && window.BTCA_LEVEL2_BAZA && document.querySelector('script[data-btca-level2-src="' + src + '"]')) {
         resolve();
         return;
       }
-      if (isApp && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot) {
+      if (isApp && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot &&
+          window.BTCA_LEVEL2.VERSION === LEVEL2_MODULE_VERSION) {
         resolve();
         return;
       }
+
+      if (isDb) delete window.BTCA_LEVEL2_DB;
+      if (isBaza) delete window.BTCA_LEVEL2_BAZA;
+      if (isApp) delete window.BTCA_LEVEL2;
 
       fetch(src, { cache: "no-store" })
         .then(function (response) {
@@ -756,8 +834,7 @@
           if (!/\(function\s*\(\)/.test(code)) {
             throw new Error("Неверный ответ для " + src);
           }
-          var old = document.querySelector('script[data-btca-level2-src="' + src + '"]');
-          if (old && old.parentNode) old.parentNode.removeChild(old);
+          removeInjectedScript("data-btca-level2-src", src);
           var script = document.createElement("script");
           script.setAttribute("data-btca-level2-src", src);
           script.textContent = code;
@@ -867,7 +944,7 @@
     }
 
     verifyMediaCacheReady().then(function (ready) {
-      if (ready) markAppPrepared();
+      if (ready && isPreparedStateCurrent(readAppPreparedState())) markAppPrepared();
       openLevel1Screen();
     }).catch(function () {
       openLevel1Screen();
@@ -936,7 +1013,7 @@
     }
 
     verifyMediaCacheReady().then(function (ready) {
-      if (ready) markAppPrepared();
+      if (ready && isPreparedStateCurrent(readAppPreparedState())) markAppPrepared();
       openLevel2Screen();
     }).catch(function () {
       openLevel2Screen();
@@ -1184,7 +1261,7 @@
         return promise.then(function () {
           var pct = start + ((index + 1) / allAssets.length) * (end - start);
           emitProgress(pct, "Загрузка оболочки: " + asset);
-          return cache.add(asset).catch(function () {});
+          return cachePutAsset(cache, asset);
         });
       }, Promise.resolve());
     });
@@ -1320,8 +1397,14 @@
     report(1, "Регистрация offline-службы...");
     registerOfflineServiceWorker()
       .then(function () {
-        report(2, "Загрузка оболочки приложения...");
-        return cacheCoreAssets(report, 2, 15);
+        report(2, "Очистка устаревшей оболочки...");
+        return purgeShellInstallCache().then(function () {
+          return purgeGenerationRuntimeCache();
+        });
+      })
+      .then(function () {
+        report(3, "Загрузка оболочки приложения...");
+        return cacheCoreAssets(report, 3, 15);
       })
       .then(function () {
         return verifyMediaCacheReady();
@@ -1364,7 +1447,7 @@
     }
 
     verifyMediaCacheReady().then(function (ready) {
-      if (ready) {
+      if (ready && isPreparedStateCurrent(readAppPreparedState())) {
         markAppPrepared();
         showHome();
         return;
