@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.95" />
+    <meta name="btca-cache-version" content="btca-web-8.1.96" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -707,7 +707,7 @@ body.btca-level2-mode .btca-level1-titlebar {
 }
 
 body.btca-level2-mode .btca-l1-green-arrow__img {
-  filter: brightness(0) saturate(100%) invert(40%) sepia(90%) saturate(5000%) hue-rotate(278deg) brightness(95%) contrast(98%);
+  --btca-arrow-filter: brightness(0) saturate(100%) invert(33%) sepia(85%) saturate(4000%) hue-rotate(272deg) brightness(84%) contrast(96%);
 }
 
 body.btca-level2-mode .btca-level1-sheet-menu__item--active {
@@ -1770,7 +1770,9 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   width: var(--btca-l1-arrow);
   height: var(--btca-l1-arrow);
   transform: rotate(90deg);
-  filter: brightness(0) saturate(100%) invert(46%) sepia(98%) saturate(1200%) hue-rotate(89deg) brightness(102%) contrast(97%);
+  /* #0ab10a — как border-bottom у .btca-level1-titlebar, приглушённая яркость */
+  --btca-arrow-filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2000%) hue-rotate(86deg) brightness(84%) contrast(96%);
+  filter: var(--btca-arrow-filter);
 }
 
 .btca-l1-green-arrow--disabled .btca-l1-green-arrow__img {
@@ -2785,8 +2787,8 @@ body.btca-force-portrait:not(.btca-allow-landscape) #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.95:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.95:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.96:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.96:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
