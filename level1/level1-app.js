@@ -1117,8 +1117,8 @@
       '<div class="btca-l1-tab btca-l1-polez">' +
       '<div class="btca-l1-sticky-head">' +
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
-      '<div class="btca-l1-exercise-col btca-l1-exercise-col--polez">' +
-      '<span class="btca-l1-field-label">Каталог</span>' +
+      '<div class="btca-l1-polez-catalog-col">' +
+      '<span class="btca-l1-field-label btca-l1-field-label--center">Каталог</span>' +
       filterFaceHtml(catalogLabel, { wide: true, dataAttr: "data-btca-polez-catalog" }) +
       "</div></div></div>" +
       '<div class="btca-l1-tab-body btca-l1-polez-cards">' +
