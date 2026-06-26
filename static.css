@@ -225,6 +225,10 @@ code {
   margin-top: 18px;
 }
 
+.platform-menu + .ios-panel {
+  margin-top: 18px;
+}
+
 .platform-button {
   display: grid;
   width: 95%;
