@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.106" />
+    <meta name="btca-cache-version" content="btca-web-8.1.107" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -652,6 +652,13 @@ code {
   text-align: center;
 }
 
+body.btca-sim-iphone .btca-level1-screen {
+  --btca-l1-baza-inner: calc(
+    var(--btca-layout-min, 390px) - 2 * var(--btca-l1-gutter) -
+    env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+  );
+}
+
 body.btca-sim-iphone.btca-installed-mode .app,
 body.btca-sim-iphone .btca-level1-screen,
 body.btca-sim-iphone.btca-screen-mode #root {
@@ -1164,8 +1171,10 @@ body.btca-boot-mode #root {
   --btca-l1-chrome-btn-shift-x: calc(-10rem / 17);
   --btca-l1-chrome-btn-shift-y: calc(9rem / 17);
   --btca-l1-pick-est-half-w: calc(49rem / 17);
-  --btca-l1-trailing-w: calc(112rem / 17);
-  --btca-l1-arrow-slot-w: calc(0.25 * var(--btca-l1-baza-inner, 25vw));
+  --btca-l1-baza-inner: calc(
+    100vw - 2 * var(--btca-l1-gutter) -
+    env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+  );
   --btca-l1-primary-max: 72%;
   --btca-l1-section-w: min(81vw, calc(324rem / 17));
   --btca-l1-arrow: calc(32rem / 17);
@@ -1190,8 +1199,6 @@ body.btca-apple-comfort .btca-level1-screen {
   --btca-l1-chrome-btn-shift-x: calc(-10rem / 17);
   --btca-l1-chrome-btn-shift-y: calc(9rem / 17);
   --btca-l1-pick-est-half-w: calc(49rem / 17);
-  --btca-l1-trailing-w: calc(112rem / 17);
-  --btca-l1-arrow-slot-w: calc(0.25 * var(--btca-l1-baza-inner, 25vw));
   --btca-l1-section-w: min(81vw, calc(324rem / 17));
   --btca-l1-arrow: calc(32rem / 17);
   --btca-l1-table-row: calc(40rem / 17);
@@ -1451,9 +1458,9 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 }
 
 .btca-l1-forma-date-col {
-  flex: 0 0 calc((100% - 8px) / 2);
-  width: calc((100% - 8px) / 2);
-  max-width: calc((100% - 8px) / 2);
+  flex: 0 0 calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  max-width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
   min-width: 0;
 }
 
@@ -1470,16 +1477,23 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   max-width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
 }
 
-.btca-l1-trailing-wrap {
-  flex-shrink: 0;
-  display: flex;
-  width: var(--btca-l1-trailing-w);
-  justify-content: center;
-  align-items: flex-end;
+.btca-l1-chrome-trail-col,
+.btca-l1-baza-labels-row .btca-l1-task-label-col,
+.btca-l1-baza-fields-row .btca-l1-task-field-col,
+.btca-l1-exercise-row .btca-l1-trailing-slot,
+.btca-l1-forma .btca-l1-trailing-wrap {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  max-width: none;
 }
 
-.btca-l1-forma .btca-l1-trailing-wrap {
-  margin-right: calc(-1 * var(--btca-l1-chrome-btn-shift-x));
+.btca-l1-trailing-wrap {
+  flex-shrink: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
 }
 
 .btca-l1-save {
@@ -1598,12 +1612,6 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   align-items: stretch;
 }
 
-.btca-l1-task-label-col,
-.btca-l1-task-field-col {
-  width: var(--btca-l1-trailing-w);
-  flex-shrink: 0;
-}
-
 .btca-l1-baza-labels-row > .btca-l1-field-label:first-child {
   flex: 0 0 calc(0.75 * var(--btca-l1-baza-inner, 75vw));
   width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
@@ -1611,21 +1619,8 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   min-width: 0;
 }
 
-.btca-l1-baza-labels-row .btca-l1-task-label-col,
-.btca-l1-baza-fields-row .btca-l1-task-field-col {
-  flex: 1 1 0;
-  width: auto;
-  min-width: 0;
-  max-width: none;
-}
-
-.btca-l1-baza-chart-header .btca-l1-chart-arrow-slot {
-  width: var(--btca-l1-arrow-slot-w);
-  min-width: var(--btca-l1-arrow-slot-w);
-}
-
 .btca-l1-baza-chart-header .btca-l1-baza-chart-title {
-  padding-right: calc(var(--btca-l1-arrow-slot-w) + 8px);
+  padding-right: calc(0.25 * var(--btca-l1-baza-inner, 25vw) + 8px);
 }
 
 .btca-l1-baza-chart-header {
@@ -1651,6 +1646,9 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   top: 0;
   right: 0;
   bottom: 0;
+  left: calc(8px + 0.75 * var(--btca-l1-baza-inner, 75vw));
+  width: auto;
+  min-width: 0;
 }
 
 .btca-l1-baza-body {
@@ -1783,19 +1781,9 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 }
 
 .btca-l1-trailing-slot {
-  flex-shrink: 0;
   display: flex;
-  width: var(--btca-l1-trailing-w);
   justify-content: center;
   align-items: center;
-}
-
-.btca-l1-nav .btca-l1-exercise-row .btca-l1-trailing-slot .btca-l1-green-arrow {
-  transform: translateX(calc(
-    (-1 * var(--btca-l1-chrome-btn-shift-x)) +
-    var(--btca-l1-pick-est-half-w) -
-    (var(--btca-l1-trailing-w) / 2)
-  ));
 }
 
 .btca-l1-exercise-row {
@@ -1806,12 +1794,21 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 }
 
 .btca-l1-exercise-col--polez {
+  flex: 0 0 calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  max-width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+}
+
+.btca-l1-nav-section .btca-l1-face--section {
+  width: 100%;
   max-width: 100%;
 }
 
 .btca-l1-nav-section {
-  width: var(--btca-l1-section-w);
-  max-width: 100%;
+  flex: 0 0 calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  max-width: calc(0.75 * var(--btca-l1-baza-inner, 75vw));
+  min-width: 0;
 }
 
 .btca-l1-green-arrow {
@@ -1837,6 +1834,12 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 .btca-l1-green-arrow--disabled .btca-l1-green-arrow__img {
   opacity: 0.35;
   filter: brightness(0) saturate(100%) invert(15%) sepia(5%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.btca-l1-nav .btca-l1-exercise-row .btca-l1-trailing-slot .btca-l1-green-arrow {
+  transform: translateX(calc(
+    0.125 * var(--btca-l1-baza-inner, 25vw) - 14px - var(--btca-l1-pick-est-half-w)
+  ));
 }
 
 .btca-l1-banner {
@@ -2050,9 +2053,15 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 }
 
 .btca-l1-nav-card-top {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: calc(0.75 * var(--btca-l1-baza-inner, 75vw)) 8px minmax(0, 1fr);
+  align-items: end;
   overflow: visible;
+}
+
+.btca-l1-nav-card-top .btca-l1-pick {
+  grid-column: 3;
+  justify-self: end;
 }
 
 .btca-l1-nav-card-frame {
@@ -2978,8 +2987,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.106:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.106:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.107:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.107:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
