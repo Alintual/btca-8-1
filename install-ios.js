@@ -2,12 +2,11 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.108:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.108:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.109:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.109:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
-  var IFHONE_SIM_KEY = "btca-ifhone-sim";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -321,29 +320,7 @@
     return Math.min(width, height);
   }
 
-  function isIphoneSimActive() {
-    try {
-      return localStorage.getItem(IFHONE_SIM_KEY) === "1";
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function setIphoneSimActive(active) {
-    try {
-      if (active) localStorage.setItem(IFHONE_SIM_KEY, "1");
-      else localStorage.removeItem(IFHONE_SIM_KEY);
-    } catch (_) {}
-    document.body.classList.toggle("btca-sim-iphone", active);
-    syncPortraitMode();
-    updateSimIphoneButton();
-    window.requestAnimationFrame(syncHomeTaglineLayout);
-  }
-
   function getEffectiveTypographyWidth() {
-    if (document.body.classList.contains("btca-sim-iphone")) {
-      return IOS_TYPO_IPHONE_MIN;
-    }
     return getTypographyLayoutWidth();
   }
 
@@ -384,9 +361,8 @@
       document.body.classList.remove("btca-home-phrases-tablet");
       return;
     }
-    var layoutWidth = getEffectiveTypographyWidth();
-    var useTabletPhrases = layoutWidth >= IOS_TYPO_TABLET_REF &&
-      !document.body.classList.contains("btca-sim-iphone");
+    var layoutWidth = getTypographyLayoutWidth();
+    var useTabletPhrases = layoutWidth >= IOS_TYPO_TABLET_REF;
     document.body.classList.toggle("btca-home-phrases-tablet", useTabletPhrases);
   }
 
@@ -427,7 +403,6 @@
       document.documentElement.style.setProperty("--btca-body-font", IOS_TYPO_BASE_PX + "px");
       resetLoadingHomePhraseLayout();
       updateHomePhrasesTabletClass();
-      updateSimIphoneButton();
       return;
     }
     var layoutScale = layoutScaleForWidth(layoutWidth);
@@ -441,55 +416,7 @@
     document.documentElement.style.setProperty("--btca-layout-actual", actualWidth + "px");
     document.documentElement.style.setProperty("--btca-body-font", bodyFont + "px");
     updateHomePhrasesTabletClass();
-    updateSimIphoneButton();
     window.requestAnimationFrame(syncHomeTaglineLayout);
-  }
-
-  function updateSimIphoneButton() {
-    var wrap = document.getElementById("btca-sim-iphone-global");
-    if (!wrap) return;
-    var button = wrap.querySelector("[data-btca-sim-iphone]");
-    var note = wrap.querySelector(".btca-sim-iphone-global__note");
-    if (!button) return;
-    var simActive = document.body.classList.contains("btca-sim-iphone");
-    button.setAttribute("aria-pressed", simActive ? "true" : "false");
-    if (!note) return;
-    var layoutWidth = shouldForcePortraitLayout() ? getEffectiveTypographyWidth() : getTypographyLayoutWidth();
-    var actualWidth = getTypographyLayoutWidth();
-    var bodyFont = isBrowserLoadingHomePage()
-      ? IOS_TYPO_BASE_PX
-      : Math.round(comfortBodyFont(layoutWidth) * 10) / 10;
-    var layoutScale = layoutScaleForWidth(layoutWidth);
-    var scalePct = Math.round(layoutScale * 100);
-    if (simActive) {
-      note.textContent = "iPhone: " + layoutWidth + "px · " + scalePct + "% · " + bodyFont + "px (экран " + actualWidth + "px)";
-      return;
-    }
-    note.textContent = "iOS: " + actualWidth + "px · " + scalePct + "% · " + bodyFont + "px";
-  }
-
-  function ensureSimIphoneControl() {
-    if (!isAppleMobile()) return;
-    var wrap = document.getElementById("btca-sim-iphone-global");
-    if (!wrap) {
-      wrap = document.createElement("div");
-      wrap.id = "btca-sim-iphone-global";
-      wrap.className = "btca-sim-iphone-global";
-      wrap.innerHTML =
-        '<button type="button" class="btca-sim-iphone-global__btn" data-btca-sim-iphone="toggle" aria-pressed="false">iPhone</button>' +
-        '<span class="btca-sim-iphone-global__note" aria-live="polite"></span>';
-      document.body.appendChild(wrap);
-    }
-    wrap.style.display = "";
-    if (isIphoneSimActive()) document.body.classList.add("btca-sim-iphone");
-    updateSimIphoneButton();
-  }
-
-  function handleSimIphoneClick(event) {
-    var target = event.target && event.target.closest ? event.target.closest("[data-btca-sim-iphone]") : null;
-    if (!target || !isAppleMobile()) return;
-    event.preventDefault();
-    setIphoneSimActive(!isIphoneSimActive());
   }
 
   function syncPortraitMode() {
@@ -933,7 +860,6 @@
           content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
         }
       }).then(function () {
-        ensureSimIphoneControl();
         syncPortraitMode();
       });
     }
@@ -1002,7 +928,6 @@
           content.innerHTML = '<p class="btca-l1-error">' + escapeHtml(error && (error.message || error)) + "</p>";
         }
       }).then(function () {
-        ensureSimIphoneControl();
         syncPortraitMode();
       });
     }
@@ -1160,7 +1085,6 @@
     ensurePhraseTwoTabletMarkup();
     cleanupOrphanHomePhraseMarkup();
     installedHomeSnapshot = "";
-    ensureSimIphoneControl();
     syncPortraitMode();
   }
 
@@ -1484,11 +1408,6 @@
       window.visualViewport.addEventListener("scroll", syncPortraitMode);
     }
     document.addEventListener("click", handleAppNavigation, true);
-    document.addEventListener("click", handleSimIphoneClick, true);
-    if (isAppleMobile()) {
-      if (isIphoneSimActive()) document.body.classList.add("btca-sim-iphone");
-      ensureSimIphoneControl();
-    }
     if (els.button) {
       els.button.addEventListener("click", prepareOffline);
     }
