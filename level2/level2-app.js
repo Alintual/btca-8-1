@@ -12,7 +12,6 @@
     var PICK_DELAY_MS = 1500;
   var PICKER_ROW_SIMPLE = 50;
   var PICKER_ROW_GROUP = 40;
-  var PICKER_ROW_POLEZ = 70;
   var PICKER_LIST_PAD = 4;
   var SCREEN_EDGE_GUTTER = 4;
 
@@ -254,7 +253,7 @@
     });
     extraSections.sort(function (a, b) { return a.localeCompare(b, "ru"); });
     extraSections.forEach(function (s) { secOrder.push(s); });
-    var grouped = [];
+    var grouped = [{ value: NAV_FILTER_ALL, label: "Все" }];
     secOrder.forEach(function (sec) {
       grouped.push({ value: "__group:" + sec, label: sec, groupHeader: true });
       bySection[sec].forEach(function (row) { grouped.push(row); });
@@ -1717,8 +1716,8 @@
         DB.patchUiState({ polez: { catalogKey: value } });
         renderPolezTab(content);
       }, event.currentTarget, {
-        rowHeight: PICKER_ROW_POLEZ,
-        itemClass: " btca-level1-picker__item--polez",
+        rowHeight: PICKER_ROW_GROUP,
+        itemClass: " btca-level1-picker__item--catalog",
       });
     });
     content.querySelectorAll("[data-btca-polez-desc]").forEach(function (btn) {

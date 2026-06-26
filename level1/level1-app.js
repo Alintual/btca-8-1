@@ -12,7 +12,7 @@
   var POLEZ_HIDDEN = { fig8: 1, fig9: 1, fig10: 1, fig11: 1, fig20: 1, fig21: 1 };
   var PICK_DELAY_MS = 1500;
   var PICKER_ROW_SIMPLE = 50;
-  var PICKER_ROW_POLEZ = 70;
+  var PICKER_ROW_GROUP = 40;
   var PICKER_LIST_PAD = 4;
   var SCREEN_EDGE_GUTTER = 4;
 
@@ -1156,8 +1156,8 @@
         DB.patchUiState({ polez: { catalogKey: value } });
         renderPolezTab(content);
       }, event.currentTarget, {
-        rowHeight: PICKER_ROW_POLEZ,
-        itemClass: " btca-level1-picker__item--polez",
+        rowHeight: PICKER_ROW_GROUP,
+        itemClass: " btca-level1-picker__item--catalog",
       });
     });
     content.querySelectorAll("[data-btca-polez-desc]").forEach(function (btn) {
