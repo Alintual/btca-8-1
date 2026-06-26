@@ -749,7 +749,9 @@
     state.formaFlags.invalidData = !forma.allActiveOkAreEmptyOrValid;
     var dateLabel = formatIsoDateAsDdMmYyyy(state.ui.trainingDate) || state.ui.trainingDate;
     var exerciseLabel = labelForExerciseValue(state.ui.exerciseValue);
-    var exerciseOptions = buildNavExercisePickerOptions(NAV_SECTION_FILTER_ALL);
+    var exerciseOptions = buildNavExercisePickerOptions(NAV_SECTION_FILTER_ALL).filter(function (o) {
+      return o.value !== NAV_FILTER_ALL;
+    });
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-forma">' +
