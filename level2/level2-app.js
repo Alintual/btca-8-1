@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.58";
+  var VERSION = "8.1.59";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -392,6 +392,17 @@
     if (label) label.classList.toggle("btca-l1-save__label--disabled", !canSave);
   }
 
+  function prepareFormaOkInputForIos(input) {
+    if (!input) return;
+    input.type = "tel";
+    input.inputMode = "numeric";
+    input.pattern = "[0-9]*";
+    input.setAttribute("inputmode", "numeric");
+    input.setAttribute("pattern", "[0-9]*");
+    input.setAttribute("autocapitalize", "off");
+    input.autocapitalize = "off";
+  }
+
   function syncFormaOkTableDom(content, forma) {
     forma.rows.forEach(function (row) {
       var input = content.querySelector('[data-btca-forma-ok="' + row.task + '"]');
@@ -438,6 +449,10 @@
 
   function wireFormaOkInputs(content) {
     content.querySelectorAll("[data-btca-forma-ok]").forEach(function (input) {
+      prepareFormaOkInputForIos(input);
+      input.addEventListener("pointerdown", function () {
+        prepareFormaOkInputForIos(input);
+      }, { passive: true });
       input.addEventListener("input", function (event) {
         var task = Number(event.target.getAttribute("data-btca-forma-ok"));
         var digits = String(event.target.value || "").replace(/[^\d]/g, "");
@@ -881,7 +896,7 @@
         var nextOk = row.active && row.required !== null ? neighborActiveOkTask(row.task, 1, b5) : null;
         var input = row.active && row.required !== null
           ? '<input class="btca-l1-ok-input' + (row.invalid ? " btca-l1-ok-input--invalid" : "") +
-            '" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false"' +
+            '" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"' +
             ' enterkeyhint="' + (nextOk !== null ? "next" : "done") +
             '" data-btca-forma-ok="' + row.task +
             '" value="' + escapeHtml(row.okRaw) + '" aria-label="Успешные удары задача ' + row.task + '">'
