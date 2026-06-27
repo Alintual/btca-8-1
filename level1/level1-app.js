@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.56";
+  var VERSION = "8.1.57";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -140,39 +140,78 @@
     if (label) label.classList.toggle("btca-l1-save__label--disabled", !canSave);
   }
 
+  function syncFormaOkTableDom(content, forma) {
+    forma.rows.forEach(function (row) {
+      var input = content.querySelector('[data-btca-forma-ok="' + row.task + '"]');
+      if (!input) return;
+      if (input.value !== row.okRaw) input.value = row.okRaw;
+      input.classList.toggle("btca-l1-ok-input--invalid", !!row.invalid);
+      var rowEl = input.closest(".btca-l1-table-row");
+      if (!rowEl) return;
+      var okCell = rowEl.querySelector(".btca-l1-col--ok");
+      if (okCell) okCell.classList.toggle("btca-l1-table-cell--invalid", !!row.invalid);
+      var pctCell = rowEl.querySelector(".btca-l1-col--pct .btca-l1-td");
+      if (pctCell) pctCell.textContent = row.pct;
+    });
+    syncFormaSaveButton(content, forma.canSave);
+  }
+
   function scrollFormaOkRowIntoView(content, task) {
     var scroll = content.querySelector("[data-btca-forma-table-scroll]");
-    var cell = content.querySelector('[data-btca-forma-ok-cell="' + task + '"]');
-    if (!scroll || !cell) return;
-    var rowEl = cell.closest(".btca-l1-table-row");
+    var input = content.querySelector('[data-btca-forma-ok="' + task + '"]');
+    if (!scroll || !input) return;
+    var rowEl = input.closest(".btca-l1-table-row");
     if (!rowEl) return;
     scroll.scrollTop = Math.max(0, rowEl.offsetTop - 16);
   }
 
-  function wireFormaKeypad(content) {
-    var KEYPAD = window.BTCA_FORMA_KEYPAD;
-    if (!KEYPAD) return;
-    KEYPAD.wire(content, {
-      getExerciseValue: function () { return state.ui.exerciseValue; },
-      getTaskOk: function () { return state.ui.taskOk || {}; },
-      setTaskOk: function (task, digits) {
-        if (!state.ui.taskOk) state.ui.taskOk = {};
+  function finishOrAdvanceFormaOkTask(content, task) {
+    var b5 = b5FromSelectValue(state.ui.exerciseValue);
+    var req = requiredStrikesFormL1(b5, task);
+    var digits = state.ui.taskOk[String(task)] || "";
+    if (!isFormaOkValueValid(digits, req)) return;
+    var next = neighborActiveOkTask(task, 1, b5);
+    if (next !== null) {
+      var nextInput = content.querySelector('[data-btca-forma-ok="' + next + '"]');
+      if (nextInput) {
+        nextInput.focus({ preventScroll: true });
+        scrollFormaOkRowIntoView(content, next);
+      }
+      return;
+    }
+    content.querySelectorAll("[data-btca-forma-ok]").forEach(function (el) { el.blur(); });
+    var scroll = content.querySelector("[data-btca-forma-table-scroll]");
+    if (scroll) scroll.scrollTop = 0;
+  }
+
+  function wireFormaOkInputs(content) {
+    content.querySelectorAll("[data-btca-forma-ok]").forEach(function (input) {
+      input.addEventListener("input", function (event) {
+        var task = Number(event.target.getAttribute("data-btca-forma-ok"));
+        var digits = String(event.target.value || "").replace(/[^\d]/g, "");
+        if (event.target.value !== digits) event.target.value = digits;
         state.ui.taskOk[String(task)] = digits;
         state.formaFlags.suppressExerciseActive = false;
         state.formaFlags.statusOverride = null;
         DB.patchUiState({ taskOk: state.ui.taskOk });
-      },
-      computeFormaRows: computeFormaRows,
-      syncFormaSaveButton: syncFormaSaveButton,
-      requiredStrikes: requiredStrikesFormL1,
-      neighborActiveOkTask: neighborActiveOkTask,
-      b5FromSelectValue: b5FromSelectValue,
-      isFormaOkValueValid: isFormaOkValueValid,
-      scrollRowIntoView: scrollFormaOkRowIntoView,
-      onFormaEdit: function (forma) {
+        var forma = computeFormaRows();
         state.formaFlags.invalidData = !forma.allActiveOkAreEmptyOrValid;
-      },
-      renderTitleBar: renderTitleBar,
+        syncFormaOkTableDom(content, forma);
+        renderTitleBar();
+        var b5 = b5FromSelectValue(state.ui.exerciseValue);
+        var req = requiredStrikesFormL1(b5, task);
+        if (req !== null && digits && isFormaOkValueValid(digits, req) && digits.length >= String(req).length) {
+          finishOrAdvanceFormaOkTask(content, task);
+        }
+      });
+      input.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        finishOrAdvanceFormaOkTask(content, Number(event.target.getAttribute("data-btca-forma-ok")));
+      });
+      input.addEventListener("focus", function (event) {
+        scrollFormaOkRowIntoView(content, Number(event.target.getAttribute("data-btca-forma-ok")));
+      });
     });
   }
 
@@ -522,7 +561,7 @@
     var exerciseOptions = state.data.exercises.map(function (it) {
       return { value: it.value, label: it.label };
     });
-    var KEYPAD = window.BTCA_FORMA_KEYPAD;
+    var b5 = b5FromSelectValue(state.ui.exerciseValue);
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-forma">' +
@@ -546,12 +585,19 @@
       "</div></div></div>" +
       '<div class="btca-l1-banner">' + escapeHtml(FORMA_BANNER) + "</div></div>" +
       '<div class="btca-l1-tab-body btca-l1-forma-body">' +
-      '<div class="btca-l1-table-area">' + (KEYPAD ? KEYPAD.keypadMarkup() : "") + '<div class="btca-l1-table-wrap">' +
+      '<div class="btca-l1-table-area"><div class="btca-l1-table-wrap">' +
       formaTableHeadHtml() +
       '<div class="btca-l1-table-scroll" data-btca-forma-table-scroll><div class="btca-l1-table-body">' +
       forma.rows.map(function (row, idx) {
         var rowClass = !row.active || row.required === null ? "btca-l1-table__row--unused" : (idx % 2 ? "btca-l1-table__row--odd" : "btca-l1-table__row--even");
-        var input = KEYPAD && row.active && row.required !== null ? KEYPAD.okCellHtml(row) : "";
+        var nextOk = row.active && row.required !== null ? neighborActiveOkTask(row.task, 1, b5) : null;
+        var input = row.active && row.required !== null
+          ? '<input class="btca-l1-ok-input' + (row.invalid ? " btca-l1-ok-input--invalid" : "") +
+            '" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false"' +
+            ' enterkeyhint="' + (nextOk !== null ? "next" : "done") +
+            '" data-btca-forma-ok="' + row.task +
+            '" value="' + escapeHtml(row.okRaw) + '" aria-label="Успешные удары задача ' + row.task + '">'
+          : "";
         return '<div class="btca-l1-table-row ' + rowClass + '">' +
           '<div class="btca-l1-table-cell btca-l1-col--task"><span class="btca-l1-td' +
           (!row.active ? " btca-l1-td--muted" : " btca-l1-td--task") + '">' +
@@ -593,7 +639,7 @@
     });
     var saveBtn = content.querySelector("[data-btca-forma-save]");
     if (saveBtn) saveBtn.addEventListener("click", function () { saveFormaCluster(forma); });
-    wireFormaKeypad(content);
+    wireFormaOkInputs(content);
   }
 
   function openDateInput(currentIso, onPick, title) {
