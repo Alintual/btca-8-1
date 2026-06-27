@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.133" />
+    <meta name="btca-cache-version" content="btca-web-8.1.134" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1963,6 +1963,31 @@ body.btca-apple-comfort .btca-l1-forma-numpad-input {
   touch-action: manipulation;
 }
 
+.btca-l1-forma-keyboard-proxy {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0.01;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  font-size: 16px;
+  z-index: 6;
+  pointer-events: none;
+}
+
+body.btca-apple-comfort .btca-l1-forma-keyboard-proxy {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  touch-action: manipulation;
+}
+
 .btca-l1-ok-input {
   width: 100%;
   height: 100%;
@@ -3030,8 +3055,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.133:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.133:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.134:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.134:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3067,8 +3092,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.61";
-  var LEVEL2_MODULE_VERSION = "8.1.62";
+  var LEVEL1_MODULE_VERSION = "8.1.62";
+  var LEVEL2_MODULE_VERSION = "8.1.63";
 
   var CORE_REL_PATHS = [
     "",

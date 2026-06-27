@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.62";
+  var VERSION = "8.1.63";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -394,35 +394,107 @@
 
   var formaOkFocusState = { task: null };
 
+  function isAppleTouchDevice() {
+    var ua = navigator.userAgent || "";
+    return /iPhone|iPad|iPod/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
   function reinforceFormaOkInputKeyboard(input) {
     if (!input) return;
-    input.type = "tel";
+    input.type = "text";
+    input.inputMode = "numeric";
     input.setAttribute("inputmode", "numeric");
     input.setAttribute("pattern", "[0-9]*");
+    input.removeAttribute("lang");
+    if (isAppleTouchDevice()) {
+      input.setAttribute("autocomplete", "one-time-code");
+      input.setAttribute("name", "one-time-code");
+    } else {
+      input.setAttribute("autocomplete", "off");
+      input.removeAttribute("name");
+    }
+  }
+
+  function focusFormaOkInput(input) {
+    if (!input) return;
+    reinforceFormaOkInputKeyboard(input);
+    if (!isAppleTouchDevice()) {
+      input.focus({ preventScroll: true });
+      return;
+    }
+    input.readOnly = true;
+    input.focus({ preventScroll: true });
+    window.setTimeout(function () {
+      input.readOnly = false;
+      reinforceFormaOkInputKeyboard(input);
+      input.focus({ preventScroll: true });
+    }, 10);
   }
 
   function createFormaOkInput(task, row) {
     var input = document.createElement("input");
     input.className = "btca-l1-ok-input" + (row.invalid ? " btca-l1-ok-input--invalid" : "");
     input.setAttribute("data-btca-forma-ok-input", String(task));
-    input.setAttribute("autocomplete", "off");
     input.setAttribute("autocorrect", "off");
     input.setAttribute("autocapitalize", "off");
     input.setAttribute("spellcheck", "false");
     input.setAttribute("enterkeyhint", "done");
-    input.setAttribute("lang", "en");
     input.setAttribute("aria-label", "Успешные удары задача " + task);
     reinforceFormaOkInputKeyboard(input);
     input.value = row.okRaw || "";
     return input;
   }
 
+  function mountFormaOkCellButton(slot, task, row) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btca-l1-ok-cell" + (row.invalid ? " btca-l1-ok-cell--invalid" : "");
+    btn.setAttribute("data-btca-forma-ok-cell", String(task));
+    btn.setAttribute("aria-label", "Успешные удары задача " + task);
+    var display = document.createElement("span");
+    display.className = "btca-l1-ok-display";
+    display.setAttribute("data-btca-forma-ok-display", "");
+    display.textContent = row.okRaw || "";
+    btn.appendChild(display);
+    slot.textContent = "";
+    slot.appendChild(btn);
+  }
+
   function getFormaOkInput(content, task) {
     return content.querySelector('[data-btca-forma-ok-input="' + task + '"]');
   }
 
+  function getFormaKeyboardProxy(content) {
+    return content.querySelector("[data-btca-forma-keyboard-proxy]");
+  }
+
+  function ensureFormaKeyboardProxy(content) {
+    var existing = getFormaKeyboardProxy(content);
+    if (existing) return existing;
+    var input = document.createElement("input");
+    input.className = "btca-l1-forma-keyboard-proxy";
+    input.setAttribute("data-btca-forma-keyboard-proxy", "");
+    input.setAttribute("autocorrect", "off");
+    input.setAttribute("autocapitalize", "off");
+    input.setAttribute("spellcheck", "false");
+    input.setAttribute("enterkeyhint", "done");
+    input.setAttribute("aria-label", "Число успешных ударов");
+    reinforceFormaOkInputKeyboard(input);
+    var host = content.querySelector(".btca-l1-forma");
+    if (host) host.appendChild(input);
+    return input;
+  }
+
   function setActiveFormaOkCell(content, task) {
     formaOkFocusState.task = task;
+    if (isAppleTouchDevice()) {
+      content.querySelectorAll("[data-btca-forma-ok-cell]").forEach(function (cell) {
+        var cellTask = Number(cell.getAttribute("data-btca-forma-ok-cell"));
+        cell.classList.toggle("btca-l1-ok-cell--active", cellTask === task);
+      });
+      return;
+    }
     content.querySelectorAll("[data-btca-forma-ok-input]").forEach(function (input) {
       var cellTask = Number(input.getAttribute("data-btca-forma-ok-input"));
       input.classList.toggle("btca-l1-ok-input--active", cellTask === task);
@@ -434,47 +506,83 @@
       if (!row.active || row.required === null) return;
       var slot = content.querySelector('[data-btca-forma-ok-slot="' + row.task + '"]');
       if (!slot) return;
-      slot.textContent = "";
-      slot.appendChild(createFormaOkInput(row.task, row));
+      if (isAppleTouchDevice()) {
+        mountFormaOkCellButton(slot, row.task, row);
+      } else {
+        slot.textContent = "";
+        slot.appendChild(createFormaOkInput(row.task, row));
+      }
     });
+    if (isAppleTouchDevice()) ensureFormaKeyboardProxy(content);
   }
 
   function openFormaOkCell(content, task) {
-    var input = getFormaOkInput(content, task);
-    if (!input) return;
+    var digits = state.ui.taskOk[String(task)] || "";
     setActiveFormaOkCell(content, task);
     var b5 = b5FromSelectValue(state.ui.exerciseValue);
     var nextOk = neighborActiveOkTask(task, 1, b5);
-    input.setAttribute("enterkeyhint", nextOk !== null ? "next" : "done");
+    var enterHint = nextOk !== null ? "next" : "done";
     scrollFormaOkRowIntoView(content, task);
-    reinforceFormaOkInputKeyboard(input);
-    input.focus({ preventScroll: true });
+    if (isAppleTouchDevice()) {
+      var proxy = ensureFormaKeyboardProxy(content);
+      proxy.setAttribute("enterkeyhint", enterHint);
+      proxy.value = digits;
+      focusFormaOkInput(proxy);
+      return;
+    }
+    var input = getFormaOkInput(content, task);
+    if (!input) return;
+    input.setAttribute("enterkeyhint", enterHint);
+    input.value = digits;
+    focusFormaOkInput(input);
   }
 
   function syncFormaOkTableDom(content, forma) {
     forma.rows.forEach(function (row) {
-      var input = getFormaOkInput(content, row.task);
-      if (!input) return;
-      if (document.activeElement !== input && input.value !== (row.okRaw || "")) {
-        input.value = row.okRaw || "";
+      if (isAppleTouchDevice()) {
+        var cell = content.querySelector('[data-btca-forma-ok-cell="' + row.task + '"]');
+        if (!cell) return;
+        var display = cell.querySelector("[data-btca-forma-ok-display]");
+        if (display) display.textContent = row.okRaw || "";
+        cell.classList.toggle("btca-l1-ok-cell--invalid", !!row.invalid);
+        cell.classList.toggle("btca-l1-ok-cell--active", formaOkFocusState.task === row.task);
+      } else {
+        var input = getFormaOkInput(content, row.task);
+        if (!input) return;
+        if (document.activeElement !== input && input.value !== (row.okRaw || "")) {
+          input.value = row.okRaw || "";
+        }
+        input.classList.toggle("btca-l1-ok-input--invalid", !!row.invalid);
+        input.classList.toggle("btca-l1-ok-input--active", formaOkFocusState.task === row.task);
       }
-      input.classList.toggle("btca-l1-ok-input--invalid", !!row.invalid);
-      input.classList.toggle("btca-l1-ok-input--active", formaOkFocusState.task === row.task);
-      var rowEl = input.closest(".btca-l1-table-row");
+      var anchor = isAppleTouchDevice()
+        ? content.querySelector('[data-btca-forma-ok-cell="' + row.task + '"]')
+        : getFormaOkInput(content, row.task);
+      if (!anchor) return;
+      var rowEl = anchor.closest(".btca-l1-table-row");
       if (!rowEl) return;
       var okCell = rowEl.querySelector(".btca-l1-col--ok");
       if (okCell) okCell.classList.toggle("btca-l1-table-cell--invalid", !!row.invalid);
       var pctCell = rowEl.querySelector(".btca-l1-col--pct .btca-l1-td");
       if (pctCell) pctCell.textContent = row.pct;
     });
+    if (isAppleTouchDevice()) {
+      var proxy = getFormaKeyboardProxy(content);
+      if (proxy && formaOkFocusState.task !== null && document.activeElement === proxy) {
+        var activeRaw = state.ui.taskOk[String(formaOkFocusState.task)] || "";
+        if (proxy.value !== activeRaw) proxy.value = activeRaw;
+      }
+    }
     syncFormaSaveButton(content, forma.canSave);
   }
 
   function scrollFormaOkRowIntoView(content, task) {
     var scroll = content.querySelector("[data-btca-forma-table-scroll]");
-    var input = getFormaOkInput(content, task);
-    if (!scroll || !input) return;
-    var rowEl = input.closest(".btca-l1-table-row");
+    var anchor = isAppleTouchDevice()
+      ? content.querySelector('[data-btca-forma-ok-cell="' + task + '"]')
+      : getFormaOkInput(content, task);
+    if (!scroll || !anchor) return;
+    var rowEl = anchor.closest(".btca-l1-table-row");
     if (!rowEl) return;
     scroll.scrollTop = Math.max(0, rowEl.offsetTop - 16);
   }
@@ -489,8 +597,13 @@
       openFormaOkCell(content, next);
       return;
     }
-    var input = getFormaOkInput(content, task);
-    if (input) input.blur();
+    if (isAppleTouchDevice()) {
+      var proxy = getFormaKeyboardProxy(content);
+      if (proxy) proxy.blur();
+    } else {
+      var input = getFormaOkInput(content, task);
+      if (input) input.blur();
+    }
     setActiveFormaOkCell(content, null);
     var scroll = content.querySelector("[data-btca-forma-table-scroll]");
     if (scroll) scroll.scrollTop = 0;
@@ -498,8 +611,15 @@
 
   function handleFormaOkInputChange(content, task, rawValue) {
     var digits = String(rawValue || "").replace(/[^\d]/g, "");
-    var input = getFormaOkInput(content, task);
-    if (input && input.value !== digits) input.value = digits;
+    if (isAppleTouchDevice()) {
+      var proxy = getFormaKeyboardProxy(content);
+      if (proxy && proxy.value !== digits) proxy.value = digits;
+      var display = content.querySelector('[data-btca-forma-ok-cell="' + task + '"] [data-btca-forma-ok-display]');
+      if (display) display.textContent = digits;
+    } else {
+      var input = getFormaOkInput(content, task);
+      if (input && input.value !== digits) input.value = digits;
+    }
     state.ui.taskOk[String(task)] = digits;
     state.formaFlags.suppressExerciseActive = false;
     state.formaFlags.statusOverride = null;
@@ -516,11 +636,34 @@
   }
 
   function wireFormaOkInputs(content) {
+    if (isAppleTouchDevice()) {
+      content.querySelectorAll("[data-btca-forma-ok-cell]").forEach(function (cell) {
+        cell.addEventListener("click", function () {
+          openFormaOkCell(content, Number(cell.getAttribute("data-btca-forma-ok-cell")));
+        });
+      });
+      var proxy = ensureFormaKeyboardProxy(content);
+      proxy.addEventListener("input", function () {
+        var task = formaOkFocusState.task;
+        if (task === null) return;
+        handleFormaOkInputChange(content, task, proxy.value);
+      });
+      proxy.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") return;
+        if (formaOkFocusState.task === null) return;
+        event.preventDefault();
+        finishOrAdvanceFormaOkTask(content, formaOkFocusState.task);
+      });
+      proxy.addEventListener("blur", function () {
+        if (formaOkFocusState.task !== null) setActiveFormaOkCell(content, null);
+      });
+      return;
+    }
     content.querySelectorAll("[data-btca-forma-ok-input]").forEach(function (input) {
       var task = Number(input.getAttribute("data-btca-forma-ok-input"));
-      input.addEventListener("touchstart", function () {
+      input.addEventListener("pointerdown", function () {
         reinforceFormaOkInputKeyboard(input);
-      }, { passive: true });
+      });
       input.addEventListener("focus", function () {
         setActiveFormaOkCell(content, task);
         scrollFormaOkRowIntoView(content, task);
