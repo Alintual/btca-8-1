@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.58";
+  var VERSION = "8.1.59";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -140,15 +140,73 @@
     if (label) label.classList.toggle("btca-l1-save__label--disabled", !canSave);
   }
 
-  function prepareFormaOkInputForIos(input) {
+  function isAppleTouchDevice() {
+    var ua = navigator.userAgent || "";
+    return /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  var iosNumericKeyboardProxy = null;
+
+  function getIosNumericKeyboardProxy() {
+    if (iosNumericKeyboardProxy) return iosNumericKeyboardProxy;
+    var proxy = document.createElement("input");
+    proxy.setAttribute("type", "text");
+    proxy.setAttribute("inputmode", "numeric");
+    proxy.setAttribute("pattern", "[0-9]*");
+    proxy.setAttribute("autocomplete", "off");
+    proxy.setAttribute("autocorrect", "off");
+    proxy.setAttribute("autocapitalize", "off");
+    proxy.setAttribute("spellcheck", "false");
+    proxy.setAttribute("aria-hidden", "true");
+    proxy.setAttribute("tabindex", "-1");
+    proxy.setAttribute("lang", "en");
+    proxy.style.cssText = "position:fixed;left:0;bottom:0;opacity:0;width:1px;height:1px;border:0;padding:0;margin:0;";
+    document.body.appendChild(proxy);
+    iosNumericKeyboardProxy = proxy;
+    return proxy;
+  }
+
+  function focusFormaOkInput(input) {
     if (!input) return;
-    input.type = "tel";
-    input.inputMode = "numeric";
-    input.pattern = "[0-9]*";
+    if (!isAppleTouchDevice()) {
+      input.focus({ preventScroll: true });
+      return;
+    }
+    var proxy = getIosNumericKeyboardProxy();
+    proxy.focus({ preventScroll: true });
+    window.requestAnimationFrame(function () {
+      input.focus({ preventScroll: true });
+    });
+  }
+
+  function createFormaOkInputElement(row, enterKeyHint) {
+    var input = document.createElement("input");
+    input.className = "btca-l1-ok-input" + (row.invalid ? " btca-l1-ok-input--invalid" : "");
+    input.setAttribute("type", "text");
     input.setAttribute("inputmode", "numeric");
     input.setAttribute("pattern", "[0-9]*");
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("autocorrect", "off");
     input.setAttribute("autocapitalize", "off");
-    input.autocapitalize = "off";
+    input.setAttribute("spellcheck", "false");
+    input.setAttribute("enterkeyhint", enterKeyHint);
+    input.setAttribute("data-btca-forma-ok", String(row.task));
+    input.setAttribute("aria-label", "OK " + row.task);
+    input.setAttribute("lang", "en");
+    input.value = row.okRaw || "";
+    return input;
+  }
+
+  function mountFormaOkInputs(content, forma, b5) {
+    forma.rows.forEach(function (row) {
+      if (!row.active || row.required === null) return;
+      var slot = content.querySelector('[data-btca-forma-ok-slot="' + row.task + '"]');
+      if (!slot) return;
+      var nextOk = neighborActiveOkTask(row.task, 1, b5);
+      var enterKeyHint = nextOk !== null ? "next" : "done";
+      slot.textContent = "";
+      slot.appendChild(createFormaOkInputElement(row, enterKeyHint));
+    });
   }
 
   function syncFormaOkTableDom(content, forma) {
@@ -185,7 +243,7 @@
     if (next !== null) {
       var nextInput = content.querySelector('[data-btca-forma-ok="' + next + '"]');
       if (nextInput) {
-        nextInput.focus({ preventScroll: true });
+        focusFormaOkInput(nextInput);
         scrollFormaOkRowIntoView(content, next);
       }
       return;
@@ -197,10 +255,12 @@
 
   function wireFormaOkInputs(content) {
     content.querySelectorAll("[data-btca-forma-ok]").forEach(function (input) {
-      prepareFormaOkInputForIos(input);
-      input.addEventListener("pointerdown", function () {
-        prepareFormaOkInputForIos(input);
-      }, { passive: true });
+      input.addEventListener("pointerdown", function (event) {
+        if (!isAppleTouchDevice()) return;
+        event.preventDefault();
+        focusFormaOkInput(input);
+        scrollFormaOkRowIntoView(content, Number(input.getAttribute("data-btca-forma-ok")));
+      }, { passive: false });
       input.addEventListener("input", function (event) {
         var task = Number(event.target.getAttribute("data-btca-forma-ok"));
         var digits = String(event.target.value || "").replace(/[^\d]/g, "");
@@ -605,14 +665,10 @@
       '<div class="btca-l1-table-scroll" data-btca-forma-table-scroll><div class="btca-l1-table-body">' +
       forma.rows.map(function (row, idx) {
         var rowClass = !row.active || row.required === null ? "btca-l1-table__row--unused" : (idx % 2 ? "btca-l1-table__row--odd" : "btca-l1-table__row--even");
-        var nextOk = row.active && row.required !== null ? neighborActiveOkTask(row.task, 1, b5) : null;
-        var input = row.active && row.required !== null
-          ? '<input class="btca-l1-ok-input' + (row.invalid ? " btca-l1-ok-input--invalid" : "") +
-            '" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"' +
-            ' enterkeyhint="' + (nextOk !== null ? "next" : "done") +
-            '" data-btca-forma-ok="' + row.task +
-            '" value="' + escapeHtml(row.okRaw) + '" aria-label="Успешные удары задача ' + row.task + '">'
-          : "";
+        var okCell = row.active && row.required !== null
+          ? '<div class="btca-l1-table-cell btca-l1-col--ok' + (row.invalid ? " btca-l1-table-cell--invalid" : "") +
+            '" data-btca-forma-ok-slot="' + row.task + '"></div>'
+          : '<div class="btca-l1-table-cell btca-l1-col--ok btca-l1-table-cell--unused"></div>';
         return '<div class="btca-l1-table-row ' + rowClass + '">' +
           '<div class="btca-l1-table-cell btca-l1-col--task"><span class="btca-l1-td' +
           (!row.active ? " btca-l1-td--muted" : " btca-l1-td--task") + '">' +
@@ -620,8 +676,7 @@
           '<div class="btca-l1-table-cell btca-l1-col--req"><span class="btca-l1-td' +
           (!row.active ? " btca-l1-td--muted" : "") + '">' +
           (row.required == null ? "" : String(row.required)) + "</span></div>" +
-          '<div class="btca-l1-table-cell btca-l1-col--ok' + (row.invalid ? " btca-l1-table-cell--invalid" : "") +
-          (!row.active ? " btca-l1-table-cell--unused" : "") + '">' + input + "</div>" +
+          okCell +
           '<div class="btca-l1-table-cell btca-l1-col--pct"><span class="btca-l1-td' +
           (!row.active ? " btca-l1-td--muted" : "") + '">' + escapeHtml(row.pct) + "</span></div></div>";
       }).join("") +
@@ -654,6 +709,7 @@
     });
     var saveBtn = content.querySelector("[data-btca-forma-save]");
     if (saveBtn) saveBtn.addEventListener("click", function () { saveFormaCluster(forma); });
+    mountFormaOkInputs(content, forma, b5);
     wireFormaOkInputs(content);
   }
 
