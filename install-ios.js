@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.127:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.127:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.128:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.128:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -94,6 +94,13 @@
     var panel = getEls().panel;
     if (!panel) return;
     var disp = splashDisplayPct(percent);
+    var num = panel.querySelector("[data-btca-splash-pct-num]");
+    if (num && panel.classList.contains("btca-home-splash-panel")) {
+      num.textContent = String(disp);
+      var wrap = panel.querySelector(".btca-ios-splash-panel");
+      if (wrap) wrap.setAttribute("aria-label", "Прогресс " + disp + "%");
+      return;
+    }
     panel.className = "ios-panel ios-panel--open btca-home-splash-panel";
     panel.innerHTML =
       '<div class="btca-ios-splash-panel" aria-label="Прогресс ' + disp + '%">' +
@@ -108,7 +115,17 @@
     panel.innerHTML = "";
   }
 
-  function preloadAppModulesForHome() {
+  function mapBootProgress(localPct, startPct, endPct) {
+    var span = endPct - startPct;
+    if (span <= 0) return splashDisplayPct(endPct);
+    return splashDisplayPct(startPct + (localPct / 100) * span);
+  }
+
+  function preloadAppModulesForHome(options) {
+    options = options || {};
+    var startPct = options.startPct != null ? options.startPct : 0;
+    var endPct = options.endPct != null ? options.endPct : 100;
+
     if (!isStandalone()) {
       preloadLevel1ModuleSilently();
       preloadLevel2ModuleSilently();
@@ -118,19 +135,51 @@
       hideHomeSplashIndicator();
       return Promise.resolve();
     }
-    renderHomeSplashIndicator(0);
-    var steps = [
-      { pct: 25, run: ensureLevel1Module },
-      { pct: 50, run: function () { return window.BTCA_LEVEL1.boot(); } },
-      { pct: 75, run: ensureLevel2Module },
-      { pct: 100, run: function () { return window.BTCA_LEVEL2.boot(); } },
-    ];
-    return steps.reduce(function (chain, step) {
+
+    var v1 = LEVEL1_MODULE_VERSION;
+    var v2 = LEVEL2_MODULE_VERSION;
+    var steps = [];
+
+    if (!level1ModuleReady()) {
+      steps.push(
+        { run: function () { return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v1)); } },
+        { run: function () { return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v1)); } },
+        { run: function () {
+          if (!level1ModuleReady()) throw new Error("Модуль Уровня 1 не инициализирован");
+          return window.BTCA_LEVEL1.boot();
+        } }
+      );
+    }
+    if (!level2ModuleReady()) {
+      steps.push(
+        { run: function () { return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v2)); } },
+        { run: function () { return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v2)); } },
+        { run: function () { return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v2)); } },
+        { run: function () {
+          if (!level2ModuleReady()) throw new Error("Модуль Уровня 2 не инициализирован");
+          return window.BTCA_LEVEL2.boot();
+        } }
+      );
+    }
+
+    if (!steps.length) {
+      hideHomeSplashIndicator();
+      return Promise.resolve();
+    }
+
+    function report(localPct) {
+      renderHomeSplashIndicator(mapBootProgress(localPct, startPct, endPct));
+    }
+
+    report(0);
+    var total = steps.length;
+    return steps.reduce(function (chain, step, index) {
       return chain.then(function () {
-        renderHomeSplashIndicator(step.pct);
+        report((index / total) * 100);
         return step.run();
       });
     }, Promise.resolve()).then(function () {
+      report(100);
       hideHomeSplashIndicator();
     }).catch(function (error) {
       hideHomeSplashIndicator();
@@ -637,6 +686,10 @@
 
   function renderProgress(title, percent, message) {
     var pct = Math.max(0, Math.min(100, Math.round(percent)));
+    if (isStandalone()) {
+      renderHomeSplashIndicator(pct);
+      return;
+    }
     setPanel(
       '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + pct + "%</span></div>" +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
@@ -1120,7 +1173,9 @@
     }
   }
 
-  function renderInstalledHome() {
+  function renderInstalledHome(options) {
+    options = options || {};
+    var preserveSplash = Boolean(options.preserveSplash);
     var intro = document.querySelector(".home__intro");
     var menu = document.querySelector(".platform-menu");
     var panel = getEls().panel;
@@ -1130,7 +1185,7 @@
     document.body.classList.remove("btca-screen-mode", "btca-level1-mode", "btca-level2-mode");
 
     if (intro) intro.setAttribute("hidden", "hidden");
-    if (panel) {
+    if (panel && !preserveSplash) {
       panel.className = "ios-panel";
       panel.innerHTML = "";
     }
@@ -1406,9 +1461,15 @@
         return prepareMediaArchives(report, 15, 95);
       })
       .then(function () {
+        if (isStandalone()) {
+          markAppPrepared();
+          renderInstalledHome({ preserveSplash: true });
+          return preloadAppModulesForHome({ startPct: 100, endPct: 100 });
+        }
         report(100, "Готово");
         renderReady();
-        return preloadAppModulesForHome();
+        preloadLevel1ModuleSilently();
+        preloadLevel2ModuleSilently();
       })
       .catch(renderError)
       .then(function () {
@@ -1443,10 +1504,6 @@
         return;
       }
       renderInstalledHome();
-      renderInfo(
-        "iOS/iPadOS",
-        "Данные не найдены на устройстве. Подождите, идёт подготовка offline-пакета…"
-      );
       prepareOffline();
     }).catch(function (error) {
       renderInfo("iOS/iPadOS", error && (error.message || error));
