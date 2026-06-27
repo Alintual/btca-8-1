@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.128" />
+    <meta name="btca-cache-version" content="btca-web-8.1.129" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -476,6 +476,25 @@ code {
 .platform-button span {
   font-size: 1.18rem;
   font-weight: 700;
+}
+
+.platform-button__label {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35em;
+  font-size: 1.18rem;
+  line-height: 1.2;
+}
+
+.platform-button__name {
+  font-weight: 700;
+}
+
+.platform-button__os-version {
+  color: #ffffff;
+  font-size: 1.18rem;
+  font-weight: 400;
 }
 
 .platform-button small {
@@ -969,12 +988,22 @@ body.btca-apple-comfort .btca-back-button {
   padding: 4px 0 2px;
 }
 
+.btca-home-splash-panel.ios-panel,
+.btca-home-splash-panel.ios-panel--open {
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  outline: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  transition: none;
+}
+
 .btca-home-splash-panel {
   margin-top: calc(12rem / 17);
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
 }
 
 .btca-home-splash-panel .btca-ios-splash-panel {
@@ -2923,15 +2952,24 @@ body.btca-apple-comfort.btca-landscape-mode #root {
 
           <nav class="platform-menu" aria-label="Выбор платформы">
             <button id="btca-static-ios" class="platform-button platform-button--ios" type="button">
-              <span>iOS</span>
+              <span class="platform-button__label">
+                <span class="platform-button__name">iOS</span>
+                <span class="platform-button__os-version">15+</span>
+              </span>
               <small>Загрузить все данные для offline</small>
             </button>
             <a class="platform-button platform-button--android" href="https://clc.li/btca-android-8-1">
-              <span>Android</span>
+              <span class="platform-button__label">
+                <span class="platform-button__name">Android</span>
+                <span class="platform-button__os-version">7+</span>
+              </span>
               <small>Скачать дистрибутив APK</small>
             </a>
             <a class="platform-button platform-button--windows" href="https://clc.li/btca-windows-8-1">
-              <span>Windows</span>
+              <span class="platform-button__label">
+                <span class="platform-button__name">Windows</span>
+                <span class="platform-button__os-version">10+</span>
+              </span>
               <small>Скачать дистрибутив EXE</small>
             </a>
           </nav>
@@ -2970,8 +3008,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.128:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.128:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.129:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.129:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
