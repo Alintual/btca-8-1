@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.64";
+  var VERSION = "8.1.65";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -148,26 +148,24 @@
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }
 
+  function useFormaCustomNumpad() {
+    return isAppleTouchDevice();
+  }
+
   function reinforceFormaOkInputKeyboard(input) {
     if (!input) return;
     input.type = "text";
     input.inputMode = "numeric";
     input.setAttribute("inputmode", "numeric");
     input.setAttribute("pattern", "[0-9]*");
+    input.setAttribute("autocomplete", "off");
+    input.removeAttribute("name");
     input.removeAttribute("lang");
-    if (isAppleTouchDevice()) {
-      input.setAttribute("autocomplete", "one-time-code");
-      input.setAttribute("name", "one-time-code");
-    } else {
-      input.setAttribute("autocomplete", "off");
-      input.removeAttribute("name");
-    }
   }
 
-  function focusFormaOkInput(input) {
-    if (!input) return;
-    reinforceFormaOkInputKeyboard(input);
-    input.focus({ preventScroll: true });
+  function blurActiveField() {
+    var active = document.activeElement;
+    if (active && active !== document.body && typeof active.blur === "function") active.blur();
   }
 
   function createFormaOkInput(task, row) {
@@ -184,12 +182,123 @@
     return input;
   }
 
+  function mountFormaOkCellButton(slot, task, row) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btca-l1-ok-cell" + (row.invalid ? " btca-l1-ok-cell--invalid" : "");
+    btn.setAttribute("data-btca-forma-ok-cell", String(task));
+    btn.setAttribute("aria-label", "Успешные удары задача " + task);
+    var display = document.createElement("span");
+    display.className = "btca-l1-ok-display";
+    display.setAttribute("data-btca-forma-ok-display", "");
+    display.textContent = row.okRaw || "";
+    btn.appendChild(display);
+    slot.textContent = "";
+    slot.appendChild(btn);
+  }
+
   function getFormaOkInput(content, task) {
     return content.querySelector('[data-btca-forma-ok-input="' + task + '"]');
   }
 
+  function getFormaOkCell(content, task) {
+    return content.querySelector('[data-btca-forma-ok-cell="' + task + '"]');
+  }
+
+  function getFormaOkAnchor(content, task) {
+    return useFormaCustomNumpad() ? getFormaOkCell(content, task) : getFormaOkInput(content, task);
+  }
+
+  function getFormaNumpad(content) {
+    return content.querySelector("[data-btca-forma-numpad]");
+  }
+
+  function createFormaNumpadKey(label, value) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btca-l1-forma-numpad-key";
+    btn.setAttribute("data-btca-forma-numpad-key", value);
+    btn.setAttribute("aria-label", value === "backspace" ? "Удалить цифру" : "Цифра " + label);
+    btn.textContent = label;
+    return btn;
+  }
+
+  function ensureFormaNumpad(content) {
+    var existing = getFormaNumpad(content);
+    if (existing) return existing;
+    var host = content.querySelector(".btca-l1-forma");
+    if (!host) return null;
+    var dock = document.createElement("div");
+    dock.className = "btca-l1-forma-numpad-dock";
+    dock.setAttribute("data-btca-forma-numpad", "");
+    dock.hidden = true;
+
+    var shield = document.createElement("div");
+    shield.className = "btca-l1-forma-keyboard-shield";
+    shield.setAttribute("data-btca-forma-keyboard-shield", "");
+    shield.setAttribute("aria-hidden", "true");
+    dock.appendChild(shield);
+
+    var grid = document.createElement("div");
+    grid.className = "btca-l1-forma-numpad-grid";
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9"].forEach(function (digit) {
+      grid.appendChild(createFormaNumpadKey(digit, digit));
+    });
+    var spacer = document.createElement("div");
+    spacer.className = "btca-l1-forma-numpad-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    grid.appendChild(spacer);
+    grid.appendChild(createFormaNumpadKey("0", "0"));
+    var backspace = createFormaNumpadKey("⌫", "backspace");
+    backspace.className += " btca-l1-forma-numpad-key--wide";
+    grid.appendChild(backspace);
+    dock.appendChild(grid);
+
+    var done = document.createElement("button");
+    done.type = "button";
+    done.className = "btca-l1-forma-numpad-done";
+    done.setAttribute("data-btca-forma-numpad-done", "");
+    done.textContent = "Готово";
+    dock.appendChild(done);
+
+    host.appendChild(dock);
+    wireFormaNumpad(content, dock);
+    return dock;
+  }
+
+  function syncFormaNumpadDoneLabel(content, task) {
+    var dock = getFormaNumpad(content);
+    if (!dock || task === null) return;
+    var done = dock.querySelector("[data-btca-forma-numpad-done]");
+    if (!done) return;
+    var b5 = b5FromSelectValue(state.ui.exerciseValue);
+    var nextOk = neighborActiveOkTask(task, 1, b5);
+    done.textContent = nextOk !== null ? "Далее" : "Готово";
+  }
+
+  function setFormaNumpadOpen(content, open) {
+    var forma = content.querySelector(".btca-l1-forma");
+    var dock = ensureFormaNumpad(content);
+    if (!forma || !dock) return;
+    forma.classList.toggle("btca-l1-forma--numpad-open", !!open);
+    dock.hidden = !open;
+    if (open) blurActiveField();
+  }
+
+  function closeFormaOkCell(content) {
+    setFormaNumpadOpen(content, false);
+    setActiveFormaOkCell(content, null);
+  }
+
   function setActiveFormaOkCell(content, task) {
     formaOkFocusState.task = task;
+    if (useFormaCustomNumpad()) {
+      content.querySelectorAll("[data-btca-forma-ok-cell]").forEach(function (cell) {
+        var cellTask = Number(cell.getAttribute("data-btca-forma-ok-cell"));
+        cell.classList.toggle("btca-l1-ok-cell--active", cellTask === task);
+      });
+      return;
+    }
     content.querySelectorAll("[data-btca-forma-ok-input]").forEach(function (input) {
       var cellTask = Number(input.getAttribute("data-btca-forma-ok-input"));
       input.classList.toggle("btca-l1-ok-input--active", cellTask === task);
@@ -201,51 +310,76 @@
       if (!row.active || row.required === null) return;
       var slot = content.querySelector('[data-btca-forma-ok-slot="' + row.task + '"]');
       if (!slot) return;
-      slot.textContent = "";
-      slot.appendChild(createFormaOkInput(row.task, row));
+      if (useFormaCustomNumpad()) {
+        mountFormaOkCellButton(slot, row.task, row);
+      } else {
+        slot.textContent = "";
+        slot.appendChild(createFormaOkInput(row.task, row));
+      }
     });
+    if (useFormaCustomNumpad()) ensureFormaNumpad(content);
   }
 
   function openFormaOkCell(content, task) {
+    setActiveFormaOkCell(content, task);
+    scrollFormaOkRowIntoView(content, task);
+    if (useFormaCustomNumpad()) {
+      setFormaNumpadOpen(content, true);
+      syncFormaNumpadDoneLabel(content, task);
+      return;
+    }
     var input = getFormaOkInput(content, task);
     if (!input) return;
     var digits = state.ui.taskOk[String(task)] || "";
-    setActiveFormaOkCell(content, task);
     var b5 = b5FromSelectValue(state.ui.exerciseValue);
     var nextOk = neighborActiveOkTask(task, 1, b5);
-    var enterHint = nextOk !== null ? "next" : "done";
-    scrollFormaOkRowIntoView(content, task);
-    input.setAttribute("enterkeyhint", enterHint);
+    input.setAttribute("enterkeyhint", nextOk !== null ? "next" : "done");
     input.value = digits;
-    focusFormaOkInput(input);
+    reinforceFormaOkInputKeyboard(input);
+    input.focus({ preventScroll: true });
   }
 
   function syncFormaOkTableDom(content, forma) {
     forma.rows.forEach(function (row) {
-      var input = getFormaOkInput(content, row.task);
-      if (!input) return;
-      if (document.activeElement !== input && input.value !== (row.okRaw || "")) {
-        input.value = row.okRaw || "";
+      if (useFormaCustomNumpad()) {
+        var cell = getFormaOkCell(content, row.task);
+        if (!cell) return;
+        var display = cell.querySelector("[data-btca-forma-ok-display]");
+        if (display) display.textContent = row.okRaw || "";
+        cell.classList.toggle("btca-l1-ok-cell--invalid", !!row.invalid);
+        cell.classList.toggle("btca-l1-ok-cell--active", formaOkFocusState.task === row.task);
+      } else {
+        var input = getFormaOkInput(content, row.task);
+        if (!input) return;
+        if (document.activeElement !== input && input.value !== (row.okRaw || "")) {
+          input.value = row.okRaw || "";
+        }
+        input.classList.toggle("btca-l1-ok-input--invalid", !!row.invalid);
+        input.classList.toggle("btca-l1-ok-input--active", formaOkFocusState.task === row.task);
       }
-      input.classList.toggle("btca-l1-ok-input--invalid", !!row.invalid);
-      input.classList.toggle("btca-l1-ok-input--active", formaOkFocusState.task === row.task);
-      var rowEl = input.closest(".btca-l1-table-row");
+      var anchor = getFormaOkAnchor(content, row.task);
+      if (!anchor) return;
+      var rowEl = anchor.closest(".btca-l1-table-row");
       if (!rowEl) return;
       var okCell = rowEl.querySelector(".btca-l1-col--ok");
       if (okCell) okCell.classList.toggle("btca-l1-table-cell--invalid", !!row.invalid);
       var pctCell = rowEl.querySelector(".btca-l1-col--pct .btca-l1-td");
       if (pctCell) pctCell.textContent = row.pct;
     });
+    if (useFormaCustomNumpad() && formaOkFocusState.task !== null) {
+      syncFormaNumpadDoneLabel(content, formaOkFocusState.task);
+    }
     syncFormaSaveButton(content, forma.canSave);
   }
 
   function scrollFormaOkRowIntoView(content, task) {
     var scroll = content.querySelector("[data-btca-forma-table-scroll]");
-    var anchor = getFormaOkInput(content, task);
+    var anchor = getFormaOkAnchor(content, task);
     if (!scroll || !anchor) return;
     var rowEl = anchor.closest(".btca-l1-table-row");
     if (!rowEl) return;
-    scroll.scrollTop = Math.max(0, rowEl.offsetTop - 16);
+    var reserve = useFormaCustomNumpad() ? 12 : 16;
+    scroll.scrollTop = Math.max(0, rowEl.offsetTop - reserve);
   }
 
   function finishOrAdvanceFormaOkTask(content, task) {
@@ -258,17 +392,16 @@
       openFormaOkCell(content, next);
       return;
     }
-    var input = getFormaOkInput(content, task);
-    if (input) input.blur();
-    setActiveFormaOkCell(content, null);
+    if (!useFormaCustomNumpad()) {
+      var input = getFormaOkInput(content, task);
+      if (input) input.blur();
+    }
+    closeFormaOkCell(content);
     var scroll = content.querySelector("[data-btca-forma-table-scroll]");
     if (scroll) scroll.scrollTop = 0;
   }
 
-  function handleFormaOkInputChange(content, task, rawValue) {
-    var digits = String(rawValue || "").replace(/[^\d]/g, "");
-    var input = getFormaOkInput(content, task);
-    if (input && input.value !== digits) input.value = digits;
+  function handleFormaOkDigits(content, task, digits) {
     state.ui.taskOk[String(task)] = digits;
     state.formaFlags.suppressExerciseActive = false;
     state.formaFlags.statusOverride = null;
@@ -284,12 +417,60 @@
     }
   }
 
+  function appendFormaOkDigit(content, task, digit) {
+    var digits = String(state.ui.taskOk[String(task)] || "") + String(digit);
+    handleFormaOkDigits(content, task, digits);
+  }
+
+  function backspaceFormaOkDigit(content, task) {
+    var digits = String(state.ui.taskOk[String(task)] || "");
+    if (!digits) return;
+    handleFormaOkDigits(content, task, digits.slice(0, -1));
+  }
+
+  function wireFormaNumpad(content, dock) {
+    if (!dock || dock.getAttribute("data-btca-forma-numpad-wired") === "1") return;
+    dock.setAttribute("data-btca-forma-numpad-wired", "1");
+    dock.querySelectorAll("[data-btca-forma-numpad-key]").forEach(function (keyBtn) {
+      keyBtn.addEventListener("click", function () {
+        var task = formaOkFocusState.task;
+        if (task === null) return;
+        var key = keyBtn.getAttribute("data-btca-forma-numpad-key");
+        if (key === "backspace") backspaceFormaOkDigit(content, task);
+        else appendFormaOkDigit(content, task, key);
+      });
+    });
+    var shield = dock.querySelector("[data-btca-forma-keyboard-shield]");
+    if (shield) {
+      shield.addEventListener("click", function () {
+        closeFormaOkCell(content);
+      });
+    }
+    var done = dock.querySelector("[data-btca-forma-numpad-done]");
+    if (done) {
+      done.addEventListener("click", function () {
+        var task = formaOkFocusState.task;
+        if (task === null) return;
+        var b5 = b5FromSelectValue(state.ui.exerciseValue);
+        var req = requiredStrikesFormL1(b5, task);
+        var digits = state.ui.taskOk[String(task)] || "";
+        if (isFormaOkValueValid(digits, req)) finishOrAdvanceFormaOkTask(content, task);
+        else closeFormaOkCell(content);
+      });
+    }
+  }
+
   function wireFormaOkInputs(content) {
+    if (useFormaCustomNumpad()) {
+      content.querySelectorAll("[data-btca-forma-ok-cell]").forEach(function (cell) {
+        cell.addEventListener("click", function () {
+          openFormaOkCell(content, Number(cell.getAttribute("data-btca-forma-ok-cell")));
+        });
+      });
+      return;
+    }
     content.querySelectorAll("[data-btca-forma-ok-input]").forEach(function (input) {
       var task = Number(input.getAttribute("data-btca-forma-ok-input"));
-      input.addEventListener("touchstart", function () {
-        reinforceFormaOkInputKeyboard(input);
-      }, { passive: true });
       input.addEventListener("pointerdown", function () {
         reinforceFormaOkInputKeyboard(input);
       });
@@ -302,7 +483,9 @@
         if (formaOkFocusState.task === task) setActiveFormaOkCell(content, null);
       });
       input.addEventListener("input", function () {
-        handleFormaOkInputChange(content, task, input.value);
+        var digits = String(input.value || "").replace(/[^\d]/g, "");
+        if (input.value !== digits) input.value = digits;
+        handleFormaOkDigits(content, task, digits);
       });
       input.addEventListener("keydown", function (event) {
         if (event.key !== "Enter") return;
