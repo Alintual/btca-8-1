@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.54";
+  var VERSION = "8.1.55";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -165,6 +165,18 @@
     scroll.scrollTop = Math.max(0, rowEl.offsetTop - 16);
   }
 
+  function focusFormaOkInput(input) {
+    if (!input) return;
+    input.type = "tel";
+    input.setAttribute("inputmode", "numeric");
+    input.setAttribute("pattern", "[0-9]*");
+    input.focus({ preventScroll: true });
+    try {
+      var len = input.value.length;
+      input.setSelectionRange(len, len);
+    } catch (e) {}
+  }
+
   function finishOrAdvanceFormaOkTask(content, task) {
     var b5 = b5FromSelectValue(state.ui.exerciseValue);
     var req = requiredStrikesFormL1(b5, task);
@@ -174,7 +186,7 @@
     if (next !== null) {
       var nextInput = content.querySelector('[data-btca-forma-ok="' + next + '"]');
       if (nextInput) {
-        nextInput.focus();
+        focusFormaOkInput(nextInput);
         scrollFormaOkRowIntoView(content, next);
       }
       return;
@@ -212,6 +224,7 @@
         finishOrAdvanceFormaOkTask(content, Number(event.target.getAttribute("data-btca-forma-ok")));
       });
       input.addEventListener("focus", function (event) {
+        focusFormaOkInput(event.target);
         scrollFormaOkRowIntoView(content, Number(event.target.getAttribute("data-btca-forma-ok")));
       });
     });
@@ -595,7 +608,8 @@
         var nextOk = row.active && row.required !== null ? neighborActiveOkTask(row.task, 1, b5) : null;
         var input = row.active && row.required !== null
           ? '<input class="btca-l1-ok-input' + (row.invalid ? " btca-l1-ok-input--invalid" : "") +
-            '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="' + (nextOk !== null ? "next" : "done") +
+            '" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false"' +
+            ' enterkeyhint="' + (nextOk !== null ? "next" : "done") +
             '" data-btca-forma-ok="' + row.task +
             '" value="' + escapeHtml(row.okRaw) + '" aria-label="Успешные удары задача ' + row.task + '">'
           : "";
