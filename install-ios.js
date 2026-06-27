@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.131:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.131:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.132:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.132:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -531,19 +531,30 @@
     window.requestAnimationFrame(syncHomeTaglineLayout);
   }
 
+  function resetLoadingPageScroll() {
+    if (!isBrowserLoadingHomePage()) return;
+    try {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    } catch (_) {}
+    window.scrollTo(0, 0);
+  }
+
   function syncPortraitMode() {
     applyBrowserLayoutMode();
     updateComfortTypography();
     updateLandscapeWindowLayout();
+    resetLoadingPageScroll();
     window.setTimeout(function () {
       updateComfortTypography();
       updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
+      resetLoadingPageScroll();
     }, 80);
     window.setTimeout(function () {
       updateComfortTypography();
       updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
+      resetLoadingPageScroll();
     }, 260);
   }
 
@@ -552,7 +563,7 @@
     if (!panel) return;
     panel.className = "ios-panel ios-panel--open";
     panel.innerHTML = html;
-    if (panel.scrollIntoView) {
+    if (!isBrowserLoadingHomePage() && panel.scrollIntoView) {
       panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }
@@ -1524,8 +1535,17 @@
     window.addEventListener("resize", syncPortraitMode);
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", syncPortraitMode);
-      window.visualViewport.addEventListener("scroll", syncPortraitMode);
+      window.visualViewport.addEventListener("scroll", function () {
+        if (isBrowserLoadingHomePage()) {
+          resetLoadingPageScroll();
+          return;
+        }
+        syncPortraitMode();
+      });
     }
+    window.addEventListener("pageshow", function () {
+      resetLoadingPageScroll();
+    });
     document.addEventListener("click", handleAppNavigation, true);
     if (els.button) {
       els.button.addEventListener("click", prepareOffline);

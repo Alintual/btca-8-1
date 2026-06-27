@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.131" />
+    <meta name="btca-cache-version" content="btca-web-8.1.132" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -67,8 +67,19 @@ a {
 .app {
   width: min(560px, 100%);
   min-height: 100vh;
+  min-height: 100svh;
   margin: 0 auto;
   padding: max(2px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+}
+
+body.btca-apple-comfort:not(.btca-installed-mode) .app {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+@media (min-width: 744px) {
+  body.btca-apple-comfort:not(.btca-installed-mode) .app {
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
 }
 
 .home {
@@ -3012,8 +3023,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.131:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.131:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.132:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.132:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3541,19 +3552,30 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     window.requestAnimationFrame(syncHomeTaglineLayout);
   }
 
+  function resetLoadingPageScroll() {
+    if (!isBrowserLoadingHomePage()) return;
+    try {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    } catch (_) {}
+    window.scrollTo(0, 0);
+  }
+
   function syncPortraitMode() {
     applyBrowserLayoutMode();
     updateComfortTypography();
     updateLandscapeWindowLayout();
+    resetLoadingPageScroll();
     window.setTimeout(function () {
       updateComfortTypography();
       updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
+      resetLoadingPageScroll();
     }, 80);
     window.setTimeout(function () {
       updateComfortTypography();
       updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
+      resetLoadingPageScroll();
     }, 260);
   }
 
@@ -3562,7 +3584,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     if (!panel) return;
     panel.className = "ios-panel ios-panel--open";
     panel.innerHTML = html;
-    if (panel.scrollIntoView) {
+    if (!isBrowserLoadingHomePage() && panel.scrollIntoView) {
       panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }
@@ -4534,8 +4556,17 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     window.addEventListener("resize", syncPortraitMode);
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", syncPortraitMode);
-      window.visualViewport.addEventListener("scroll", syncPortraitMode);
+      window.visualViewport.addEventListener("scroll", function () {
+        if (isBrowserLoadingHomePage()) {
+          resetLoadingPageScroll();
+          return;
+        }
+        syncPortraitMode();
+      });
     }
+    window.addEventListener("pageshow", function () {
+      resetLoadingPageScroll();
+    });
     document.addEventListener("click", handleAppNavigation, true);
     if (els.button) {
       els.button.addEventListener("click", prepareOffline);
