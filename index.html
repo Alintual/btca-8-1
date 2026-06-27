@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.124" />
+    <meta name="btca-cache-version" content="btca-web-8.1.125" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1851,6 +1851,95 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   border: 2px solid rgba(239, 68, 68, 0.95);
 }
 
+.btca-l1-col--ok[data-btca-forma-ok-slot] {
+  padding: 0;
+}
+
+.btca-l1-ok-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 2px;
+  border: 1px solid rgba(17, 24, 39, 0.25);
+  border-radius: 0;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  touch-action: manipulation;
+}
+
+.btca-l1-ok-cell--active {
+  border-color: #2563eb;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.35);
+}
+
+.btca-l1-ok-cell--invalid {
+  border-color: #ff1143;
+  box-shadow: inset 0 0 0 1px rgba(255, 17, 67, 0.35);
+}
+
+.btca-l1-ok-display {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: calc(26rem / 17);
+  text-align: center;
+}
+
+.btca-l1-forma-numpad-dock {
+  flex-shrink: 0;
+  padding: 6px 8px 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.35);
+  background: #a2c4c9;
+}
+
+.btca-l1-forma-numpad-label {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(17, 24, 39, 0.82);
+  font-size: 0.875rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.btca-l1-forma-numpad-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 8px;
+  border: 1px solid rgba(17, 24, 39, 0.25);
+  border-radius: 0;
+  color: #111827;
+  background: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  -webkit-appearance: none;
+  appearance: none;
+  -moz-appearance: textfield;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+}
+
+.btca-l1-forma-numpad-input::-webkit-inner-spin-button,
+.btca-l1-forma-numpad-input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+body.btca-apple-comfort .btca-l1-forma-numpad-input {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default;
+  touch-action: manipulation;
+}
+
 .btca-l1-ok-input {
   width: 100%;
   height: 100%;
@@ -2902,8 +2991,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.124:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.124:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.125:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.125:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -2939,8 +3028,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.59";
-  var LEVEL2_MODULE_VERSION = "8.1.60";
+  var LEVEL1_MODULE_VERSION = "8.1.60";
+  var LEVEL2_MODULE_VERSION = "8.1.61";
 
   var CORE_REL_PATHS = [
     "",
