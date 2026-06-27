@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.134:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.134:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.135:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.135:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -39,8 +39,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.62";
-  var LEVEL2_MODULE_VERSION = "8.1.63";
+  var LEVEL1_MODULE_VERSION = "8.1.64";
+  var LEVEL2_MODULE_VERSION = "8.1.65";
 
   var CORE_REL_PATHS = [
     "",
@@ -531,30 +531,19 @@
     window.requestAnimationFrame(syncHomeTaglineLayout);
   }
 
-  function resetLoadingPageScroll() {
-    if (!isBrowserLoadingHomePage()) return;
-    try {
-      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-    } catch (_) {}
-    window.scrollTo(0, 0);
-  }
-
   function syncPortraitMode() {
     applyBrowserLayoutMode();
     updateComfortTypography();
     updateLandscapeWindowLayout();
-    resetLoadingPageScroll();
     window.setTimeout(function () {
       updateComfortTypography();
       updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
-      resetLoadingPageScroll();
     }, 80);
     window.setTimeout(function () {
       updateComfortTypography();
       updateLandscapeWindowLayout();
       syncHomeTaglineLayout();
-      resetLoadingPageScroll();
     }, 260);
   }
 
@@ -563,7 +552,7 @@
     if (!panel) return;
     panel.className = "ios-panel ios-panel--open";
     panel.innerHTML = html;
-    if (!isBrowserLoadingHomePage() && panel.scrollIntoView) {
+    if (panel.scrollIntoView) {
       panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }
@@ -1535,17 +1524,7 @@
     window.addEventListener("resize", syncPortraitMode);
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", syncPortraitMode);
-      window.visualViewport.addEventListener("scroll", function () {
-        if (isBrowserLoadingHomePage()) {
-          resetLoadingPageScroll();
-          return;
-        }
-        syncPortraitMode();
-      });
     }
-    window.addEventListener("pageshow", function () {
-      resetLoadingPageScroll();
-    });
     document.addEventListener("click", handleAppNavigation, true);
     if (els.button) {
       els.button.addEventListener("click", prepareOffline);
