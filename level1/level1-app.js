@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.53";
+  var VERSION = "8.1.54";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -352,6 +352,26 @@
     };
   }
 
+  function scrollPickerListActiveToCenter(listEl) {
+    if (!listEl) return;
+    function run() {
+      var viewportH = listEl.clientHeight;
+      if (viewportH <= 0) return;
+      var active = listEl.querySelector(".btca-level1-picker__item--active");
+      if (!active) return;
+      var itemTop = active.offsetTop;
+      var itemH = active.offsetHeight;
+      var maxScroll = Math.max(0, listEl.scrollHeight - viewportH);
+      var centered = itemTop - (viewportH - itemH) / 2;
+      listEl.scrollTop = Math.min(maxScroll, Math.max(0, centered));
+    }
+    requestAnimationFrame(function () {
+      requestAnimationFrame(run);
+    });
+    window.setTimeout(run, 50);
+    window.setTimeout(run, 150);
+  }
+
   function pickerScrollOffset(options, index, viewportHeight, rowHeight) {
     if (index < 0 || index >= options.length || viewportHeight <= 0) return 0;
     var offset = PICKER_LIST_PAD;
@@ -365,20 +385,7 @@
   }
 
   function scrollPickerToActive(listEl, options, currentValue, rowHeight) {
-    if (!listEl) return;
-    var index = -1;
-    var i;
-    for (i = 0; i < options.length; i += 1) {
-      if (options[i].value === currentValue) { index = i; break; }
-    }
-    if (index < 0) return;
-    var run = function () {
-      listEl.scrollTop = pickerScrollOffset(options, index, listEl.clientHeight, rowHeight);
-    };
-    requestAnimationFrame(function () {
-      requestAnimationFrame(run);
-    });
-    window.setTimeout(run, 50);
+    scrollPickerListActiveToCenter(listEl);
   }
 
   function deriveNavSectionLabel(exerciseFilterKey) {
