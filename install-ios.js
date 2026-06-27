@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.125:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.125:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.126:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.126:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -49,6 +49,7 @@
     "icons/btca-icon-512.png",
     "branding/up.png",
     "branding/baza.png",
+    "branding/splash.gif",
     "offline/app-shell.json",
     "offline/media/manifest.json",
     "vendor/zip.min.js",
@@ -73,6 +74,64 @@
     var rel = String(relativePath || "").replace(/^\//, "");
     if (!rel) return BTCA_BASE.replace(/\/?$/, "/");
     return BTCA_BASE.replace(/\/?$/, "/") + rel;
+  }
+
+  function splashDisplayPct(percent) {
+    return Math.max(0, Math.min(98, Math.round(percent)));
+  }
+
+  function bootSplashEl() {
+    return document.getElementById("btca-boot-splash");
+  }
+
+  function ensureBootSplashDom() {
+    var el = bootSplashEl();
+    if (!el) return null;
+    var img = el.querySelector(".btca-boot-splash__gif");
+    if (img && !img.getAttribute("src")) {
+      img.src = assetPath("branding/splash.gif");
+    }
+    return el;
+  }
+
+  function updateBootSplashPct(percent) {
+    var disp = splashDisplayPct(percent);
+    var num = document.querySelector("[data-btca-boot-pct-num]");
+    if (num) num.textContent = String(disp);
+    document.querySelectorAll("[data-btca-splash-pct-num]").forEach(function (node) {
+      node.textContent = String(disp);
+    });
+  }
+
+  function showBootSplash(percent) {
+    var el = ensureBootSplashDom();
+    if (!el) return;
+    document.body.classList.add("btca-boot-mode");
+    el.hidden = false;
+    el.setAttribute("aria-hidden", "false");
+    var err = el.querySelector("[data-btca-boot-error]");
+    var retry = el.querySelector("[data-btca-boot-retry]");
+    if (err) err.hidden = true;
+    if (retry) retry.hidden = true;
+    updateBootSplashPct(percent);
+  }
+
+  function hideBootSplash() {
+    document.body.classList.remove("btca-boot-mode");
+    var el = bootSplashEl();
+    if (!el) return;
+    el.hidden = true;
+    el.setAttribute("aria-hidden", "true");
+  }
+
+  function buildSplashIndicatorHtml(percent) {
+    var disp = splashDisplayPct(percent);
+    var gifSrc = assetPath("branding/splash.gif");
+    return '<div class="btca-boot-splash__gif-wrap">' +
+      '<img class="btca-boot-splash__gif" src="' + escapeHtml(gifSrc) + '" alt="" decoding="async">' +
+      '<div class="btca-boot-splash__pct" aria-live="polite">' +
+      '<span class="btca-boot-splash__pct-num" data-btca-splash-pct-num>' + disp + "</span>" +
+      '<span class="btca-boot-splash__pct-sym">%</span></div></div>';
   }
 
   function resolvePackZipUrl(pack) {
@@ -572,13 +631,13 @@
       .replace(/\n/g, "<br>");
   }
 
-  function renderProgress(title, percent, message) {
+  function renderProgress(title, percent) {
     var pct = Math.max(0, Math.min(100, Math.round(percent)));
-    setPanel(
-      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + pct + "%</span></div>" +
-      '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
-      '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>"
-    );
+    if (isStandalone()) {
+      showBootSplash(pct);
+      return;
+    }
+    setPanel('<div class="btca-ios-splash-panel">' + buildSplashIndicatorHtml(pct) + "</div>");
   }
 
   function renderInfo(title, message) {
@@ -589,19 +648,20 @@
   }
 
   function renderReady() {
+    hideBootSplash();
     var hint = isStandalone()
       ? "Offline-пакет подготовлен. Приложение уже открыто с экрана Домой."
       : "Offline-пакет подготовлен. В Safari нажмите «Поделиться» и выберите «На экран Домой».";
+    if (isStandalone()) {
+      markAppPrepared();
+      renderInstalledHome();
+      return;
+    }
     setPanel(
-      '<div class="ios-panel__header"><strong>iOS/iPadOS</strong><span>100%</span></div>' +
-      '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:100%"></div></div>' +
-      '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
+      '<div class="btca-ios-splash-panel">' + buildSplashIndicatorHtml(100) + "</div>" +
       '<p class="hint">' + escapeHtml(hint) + "</p>"
     );
     markAppPrepared();
-    if (isStandalone()) {
-      renderInstalledHome();
-    }
   }
 
   function renderAboutScreen() {
@@ -1089,6 +1149,7 @@
   }
 
   function renderError(error) {
+    hideBootSplash();
     setPanel(
       '<div class="ios-panel__header"><strong>Ошибка iOS/iPadOS</strong></div>' +
       '<p class="prepare-status prepare-status--error">' + escapeHtml(error && (error.message || error)) + "</p>"
@@ -1146,8 +1207,8 @@
 
   function resolveProgressCallback(onProgress) {
     if (typeof onProgress === "function") return onProgress;
-    return function (percent, message) {
-      renderProgress("Подготовка iOS/iPadOS", percent, message);
+    return function (percent) {
+      renderProgress("Подготовка iOS/iPadOS", percent);
     };
   }
 
@@ -1314,20 +1375,20 @@
 
     setButtonState(true, "Подготовка offline...");
 
-    var report = function (pct, msg) {
-      renderProgress("Подготовка iOS/iPadOS", pct, msg);
+    var report = function (pct) {
+      renderProgress("Подготовка iOS/iPadOS", pct);
     };
 
-    report(1, "Регистрация offline-службы...");
+    report(1);
     registerOfflineServiceWorker()
       .then(function () {
-        report(2, "Очистка устаревшей оболочки...");
+        report(2);
         return purgeShellInstallCache().then(function () {
           return purgeGenerationRuntimeCache();
         });
       })
       .then(function () {
-        report(3, "Загрузка оболочки приложения...");
+        report(3);
         return cacheCoreAssets(report, 3, 15);
       })
       .then(function () {
@@ -1335,14 +1396,14 @@
       })
       .then(function (mediaReady) {
         if (mediaReady) {
-          report(95, "Материалы уже распакованы");
+          report(95);
           return;
         }
-        report(15, "Загрузка и распаковка ZIP-архивов...");
+        report(15);
         return prepareMediaArchives(report, 15, 95);
       })
       .then(function () {
-        report(100, "Готово");
+        report(100);
         renderReady();
         preloadLevel1ModuleSilently();
         preloadLevel2ModuleSilently();
@@ -1355,11 +1416,13 @@
 
   function initStandaloneApp() {
     if (!window.isSecureContext || !("caches" in window)) {
+      renderInstalledHome();
       renderInfo("iOS/iPadOS", "Для offline-режима откройте приложение через HTTPS.");
       return;
     }
 
     function showHome() {
+      hideBootSplash();
       renderInstalledHome();
       preloadLevel1ModuleSilently();
       preloadLevel2ModuleSilently();
@@ -1370,6 +1433,7 @@
       return;
     }
 
+    showBootSplash(0);
     verifyMediaCacheReady().then(function (ready) {
       if (ready && isPreparedStateCurrent(readAppPreparedState())) {
         markAppPrepared();
@@ -1380,15 +1444,11 @@
         showHome();
         return;
       }
-      renderInstalledHome();
-      renderInfo(
-        "iOS/iPadOS",
-        "Данные не найдены на устройстве. Подождите, идёт подготовка offline-пакета…"
-      );
       prepareOffline();
     }).catch(function (error) {
-      renderInfo("iOS/iPadOS", error && (error.message || error));
+      hideBootSplash();
       renderInstalledHome();
+      renderError(error);
     });
   }
 
@@ -1413,8 +1473,8 @@
     }
     if (isStandalone()) {
       initStandaloneApp();
-    } else if (!els.button) {
-      return;
+    } else {
+      ensureBootSplashDom();
     }
   }
 
