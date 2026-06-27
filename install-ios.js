@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.120:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.120:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.121:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.121:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -39,8 +39,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.55";
-  var LEVEL2_MODULE_VERSION = "8.1.56";
+  var LEVEL1_MODULE_VERSION = "8.1.56";
+  var LEVEL2_MODULE_VERSION = "8.1.57";
 
   var CORE_REL_PATHS = [
     "",
@@ -53,6 +53,7 @@
     "offline/media/manifest.json",
     "vendor/zip.min.js",
     "level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
+    "forma-keypad.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/data/forma_exercise_list.json",
     "level1/data/polezCatalog.json",
@@ -648,6 +649,36 @@
     if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
+  function loadFormaKeypadScript() {
+    return new Promise(function (resolve, reject) {
+      if (window.BTCA_FORMA_KEYPAD) {
+        resolve();
+        return;
+      }
+      var src = assetPath("forma-keypad.js?v=" + LEVEL1_MODULE_VERSION);
+      fetch(src, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Не удалось загрузить " + src + ": " + response.status);
+          return response.text();
+        })
+        .then(function (code) {
+          if (!/\(function\s*\(\)/.test(code)) {
+            throw new Error("Неверный ответ для " + src);
+          }
+          removeInjectedScript("data-btca-forma-keypad-src", src);
+          var script = document.createElement("script");
+          script.setAttribute("data-btca-forma-keypad-src", src);
+          script.textContent = code;
+          document.head.appendChild(script);
+          if (!window.BTCA_FORMA_KEYPAD) {
+            throw new Error("forma-keypad.js выполнен, но BTCA_FORMA_KEYPAD не найден");
+          }
+          resolve();
+        })
+        .catch(reject);
+    });
+  }
+
   function loadLevel1Script(src) {
     return new Promise(function (resolve, reject) {
       var isDb = src.indexOf("level1-db") >= 0;
@@ -696,6 +727,8 @@
     if (level1ModuleReady()) return Promise.resolve();
     var v = LEVEL1_MODULE_VERSION;
     return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v)).then(function () {
+      return loadFormaKeypadScript();
+    }).then(function () {
       return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v));
     }).then(function () {
       if (!level1ModuleReady()) {
@@ -786,6 +819,8 @@
     var v = LEVEL2_MODULE_VERSION;
     return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v)).then(function () {
       return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v));
+    }).then(function () {
+      return loadFormaKeypadScript();
     }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v));
     }).then(function () {
