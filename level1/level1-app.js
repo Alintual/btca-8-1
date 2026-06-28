@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.78";
+  var VERSION = "8.1.79";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -708,10 +708,11 @@
       '<span class="btca-l1-face__text">' + escapeHtml(label) + "</span></button>";
   }
 
-  function getBazaChartTitle(exercise, exerciseFilterDisabled) {
+  function getBazaChartMeta(baza, exerciseFilterDisabled) {
+    var exercise = baza.exercise;
     var showChart = !exerciseFilterDisabled && exercise !== "all" && String(exercise || "").trim() !== "";
     return {
-      text: showChart ? "Успешные удары по упражнению за период" : "Нет данных по упражнению",
+      text: buildBazaTableTitle(baza),
       showChart: showChart,
       arrowDisabled: exerciseFilterDisabled,
     };
@@ -724,7 +725,7 @@
     var toLabel = formatIsoDateAsDdMmYyyy(to) || to;
     var exercisePart = baza.exercise === "all"
       ? "по всем упражнениям"
-      : "по упражнению " + labelForExerciseValue(baza.exercise);
+      : "по Упражнению " + labelForExerciseValue(baza.exercise);
     var periodPart = from && to && from === to
       ? "на " + fromLabel
       : "за период с " + fromLabel + " по " + toLabel;
@@ -1461,7 +1462,7 @@
   function bazaMenuCapabilities() {
     var baza = state.ui.baza;
     var exerciseDisabled = bazaFiltersDisabled() || state.bazaNoExercisesInPeriod;
-    var chartMeta = getBazaChartTitle(baza.exercise, exerciseDisabled);
+    var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
     var chartRows = chartMeta.showChart ? bazaChartDisplayRows(baza) : [];
     return {
       canDeleteOwn: !state.bazaStats.empty,
@@ -1677,7 +1678,7 @@
     var exerciseLabel = bazaExerciseFaceLabel(baza.exercise, exerciseDisabled);
     var taskLabel = taskFilterEmpty || baza.exercise === "all" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
     var taskDisabled = taskFilterEmpty || baza.exercise === "all";
-    var chartMeta = getBazaChartTitle(baza.exercise, exerciseDisabled);
+    var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
     var chartRows = chartMeta.showChart ? bazaChartDisplayRows(baza) : [];
 
     content.innerHTML =
@@ -1746,7 +1747,7 @@
         openPicker("Упражнение", exerciseOptions, baza.exercise, function (value) {
           var item = exerciseOptions.filter(function (o) { return o.value === value; })[0];
           onPickBazaExercise(item || { value: value });
-        }, event.currentTarget, { rowHeight: PICKER_ROW_SIMPLE });
+        }, event.currentTarget);
       });
     }
     var taskBtn = content.querySelector("[data-btca-baza-task]");
@@ -1759,7 +1760,7 @@
           state.ui.baza.task = value;
           applyUiPatch({ baza: { task: value } });
           refreshBazaRows().then(function () { renderBazaTab(content); });
-        }, event.currentTarget, { rowHeight: PICKER_ROW_SIMPLE });
+        }, event.currentTarget);
       });
     }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
