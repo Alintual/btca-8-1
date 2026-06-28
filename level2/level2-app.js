@@ -424,31 +424,10 @@
     return taskOk;
   }
 
-  function getTaskOkSnapshot(content) {
-    syncUiFromDb();
-    var merged = Object.assign({}, state.ui.taskOk || {});
-    if (content) Object.assign(merged, readTaskOkFromDom(content));
-    return merged;
-  }
-
-  function getFormaOkDigits(content, task) {
-    if (content) {
-      if (useFormaCustomNumpad()) {
-        var cell = getFormaOkCell(content, task);
-        var valueEl = cell && cell.querySelector("[data-btca-forma-ok-value]");
-        if (valueEl) return String(valueEl.textContent || "").replace(/[^\d]/g, "");
-      } else {
-        var input = getFormaOkInput(content, task);
-        if (input) return String(input.value || "").replace(/[^\d]/g, "");
-      }
-    }
-    return String((state.ui && state.ui.taskOk && state.ui.taskOk[String(task)]) || "");
-  }
-
   function mergeDomTaskOkIntoState(content) {
     if (!content) return;
+    if (!content.querySelector("[data-btca-forma-ok-cell], [data-btca-forma-ok-input]")) return;
     var domTaskOk = readTaskOkFromDom(content);
-    if (!Object.keys(domTaskOk).length) return;
     applyUiPatch({ taskOk: Object.assign({}, state.ui.taskOk || {}, domTaskOk) });
   }
 
@@ -774,7 +753,7 @@
     applyUiPatch({ taskOk: nextTaskOk });
     state.formaFlags.suppressExerciseActive = false;
     state.formaFlags.statusOverride = null;
-    var forma = computeFormaRows(content);
+    var forma = computeFormaRows();
     state.formaFlags.invalidData = !forma.allActiveOkAreEmptyOrValid;
     syncFormaOkTableDom(content, forma);
     renderTitleBar();
@@ -786,12 +765,12 @@
   }
 
   function appendFormaOkDigit(content, task, digit) {
-    var digits = getFormaOkDigits(content, task) + String(digit);
+    var digits = String(state.ui.taskOk[String(task)] || "") + String(digit);
     handleFormaOkDigits(content, task, digits);
   }
 
   function backspaceFormaOkDigit(content, task) {
-    var digits = getFormaOkDigits(content, task);
+    var digits = String(state.ui.taskOk[String(task)] || "");
     if (!digits) return;
     handleFormaOkDigits(content, task, digits.slice(0, -1));
   }
@@ -803,7 +782,7 @@
     else if (key === "enter") {
       var b5 = b5FromSelectValue(state.ui.exerciseValue);
       var req = requiredStrikesFormL1(b5, task);
-      var digits = getFormaOkDigits(content, task);
+      var digits = state.ui.taskOk[String(task)] || "";
       if (isFormaOkValueValid(digits, req)) finishOrAdvanceFormaOkTask(content, task);
       else closeFormaOkCell(content);
     } else appendFormaOkDigit(content, task, key);
@@ -1209,13 +1188,11 @@
     };
   }
 
-  function computeFormaRows(content) {
-    var okByTask = content ? getTaskOkSnapshot(content) : (function () {
-      syncUiFromDb();
-      return state.ui.taskOk || {};
-    })();
+  function computeFormaRows() {
+    syncUiFromDb();
     var b5 = b5FromSelectValue(state.ui.exerciseValue);
     var rules = exerciseRulesL1(b5);
+    var okByTask = state.ui.taskOk || {};
     var hasAnyValidOk = false;
     var allActiveOkAreEmptyOrValid = true;
     var rows = [];
@@ -1257,7 +1234,7 @@
 
   function renderFormaTab(content) {
     formaOkFocusState.task = null;
-    var forma = computeFormaRows(content);
+    var forma = computeFormaRows();
     state.formaFlags.invalidData = !forma.allActiveOkAreEmptyOrValid;
     var dateLabel = formatIsoDateAsDdMmYyyy(state.ui.trainingDate) || state.ui.trainingDate;
     var exerciseLabel = labelForExerciseValue(state.ui.exerciseValue);
@@ -1375,10 +1352,11 @@
     }
   }
 
-  function buildFormaSaveRows(content) {
+  function buildFormaSaveRows() {
+    syncUiFromDb();
     var b5 = b5FromSelectValue(state.ui.exerciseValue);
     var rules = exerciseRulesL1(b5);
-    var okByTask = getTaskOkSnapshot(content);
+    var okByTask = state.ui.taskOk || {};
     var rows = [];
     for (var task = 1; task <= 12; task += 1) {
       var req = rules.requiredByTask[task - 1];
@@ -1400,7 +1378,7 @@
       syncUiFromDb();
     }
     blurActiveField();
-    var forma = computeFormaRows(content);
+    var forma = computeFormaRows();
     if (!forma.canSave) {
       state.formaFlags.statusOverride = {
         text: forma.allActiveOkAreEmptyOrValid ? "Введите данные" : "Некорректные данные",
@@ -1413,7 +1391,7 @@
     armFormaSaveWatchdog();
     state.formaFlags.statusOverride = { text: "Сохранение…", tone: "active" };
     renderTitleBar();
-    var rows = buildFormaSaveRows(content);
+    var rows = buildFormaSaveRows();
     var savePromise = DB.flushUiState ? DB.flushUiState() : Promise.resolve();
     savePromise.then(function () {
       return DB.saveCluster({
