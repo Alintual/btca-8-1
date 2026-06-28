@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.77";
+  var VERSION = "8.1.78";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1535,37 +1535,12 @@
         : Promise.resolve({ exercises: [] })
       ).then(function (foreignRes) {
         state.bazaForeignKeys = foreignRes.exercises || [];
-        var src = baza.dataSource === "foreign" ? "foreign" : "own";
         var ex = baza.exercise;
-        var tk = baza.task;
-
-        if (!foreignAvailable && src === "foreign") {
-          src = "own";
-          ex = "all";
-        }
-        if (state.bazaOwnEmpty && foreignAvailable && ex === "all" && src === "own") {
-          src = "foreign";
-        }
-        if (ex !== "all" && !isBazaExerciseSelectionValid(ex, src)) {
-          if (state.bazaOwnEmpty && foreignAvailable) {
-            src = "foreign";
-            ex = "all";
-          } else {
-            ex = "all";
-          }
-          tk = "all";
-        }
 
         var hasAny = state.bazaOwnKeys.length > 0 || (foreignAvailable && state.bazaForeignKeys.length > 0);
         state.bazaNoExercisesInPeriod = !hasAny;
-        if (src !== baza.dataSource || ex !== baza.exercise || tk !== baza.task) {
-          state.ui.baza.dataSource = src;
-          state.ui.baza.exercise = ex;
-          state.ui.baza.task = tk;
-          applyUiPatch({ baza: { dataSource: src, exercise: ex, task: tk } });
-        }
 
-        if (!hasAny) {
+        if (!hasAny && ex === "all") {
           state.bazaRuleTasks = [];
           state.bazaRows = [];
           state.bazaExpandedRows = [];
@@ -1574,17 +1549,8 @@
 
         if (ex !== "all") {
           state.bazaRuleTasks = taskNumbersForExercise(ex);
-          if (tk !== "all" && state.bazaRuleTasks.indexOf(Number(tk)) < 0) {
-            state.ui.baza.task = "all";
-            applyUiPatch({ baza: { task: "all" } });
-            tk = "all";
-          }
         } else {
           state.bazaRuleTasks = [];
-          if (tk !== "all") {
-            state.ui.baza.task = "all";
-            applyUiPatch({ baza: { task: "all" } });
-          }
         }
 
         return refreshBazaRows();

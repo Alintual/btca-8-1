@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.77";
+  var VERSION = "8.1.78";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1375,21 +1375,10 @@
       var periodQuery = parts[2];
       state.bazaOwnKeys = periodQuery.exercises || [];
       state.bazaOwnEmpty = Number(ownStats.totalRows || 0) <= 0;
-      var ex = baza.exercise;
-      var tk = baza.task;
-
-      if (ex !== "all" && !isBazaExerciseSelectionValid(ex)) {
-        ex = "all";
-        tk = "all";
-      }
-
       state.bazaNoExercisesInPeriod = state.bazaOwnKeys.length <= 0;
+      var ex = baza.exercise;
 
-      if (ex !== baza.exercise || tk !== baza.task) {
-        applyUiPatch({ baza: { exercise: ex, task: tk } });
-      }
-
-      if (!state.bazaOwnKeys.length) {
+      if (!state.bazaOwnKeys.length && ex === "all") {
         state.bazaRuleTasks = [];
         state.bazaRows = [];
         state.bazaExpandedRows = [];
@@ -1398,16 +1387,8 @@
 
       if (ex !== "all") {
         state.bazaRuleTasks = taskNumbersForExercise(ex);
-        if (tk !== "all" && state.bazaRuleTasks.indexOf(Number(tk)) < 0) {
-          tk = "all";
-          applyUiPatch({ baza: { task: "all" } });
-        }
       } else {
         state.bazaRuleTasks = [];
-        if (tk !== "all") {
-          tk = "all";
-          applyUiPatch({ baza: { task: "all" } });
-        }
       }
 
       return refreshBazaRows();
