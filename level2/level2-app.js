@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.68";
+  var VERSION = "8.1.69";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -579,7 +579,7 @@
     if (useFormaCustomNumpad()) {
       setFormaNumpadOpen(content, true);
       syncFormaOkCaret(content);
-      if (opts.scroll) scrollFormaOkRowIntoView(content, task);
+      scrollFormaOkRowIntoView(content, task);
       return;
     }
     if (opts.scroll) scrollFormaOkRowIntoView(content, task);
@@ -636,14 +636,41 @@
     syncFormaSaveButton(content, forma.canSave);
   }
 
+  function getFormaNumpadObstruction(content) {
+    if (!useFormaCustomNumpad()) return 16;
+    var forma = content.querySelector(".btca-l1-forma");
+    if (!forma || !forma.classList.contains("btca-l1-forma--numpad-open")) return 16;
+    var dock = getFormaNumpad(content);
+    if (!dock) return 220;
+    var h = dock.getBoundingClientRect().height;
+    return h > 0 ? h + 8 : 220;
+  }
+
   function scrollFormaOkRowIntoView(content, task) {
     var scroll = content.querySelector("[data-btca-forma-table-scroll]");
     var anchor = getFormaOkAnchor(content, task);
     if (!scroll || !anchor) return;
     var rowEl = anchor.closest(".btca-l1-table-row");
     if (!rowEl) return;
-    var reserve = useFormaCustomNumpad() ? 12 : 16;
-    scroll.scrollTop = Math.max(0, rowEl.offsetTop - reserve);
+
+    function apply() {
+      var scrollRect = scroll.getBoundingClientRect();
+      var rowRect = rowEl.getBoundingClientRect();
+      var margin = 8;
+      var obstruction = getFormaNumpadObstruction(content);
+      var visibleBottom = Math.min(scrollRect.bottom, window.innerHeight - obstruction) - margin;
+      var visibleTop = scrollRect.top + margin;
+      if (rowRect.bottom > visibleBottom) {
+        scroll.scrollTop += rowRect.bottom - visibleBottom;
+      } else if (rowRect.top < visibleTop) {
+        scroll.scrollTop -= visibleTop - rowRect.top;
+      }
+    }
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(apply);
+    });
+    window.setTimeout(apply, 80);
   }
 
   function finishOrAdvanceFormaOkTask(content, task) {
