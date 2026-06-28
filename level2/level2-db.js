@@ -10,8 +10,10 @@
   var BACKUP_LEVEL_MARKER = "28.1";
 
   var dbPromise = null;
+  var dbInstance = null;
 
   function openDb() {
+    if (dbInstance) return Promise.resolve(dbInstance);
     if (dbPromise) return dbPromise;
     dbPromise = new Promise(function (resolve, reject) {
       var request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -31,15 +33,44 @@
           db.createObjectStore("kv", { keyPath: "key" });
         }
       };
-      request.onsuccess = function () { resolve(request.result); };
+      request.onsuccess = function () {
+        dbInstance = request.result;
+        dbInstance.onversionchange = function () { dbInstance.close(); };
+        dbInstance.onclose = function () { dbInstance = null; dbPromise = null; };
+        resolve(dbInstance);
+      };
       request.onerror = function () { reject(request.error || new Error("IndexedDB open failed")); };
     });
     return dbPromise;
   }
 
-  function tx(storeNames, mode) {
+  function warmDb() {
+    return openDb();
+  }
+
+  function runTx(storeNames, mode, worker) {
     return openDb().then(function (db) {
-      return db.transaction(storeNames, mode);
+      return new Promise(function (resolve, reject) {
+        var transaction = db.transaction(storeNames, mode);
+        var settled = false;
+        function finish(value) {
+          if (settled) return;
+          settled = true;
+          resolve(value);
+        }
+        function fail(err) {
+          if (settled) return;
+          settled = true;
+          reject(err || new Error("transaction failed"));
+        }
+        transaction.onerror = function () { fail(transaction.error); };
+        transaction.onabort = function () { fail(transaction.error); };
+        try {
+          worker(transaction, finish, fail);
+        } catch (err) {
+          fail(err);
+        }
+      });
     });
   }
 
@@ -125,24 +156,18 @@
   var uiSaveTimer = null;
 
   function readKv(key) {
-    return tx(["kv"], "readonly").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("kv");
-        var req = store.get(key);
-        req.onsuccess = function () { resolve(req.result ? req.result.value : null); };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx(["kv"], "readonly", function (transaction, finish, fail) {
+      var req = transaction.objectStore("kv").get(key);
+      req.onsuccess = function () { finish(req.result ? req.result.value : null); };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
   function writeKv(key, value) {
-    return tx(["kv"], "readwrite").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("kv");
-        var req = store.put({ key: key, value: value });
-        req.onsuccess = function () { resolve(); };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx(["kv"], "readwrite", function (transaction, finish, fail) {
+      var req = transaction.objectStore("kv").put({ key: key, value: value });
+      req.onsuccess = function () { finish(); };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
@@ -174,24 +199,18 @@
   }
 
   function getResultRow(date, exercise, task) {
-    return tx(["results"], "readonly").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("results");
-        var req = store.get([date, exercise, task]);
-        req.onsuccess = function () { resolve(req.result || null); };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx(["results"], "readonly", function (transaction, finish, fail) {
+      var req = transaction.objectStore("results").get([date, exercise, task]);
+      req.onsuccess = function () { finish(req.result || null); };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
   function countStore(storeName) {
-    return tx([storeName], "readonly").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore(storeName);
-        var req = store.count();
-        req.onsuccess = function () { resolve(req.result || 0); };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx([storeName], "readonly", function (transaction, finish, fail) {
+      var req = transaction.objectStore(storeName).count();
+      req.onsuccess = function () { finish(req.result || 0); };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
@@ -204,20 +223,18 @@
   }
 
   function countCluster(date, exercise) {
-    return tx(["results"], "readonly").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("results");
-        var req = store.openCursor();
-        var count = 0;
-        req.onsuccess = function () {
-          var cursor = req.result;
-          if (!cursor) { resolve(count); return; }
-          var row = cursor.value;
-          if (row.date === date && row.exercise === exercise) count += 1;
-          cursor.continue();
-        };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx(["results"], "readonly", function (transaction, finish, fail) {
+      var store = transaction.objectStore("results");
+      var req = store.openCursor();
+      var count = 0;
+      req.onsuccess = function () {
+        var cursor = req.result;
+        if (!cursor) { finish(count); return; }
+        var row = cursor.value;
+        if (row.date === date && row.exercise === exercise) count += 1;
+        cursor.continue();
+      };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
@@ -229,54 +246,52 @@
 
     return countStore(storeName).then(function (total) {
       if (total <= 0) return { ok: true, isEmpty: true, exercises: [], tasks: [], rows: [] };
-      return tx([storeName], "readonly").then(function (transaction) {
-        return new Promise(function (resolve, reject) {
-          var store = transaction.objectStore(storeName);
-          var req = store.openCursor();
-          var rows = [];
-          var exercises = {};
-          var tasks = {};
-          req.onsuccess = function () {
-            var cursor = req.result;
-            if (!cursor) {
-              resolve({
-                ok: true,
-                isEmpty: false,
-                exercises: Object.keys(exercises).sort(),
-                tasks: Object.keys(tasks).map(Number).filter(function (n) { return Number.isFinite(n); }).sort(function (a, b) { return a - b; }),
-                rows: rows.sort(function (a, b) {
-                  if (a.date !== b.date) return a.date.localeCompare(b.date);
-                  if (a.exercise !== b.exercise) return a.exercise.localeCompare(b.exercise);
-                  return a.task - b.task;
-                }),
-              });
-              return;
-            }
-            var row = cursor.value;
-            var passDate = true;
-            if (from && to) passDate = row.date >= from && row.date <= to;
-            else if (from) passDate = row.date >= from;
-            else if (to) passDate = row.date <= to;
-            var passExercise = exercise === "all" || row.exercise === exercise;
-            var passTask = taskRaw === "all" || String(row.task) === taskRaw;
-            if (passDate && passExercise && passTask) {
-              rows.push({
-                n: rows.length + 1,
-                date: row.date,
-                exercise: row.exercise,
-                task: row.task,
-                req: row.req,
-                ok: row.ok,
-                pct: row.pct,
-                sets: row.sets,
-              });
-              exercises[row.exercise] = true;
-              tasks[row.task] = true;
-            }
-            cursor.continue();
-          };
-          req.onerror = function () { reject(req.error); };
-        });
+      return runTx([storeName], "readonly", function (transaction, finish, fail) {
+        var store = transaction.objectStore(storeName);
+        var req = store.openCursor();
+        var rows = [];
+        var exercises = {};
+        var tasks = {};
+        req.onsuccess = function () {
+          var cursor = req.result;
+          if (!cursor) {
+            finish({
+              ok: true,
+              isEmpty: false,
+              exercises: Object.keys(exercises).sort(),
+              tasks: Object.keys(tasks).map(Number).filter(function (n) { return Number.isFinite(n); }).sort(function (a, b) { return a - b; }),
+              rows: rows.sort(function (a, b) {
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                if (a.exercise !== b.exercise) return a.exercise.localeCompare(b.exercise);
+                return a.task - b.task;
+              }),
+            });
+            return;
+          }
+          var row = cursor.value;
+          var passDate = true;
+          if (from && to) passDate = row.date >= from && row.date <= to;
+          else if (from) passDate = row.date >= from;
+          else if (to) passDate = row.date <= to;
+          var passExercise = exercise === "all" || row.exercise === exercise;
+          var passTask = taskRaw === "all" || String(row.task) === taskRaw;
+          if (passDate && passExercise && passTask) {
+            rows.push({
+              n: rows.length + 1,
+              date: row.date,
+              exercise: row.exercise,
+              task: row.task,
+              req: row.req,
+              ok: row.ok,
+              pct: row.pct,
+              sets: row.sets,
+            });
+            exercises[row.exercise] = true;
+            tasks[row.task] = true;
+          }
+          cursor.continue();
+        };
+        req.onerror = function () { fail(req.error); };
       });
     });
   }
@@ -297,13 +312,29 @@
     var date = String(dateIso || "").trim();
     var ex = String(exercise || "").trim();
     if (!date || !ex) return Promise.resolve({ freeRows: DB_MAX_ROWS, neededRows: 12, totalRows: 0 });
-    return Promise.all([countResults(), countCluster(date, ex)]).then(function (parts) {
-      var totalRows = parts[0];
-      var existing = parts[1];
-      return {
-        freeRows: Math.max(0, DB_MAX_ROWS - totalRows),
-        neededRows: Math.max(0, 12 - existing),
-        totalRows: totalRows,
+    return runTx(["results"], "readonly", function (transaction, finish, fail) {
+      var store = transaction.objectStore("results");
+      var countReq = store.count();
+      countReq.onerror = function () { fail(countReq.error); };
+      countReq.onsuccess = function () {
+        var totalRows = countReq.result || 0;
+        var cursorReq = store.openCursor();
+        var existing = 0;
+        cursorReq.onerror = function () { fail(cursorReq.error); };
+        cursorReq.onsuccess = function () {
+          var cursor = cursorReq.result;
+          if (!cursor) {
+            finish({
+              freeRows: Math.max(0, DB_MAX_ROWS - totalRows),
+              neededRows: Math.max(0, 12 - existing),
+              totalRows: totalRows,
+            });
+            return;
+          }
+          var row = cursor.value;
+          if (row.date === date && row.exercise === ex) existing += 1;
+          cursor.continue();
+        };
       };
     });
   }
@@ -314,58 +345,66 @@
     var rows = Array.isArray(payload.rows) ? payload.rows : [];
     if (!date || !exercise || !rows.length) return Promise.resolve({ ok: false, error: "missing_fields" });
 
-    return tx(["results"], "readwrite").then(function (transaction) {
-      var store = transaction.objectStore("results");
-      return Promise.all(rows.map(function (r) {
-        var task = Number(r.task || 0);
-        var reqNew = r.req == null ? null : Number(r.req);
-        var okNew = r.ok == null ? null : Number(r.ok);
-        return new Promise(function (resolve, reject) {
-          var req = store.get([date, exercise, task]);
-          req.onsuccess = function () {
-            var oldRow = req.result || null;
-            var merged = mergeClusterRowValues(oldRow, reqNew, okNew);
-            store.put({
-              date: date,
-              exercise: exercise,
-              task: task,
-              req: merged.req,
-              ok: merged.ok,
-              pct: merged.pct,
-              sets: merged.sets,
-            });
-            resolve();
-          };
-          req.onerror = function () { reject(req.error); };
-        });
-      })).then(function () {
-        return new Promise(function (resolve, reject) {
+    function runSave(db) {
+      return new Promise(function (resolve, reject) {
+        try {
+          var transaction = db.transaction(["results"], "readwrite");
           transaction.oncomplete = function () { resolve({ ok: true }); };
-          transaction.onerror = function () { reject(transaction.error); };
-        });
+          transaction.onerror = function () { reject(transaction.error || new Error("transaction failed")); };
+          transaction.onabort = function () { reject(transaction.error || new Error("transaction aborted")); };
+          var store = transaction.objectStore("results");
+          rows.forEach(function (r) {
+            var task = Number(r.task || 0);
+            if (!Number.isFinite(task) || task < 1 || task > 12) return;
+            var reqNew = r.req == null ? null : Number(r.req);
+            var okNew = r.ok == null ? null : Number(r.ok);
+            var getReq = store.get([date, exercise, task]);
+            getReq.onerror = function () { reject(getReq.error); };
+            getReq.onsuccess = function () {
+              var merged = mergeClusterRowValues(getReq.result || null, reqNew, okNew);
+              var putReq = store.put({
+                date: date,
+                exercise: exercise,
+                task: task,
+                req: merged.req,
+                ok: merged.ok,
+                pct: merged.pct,
+                sets: merged.sets,
+              });
+              putReq.onerror = function () { reject(putReq.error); };
+            };
+          });
+        } catch (err) {
+          reject(err);
+        }
       });
+    }
+
+    if (dbInstance) {
+      return runSave(dbInstance).catch(function () { return { ok: false, error: "db_error" }; });
+    }
+    return openDb().then(function (db) {
+      return runSave(db);
     }).catch(function () {
       return { ok: false, error: "db_error" };
     });
   }
 
   function listExerciseKeys(storeName) {
-    return tx([storeName], "readonly").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore(storeName);
-        var req = store.openCursor();
-        var keys = {};
-        req.onsuccess = function () {
-          var cursor = req.result;
-          if (!cursor) {
-            resolve(Object.keys(keys).sort());
-            return;
-          }
-          keys[cursor.value.exercise] = true;
-          cursor.continue();
-        };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx([storeName], "readonly", function (transaction, finish, fail) {
+      var store = transaction.objectStore(storeName);
+      var req = store.openCursor();
+      var keys = {};
+      req.onsuccess = function () {
+        var cursor = req.result;
+        if (!cursor) {
+          finish(Object.keys(keys).sort());
+          return;
+        }
+        keys[cursor.value.exercise] = true;
+        cursor.continue();
+      };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
@@ -386,16 +425,18 @@
   }
 
   function combinedDbStats() {
-    return Promise.all([countResults(), countForeignResults()]).then(function (parts) {
-      var filledRows = parts[0] + parts[1];
-      return {
-        maxRows: DB_MAX_ROWS,
-        totalRows: filledRows,
-        filledRows: filledRows,
-        empty: filledRows <= 0,
-        ownRows: parts[0],
-        foreignRows: parts[1],
-      };
+    return countResults().then(function (ownRows) {
+      return countForeignResults().then(function (foreignRows) {
+        var filledRows = ownRows + foreignRows;
+        return {
+          maxRows: DB_MAX_ROWS,
+          totalRows: filledRows,
+          filledRows: filledRows,
+          empty: filledRows <= 0,
+          ownRows: ownRows,
+          foreignRows: foreignRows,
+        };
+      });
     });
   }
 
@@ -424,13 +465,10 @@
   }
 
   function clearForeignDatabase() {
-    return tx(["foreign_results"], "readwrite").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("foreign_results");
-        var req = store.clear();
-        req.onsuccess = function () { resolve({ ok: true }); };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx(["foreign_results"], "readwrite", function (transaction, finish, fail) {
+      var req = transaction.objectStore("foreign_results").clear();
+      req.onsuccess = function () { finish({ ok: true }); };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
@@ -439,49 +477,45 @@
     var to = String(filters.to || "").trim();
     var exercise = String(filters.exercise || "all").trim() || "all";
     var taskRaw = String(filters.task || "all").trim() || "all";
-    return tx(["results"], "readwrite").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("results");
-        var req = store.openCursor();
-        var toDelete = [];
-        req.onsuccess = function () {
-          var cursor = req.result;
-          if (!cursor) {
-            toDelete.forEach(function (key) { store.delete(key); });
-            resolve({ ok: true, deleted: toDelete.length });
-            return;
-          }
-          var row = cursor.value;
-          var passDate = true;
-          if (from && to) passDate = row.date >= from && row.date <= to;
-          else if (from) passDate = row.date >= from;
-          else if (to) passDate = row.date <= to;
-          var passExercise = exercise === "all" || row.exercise === exercise;
-          var passTask = taskRaw === "all" || String(row.task) === taskRaw;
-          if (passDate && passExercise && passTask) {
-            toDelete.push([row.date, row.exercise, row.task]);
-          }
-          cursor.continue();
-        };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx(["results"], "readwrite", function (transaction, finish, fail) {
+      var store = transaction.objectStore("results");
+      var req = store.openCursor();
+      var toDelete = [];
+      req.onsuccess = function () {
+        var cursor = req.result;
+        if (!cursor) {
+          toDelete.forEach(function (key) { store.delete(key); });
+          finish({ ok: true, deleted: toDelete.length });
+          return;
+        }
+        var row = cursor.value;
+        var passDate = true;
+        if (from && to) passDate = row.date >= from && row.date <= to;
+        else if (from) passDate = row.date >= from;
+        else if (to) passDate = row.date <= to;
+        var passExercise = exercise === "all" || row.exercise === exercise;
+        var passTask = taskRaw === "all" || String(row.task) === taskRaw;
+        if (passDate && passExercise && passTask) {
+          toDelete.push([row.date, row.exercise, row.task]);
+        }
+        cursor.continue();
+      };
+      req.onerror = function () { fail(req.error); };
     }).catch(function () { return { ok: false }; });
   }
 
   function readAllRows(storeName) {
-    return tx([storeName], "readonly").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore(storeName);
-        var req = store.openCursor();
-        var rows = [];
-        req.onsuccess = function () {
-          var cursor = req.result;
-          if (!cursor) { resolve(rows); return; }
-          rows.push(cursor.value);
-          cursor.continue();
-        };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx([storeName], "readonly", function (transaction, finish, fail) {
+      var store = transaction.objectStore(storeName);
+      var req = store.openCursor();
+      var rows = [];
+      req.onsuccess = function () {
+        var cursor = req.result;
+        if (!cursor) { finish(rows); return; }
+        rows.push(cursor.value);
+        cursor.continue();
+      };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
@@ -506,7 +540,8 @@
     if (String(payload.levelMarker || "") !== BACKUP_LEVEL_MARKER) return Promise.resolve({ ok: false, error: "bad_format" });
     var rows = Array.isArray(payload.rows) ? payload.rows : [];
     return clearForeignDatabase().then(function () {
-      return tx(["foreign_results"], "readwrite").then(function (transaction) {
+      return runTx(["foreign_results"], "readwrite", function (transaction, finish, fail) {
+        transaction.oncomplete = function () { finish({ ok: true }); };
         var store = transaction.objectStore("foreign_results");
         rows.forEach(function (row) {
           if (!row || !row.date || !row.exercise || row.task == null) return;
@@ -520,10 +555,6 @@
             sets: row.sets == null ? null : Number(row.sets),
           });
         });
-        return new Promise(function (resolve, reject) {
-          transaction.oncomplete = function () { resolve({ ok: true }); };
-          transaction.onerror = function () { reject(transaction.error); };
-        });
       });
     }).then(function () {
       var importId = String(payload.userId || payload.importId || "import").trim();
@@ -534,28 +565,26 @@
   }
 
   function foreignDbDateRange() {
-    return tx(["foreign_results"], "readonly").then(function (transaction) {
-      return new Promise(function (resolve, reject) {
-        var store = transaction.objectStore("foreign_results");
-        var req = store.openCursor();
-        var minDate = "";
-        var maxDate = "";
-        req.onsuccess = function () {
-          var cursor = req.result;
-          if (!cursor) {
-            if (!minDate || !maxDate) resolve(null);
-            else resolve({ from: minDate, to: maxDate });
-            return;
-          }
-          var d = String(cursor.value.date || "");
-          if (d) {
-            if (!minDate || d < minDate) minDate = d;
-            if (!maxDate || d > maxDate) maxDate = d;
-          }
-          cursor.continue();
-        };
-        req.onerror = function () { reject(req.error); };
-      });
+    return runTx(["foreign_results"], "readonly", function (transaction, finish, fail) {
+      var store = transaction.objectStore("foreign_results");
+      var req = store.openCursor();
+      var minDate = "";
+      var maxDate = "";
+      req.onsuccess = function () {
+        var cursor = req.result;
+        if (!cursor) {
+          if (!minDate || !maxDate) finish(null);
+          else finish({ from: minDate, to: maxDate });
+          return;
+        }
+        var d = String(cursor.value.date || "");
+        if (d) {
+          if (!minDate || d < minDate) minDate = d;
+          if (!maxDate || d > maxDate) maxDate = d;
+        }
+        cursor.continue();
+      };
+      req.onerror = function () { fail(req.error); };
     });
   }
 
@@ -581,6 +610,7 @@
     patchUiState: patchUiState,
     flushUiState: flushUiState,
     getUiState: function () { return uiCache; },
+    warmDb: warmDb,
     saveCluster: saveCluster,
     dbCapacity: dbCapacity,
     bazaQuery: bazaQuery,

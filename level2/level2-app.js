@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.71";
+  var VERSION = "8.1.77";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -25,6 +25,15 @@
   var bootPromise = null;
   var booted = false;
 
+  function syncUiFromDb() {
+    if (DB && DB.getUiState) state.ui = DB.getUiState();
+  }
+
+  function applyUiPatch(patch) {
+    if (!DB || !DB.patchUiState) return;
+    DB.patchUiState(patch);
+    syncUiFromDb();
+  }
   var state = {
     root: null,
     ui: null,
@@ -384,7 +393,7 @@
   function syncFormaSaveButton(content, canSave) {
     var saveBtn = content.querySelector("[data-btca-forma-save]");
     if (!saveBtn) return;
-    saveBtn.disabled = !canSave;
+    saveBtn.setAttribute("data-btca-forma-can-save", canSave ? "1" : "0");
     saveBtn.classList.toggle("btca-l1-save--disabled", !canSave);
     var icon = saveBtn.querySelector(".btca-l1-save__icon");
     var label = saveBtn.querySelector(".btca-l1-save__label");
@@ -393,6 +402,73 @@
   }
 
   var formaOkFocusState = { task: null, blockDismissUntil: 0 };
+  var formaSaveInFlight = false;
+  var formaSaveWatchdog = null;
+
+  function readTaskOkFromDom(content) {
+    var taskOk = {};
+    if (!content) return taskOk;
+    if (useFormaCustomNumpad()) {
+      content.querySelectorAll("[data-btca-forma-ok-cell]").forEach(function (cell) {
+        var task = cell.getAttribute("data-btca-forma-ok-cell");
+        var valueEl = cell.querySelector("[data-btca-forma-ok-value]");
+        var raw = valueEl ? String(valueEl.textContent || "").trim() : "";
+        if (task) taskOk[String(task)] = raw.replace(/[^\d]/g, "");
+      });
+    } else {
+      content.querySelectorAll("[data-btca-forma-ok-input]").forEach(function (input) {
+        var task = input.getAttribute("data-btca-forma-ok-input");
+        if (task) taskOk[String(task)] = String(input.value || "").replace(/[^\d]/g, "");
+      });
+    }
+    return taskOk;
+  }
+
+  function getTaskOkSnapshot(content) {
+    syncUiFromDb();
+    var merged = Object.assign({}, state.ui.taskOk || {});
+    if (content) Object.assign(merged, readTaskOkFromDom(content));
+    return merged;
+  }
+
+  function getFormaOkDigits(content, task) {
+    if (content) {
+      if (useFormaCustomNumpad()) {
+        var cell = getFormaOkCell(content, task);
+        var valueEl = cell && cell.querySelector("[data-btca-forma-ok-value]");
+        if (valueEl) return String(valueEl.textContent || "").replace(/[^\d]/g, "");
+      } else {
+        var input = getFormaOkInput(content, task);
+        if (input) return String(input.value || "").replace(/[^\d]/g, "");
+      }
+    }
+    return String((state.ui && state.ui.taskOk && state.ui.taskOk[String(task)]) || "");
+  }
+
+  function mergeDomTaskOkIntoState(content) {
+    if (!content) return;
+    var domTaskOk = readTaskOkFromDom(content);
+    if (!Object.keys(domTaskOk).length) return;
+    applyUiPatch({ taskOk: Object.assign({}, state.ui.taskOk || {}, domTaskOk) });
+  }
+
+  function clearFormaSaveWatchdog() {
+    if (formaSaveWatchdog) {
+      window.clearTimeout(formaSaveWatchdog);
+      formaSaveWatchdog = null;
+    }
+  }
+
+  function armFormaSaveWatchdog() {
+    clearFormaSaveWatchdog();
+    formaSaveWatchdog = window.setTimeout(function () {
+      formaSaveWatchdog = null;
+      if (!formaSaveInFlight) return;
+      formaSaveInFlight = false;
+      state.formaFlags.statusOverride = { text: "Ошибка записи", tone: "error" };
+      renderTitleBar();
+    }, 8000);
+  }
 
   function markFormaNumpadInteraction() {
     formaOkFocusState.blockDismissUntil = Date.now() + 450;
@@ -693,11 +769,12 @@
   }
 
   function handleFormaOkDigits(content, task, digits) {
-    state.ui.taskOk[String(task)] = digits;
+    var nextTaskOk = Object.assign({}, (state.ui && state.ui.taskOk) || {});
+    nextTaskOk[String(task)] = digits;
+    applyUiPatch({ taskOk: nextTaskOk });
     state.formaFlags.suppressExerciseActive = false;
     state.formaFlags.statusOverride = null;
-    DB.patchUiState({ taskOk: state.ui.taskOk });
-    var forma = computeFormaRows();
+    var forma = computeFormaRows(content);
     state.formaFlags.invalidData = !forma.allActiveOkAreEmptyOrValid;
     syncFormaOkTableDom(content, forma);
     renderTitleBar();
@@ -709,12 +786,12 @@
   }
 
   function appendFormaOkDigit(content, task, digit) {
-    var digits = String(state.ui.taskOk[String(task)] || "") + String(digit);
+    var digits = getFormaOkDigits(content, task) + String(digit);
     handleFormaOkDigits(content, task, digits);
   }
 
   function backspaceFormaOkDigit(content, task) {
-    var digits = String(state.ui.taskOk[String(task)] || "");
+    var digits = getFormaOkDigits(content, task);
     if (!digits) return;
     handleFormaOkDigits(content, task, digits.slice(0, -1));
   }
@@ -726,7 +803,7 @@
     else if (key === "enter") {
       var b5 = b5FromSelectValue(state.ui.exerciseValue);
       var req = requiredStrikesFormL1(b5, task);
-      var digits = state.ui.taskOk[String(task)] || "";
+      var digits = getFormaOkDigits(content, task);
       if (isFormaOkValueValid(digits, req)) finishOrAdvanceFormaOkTask(content, task);
       else closeFormaOkCell(content);
     } else appendFormaOkDigit(content, task, key);
@@ -760,6 +837,7 @@
         if (!forma || !forma.classList.contains("btca-l1-forma--numpad-open")) return;
         if (event.target.closest("[data-btca-forma-numpad]")) return;
         if (event.target.closest("[data-btca-forma-ok-cell]")) return;
+        if (event.target.closest("[data-btca-forma-save]")) return;
         closeFormaOkCell(content);
       });
     }
@@ -884,7 +962,7 @@
 
   function saveButtonHtml(canSave, dataAttr) {
     return '<button type="button" class="btca-l1-save' + (canSave ? "" : " btca-l1-save--disabled") +
-      '" ' + dataAttr + (canSave ? "" : " disabled") + ">" +
+      '" ' + dataAttr + ' data-btca-forma-can-save="' + (canSave ? "1" : "0") + '">' +
       '<img class="btca-l1-save__icon' + (canSave ? "" : " btca-l1-save__icon--disabled") +
       '" src="' + escapeHtml(brandingUrl(BRANDING_BAZA)) + '" alt="" draggable="false">' +
       '<span class="btca-l1-save__label' + (canSave ? "" : " btca-l1-save__label--disabled") +
@@ -1131,10 +1209,13 @@
     };
   }
 
-  function computeFormaRows() {
+  function computeFormaRows(content) {
+    var okByTask = content ? getTaskOkSnapshot(content) : (function () {
+      syncUiFromDb();
+      return state.ui.taskOk || {};
+    })();
     var b5 = b5FromSelectValue(state.ui.exerciseValue);
     var rules = exerciseRulesL1(b5);
-    var okByTask = state.ui.taskOk || {};
     var hasAnyValidOk = false;
     var allActiveOkAreEmptyOrValid = true;
     var rows = [];
@@ -1176,7 +1257,7 @@
 
   function renderFormaTab(content) {
     formaOkFocusState.task = null;
-    var forma = computeFormaRows();
+    var forma = computeFormaRows(content);
     state.formaFlags.invalidData = !forma.allActiveOkAreEmptyOrValid;
     var dateLabel = formatIsoDateAsDdMmYyyy(state.ui.trainingDate) || state.ui.trainingDate;
     var exerciseLabel = labelForExerciseValue(state.ui.exerciseValue);
@@ -1234,7 +1315,7 @@
         state.formaFlags.suppressExerciseActive = false;
         state.formaFlags.statusOverride = null;
         state.ui.trainingDate = iso;
-        DB.patchUiState({ trainingDate: iso });
+        applyUiPatch({ trainingDate: iso });
         renderFormaTab(content);
         renderTitleBar();
       });
@@ -1247,7 +1328,7 @@
         state.ui.taskOk = {};
         state.ui.nav.exerciseFilterKey = value;
         state.ui.nav.sectionKey = sectionKeyForExerciseValue(value);
-        DB.patchUiState({ exerciseValue: value, taskOk: {}, nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
+        applyUiPatch({ exerciseValue: value, taskOk: {}, nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
         renderFormaTab(content);
         renderTitleBar();
       }, event.currentTarget);
@@ -1259,10 +1340,33 @@
         fromForma: true,
       });
     });
-    var saveBtn = content.querySelector("[data-btca-forma-save]");
-    if (saveBtn) saveBtn.addEventListener("click", function () { saveFormaCluster(forma); });
     mountFormaOkCells(content, forma);
     wireFormaOkInputs(content);
+    syncFormaSaveButton(content, forma.canSave);
+    wireFormaSaveOnContent(content);
+  }
+
+  function wireFormaSaveOnContent(content) {
+    if (!content || content._formaSaveTouchWired) return;
+    content._formaSaveTouchWired = true;
+    content.addEventListener("touchstart", function (event) {
+      if (!state.mounted || !state.ui || state.ui.tab !== "forma") return;
+      var btn = event.target.closest("[data-btca-forma-save]");
+      if (!btn) return;
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+      markFormaNumpadInteraction();
+      saveFormaCluster(content);
+    }, { capture: true, passive: false });
+    content.addEventListener("click", function (event) {
+      if (!state.mounted || !state.ui || state.ui.tab !== "forma") return;
+      if (useFormaCustomNumpad()) return;
+      var btn = event.target.closest("[data-btca-forma-save]");
+      if (!btn) return;
+      event.preventDefault();
+      event.stopPropagation();
+      saveFormaCluster(content);
+    }, true);
   }
 
   function openDateInput(currentIso, onPick, title) {
@@ -1271,28 +1375,54 @@
     }
   }
 
-  function saveFormaCluster(forma) {
-    if (!forma.canSave) return;
-    DB.dbCapacity(state.ui.trainingDate, state.ui.exerciseValue).then(function (cap) {
-      if (Number(cap.freeRows) < Number(cap.neededRows)) {
-        state.formaFlags.statusOverride = { text: "БД будет переполнена", tone: "error" };
-        renderTitleBar();
-        return null;
-      }
-      var b5 = b5FromSelectValue(state.ui.exerciseValue);
-      var rules = exerciseRulesL1(b5);
-      var rows = [];
-      for (var task = 1; task <= 12; task += 1) {
-        var req = rules.requiredByTask[task - 1];
-        var okRaw = state.ui.taskOk[String(task)] || "";
-        var okParsed = parseNonNegativeInt(okRaw);
-        var ok = okParsed === null || Number.isNaN(okParsed) ? null : Number(okParsed);
-        rows.push({ task: task, req: req === null ? null : Number(req), ok: ok });
-      }
-      return DB.saveCluster({ date: state.ui.trainingDate, exercise: state.ui.exerciseValue, rows: rows });
+  function buildFormaSaveRows(content) {
+    var b5 = b5FromSelectValue(state.ui.exerciseValue);
+    var rules = exerciseRulesL1(b5);
+    var okByTask = getTaskOkSnapshot(content);
+    var rows = [];
+    for (var task = 1; task <= 12; task += 1) {
+      var req = rules.requiredByTask[task - 1];
+      var okRaw = okByTask[String(task)] || "";
+      var okParsed = parseNonNegativeInt(okRaw);
+      var ok = okParsed === null || Number.isNaN(okParsed) ? null : Number(okParsed);
+      rows.push({ task: task, req: req === null ? null : Number(req), ok: ok });
+    }
+    return rows;
+  }
+
+  function saveFormaCluster(contentFromCaller) {
+    if (formaSaveInFlight) return;
+    var content = contentFromCaller || (state.root && state.root.querySelector("[data-btca-level2-content]"));
+    if (content) {
+      closeFormaOkCell(content);
+      mergeDomTaskOkIntoState(content);
+    } else {
+      syncUiFromDb();
+    }
+    blurActiveField();
+    var forma = computeFormaRows(content);
+    if (!forma.canSave) {
+      state.formaFlags.statusOverride = {
+        text: forma.allActiveOkAreEmptyOrValid ? "Введите данные" : "Некорректные данные",
+        tone: "error",
+      };
+      renderTitleBar();
+      return;
+    }
+    formaSaveInFlight = true;
+    armFormaSaveWatchdog();
+    state.formaFlags.statusOverride = { text: "Сохранение…", tone: "active" };
+    renderTitleBar();
+    var rows = buildFormaSaveRows(content);
+    var savePromise = DB.flushUiState ? DB.flushUiState() : Promise.resolve();
+    savePromise.then(function () {
+      return DB.saveCluster({
+        date: state.ui.trainingDate,
+        exercise: state.ui.exerciseValue,
+        rows: rows,
+      });
     }).then(function (res) {
-      if (!res) return;
-      if (!res.ok) {
+      if (!res || !res.ok) {
         state.formaFlags.statusOverride = { text: "Ошибка записи", tone: "error" };
         renderTitleBar();
         return;
@@ -1302,20 +1432,34 @@
       state.ui.baza.periodTo = state.ui.trainingDate;
       state.ui.baza.exercise = state.ui.exerciseValue;
       state.ui.baza.task = "all";
-      DB.patchUiState({
+      state.ui.baza.dataSource = "own";
+      applyUiPatch({
         taskOk: {},
-        baza: { periodFrom: state.ui.trainingDate, periodTo: state.ui.trainingDate, exercise: state.ui.exerciseValue, task: "all" },
+        baza: {
+          periodFrom: state.ui.trainingDate,
+          periodTo: state.ui.trainingDate,
+          exercise: state.ui.exerciseValue,
+          task: "all",
+          dataSource: "own",
+        },
       });
       state.formaFlags.suppressExerciseActive = true;
       state.formaFlags.statusOverride = { text: "Данные записаны!", tone: "active" };
       window.setTimeout(function () {
         state.formaFlags.statusOverride = null;
+        state.formaFlags.suppressExerciseActive = false;
         renderTitleBar();
       }, 5000);
       refreshBazaContext().then(function () {
         renderActiveTab();
         renderTitleBar();
       });
+    }).catch(function () {
+      state.formaFlags.statusOverride = { text: "Ошибка записи", tone: "error" };
+      renderTitleBar();
+    }).then(function () {
+      clearFormaSaveWatchdog();
+      formaSaveInFlight = false;
     });
   }
 
@@ -1382,7 +1526,7 @@
           state.ui.baza.dataSource = src;
           state.ui.baza.exercise = ex;
           state.ui.baza.task = tk;
-          DB.patchUiState({ baza: { dataSource: src, exercise: ex, task: tk } });
+          applyUiPatch({ baza: { dataSource: src, exercise: ex, task: tk } });
         }
 
         if (!hasAny) {
@@ -1396,14 +1540,14 @@
           state.bazaRuleTasks = taskNumbersForExercise(ex);
           if (tk !== "all" && state.bazaRuleTasks.indexOf(Number(tk)) < 0) {
             state.ui.baza.task = "all";
-            DB.patchUiState({ baza: { task: "all" } });
+            applyUiPatch({ baza: { task: "all" } });
             tk = "all";
           }
         } else {
           state.bazaRuleTasks = [];
           if (tk !== "all") {
             state.ui.baza.task = "all";
-            DB.patchUiState({ baza: { task: "all" } });
+            applyUiPatch({ baza: { task: "all" } });
           }
         }
 
@@ -1785,7 +1929,7 @@
       if (target === "foreign" && baza.dataSource === "foreign") {
         state.ui.baza.dataSource = "own";
         state.ui.baza.exercise = "all";
-        DB.patchUiState({ baza: { dataSource: "own", exercise: "all", task: "all" } });
+        applyUiPatch({ baza: { dataSource: "own", exercise: "all", task: "all" } });
       }
       return refreshBazaContext();
     }).then(function () {
@@ -1831,7 +1975,7 @@
       state.ui.baza.dataSource = item.source === "foreign" ? "foreign" : "own";
       state.ui.baza.exercise = "all";
       state.ui.baza.task = "all";
-      DB.patchUiState({ baza: { dataSource: state.ui.baza.dataSource, exercise: "all", task: "all" } });
+      applyUiPatch({ baza: { dataSource: state.ui.baza.dataSource, exercise: "all", task: "all" } });
       return refreshBazaContext().then(function () {
         renderActiveTab();
         renderTitleBar();
@@ -1841,7 +1985,7 @@
     state.ui.baza.dataSource = nextSource;
     state.ui.baza.exercise = item.value;
     state.ui.baza.task = "all";
-    DB.patchUiState({ baza: { dataSource: nextSource, exercise: item.value, task: "all" } });
+    applyUiPatch({ baza: { dataSource: nextSource, exercise: item.value, task: "all" } });
     return refreshBazaRows().then(function () {
       renderActiveTab();
       renderTitleBar();
@@ -1900,14 +2044,14 @@
       content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
         openDateInput(baza.periodFrom, function (iso) {
           state.ui.baza.periodFrom = iso;
-          DB.patchUiState({ baza: { periodFrom: iso } });
+          applyUiPatch({ baza: { periodFrom: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
         }, "Период с");
       });
       content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
         openDateInput(baza.periodTo, function (iso) {
           state.ui.baza.periodTo = iso;
-          DB.patchUiState({ baza: { periodTo: iso } });
+          applyUiPatch({ baza: { periodTo: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
         }, "Период по");
       });
@@ -1930,7 +2074,7 @@
         );
         openPicker("Задача", options, baza.task, function (value) {
           state.ui.baza.task = value;
-          DB.patchUiState({ baza: { task: value } });
+          applyUiPatch({ baza: { task: value } });
           refreshBazaRows().then(function () { renderBazaTab(content); });
         }, event.currentTarget);
       });
@@ -2031,7 +2175,7 @@
       openPicker("Раздел", sectionOptions, sectionKey, function (value) {
         state.ui.nav.sectionKey = value;
         state.ui.nav.exerciseFilterKey = NAV_FILTER_ALL;
-        DB.patchUiState({ nav: { sectionKey: value, exerciseFilterKey: NAV_FILTER_ALL } });
+        applyUiPatch({ nav: { sectionKey: value, exerciseFilterKey: NAV_FILTER_ALL } });
         renderNavTab(content);
         renderTitleBar();
       }, event.currentTarget);
@@ -2039,7 +2183,7 @@
     content.querySelector("[data-btca-nav-filter]").addEventListener("click", function (event) {
       openPicker("Упражнение", exerciseOptions, filterKey, function (value) {
         state.ui.nav.exerciseFilterKey = value;
-        DB.patchUiState({ nav: { exerciseFilterKey: value } });
+        applyUiPatch({ nav: { exerciseFilterKey: value } });
         renderNavTab(content);
         renderTitleBar();
       }, event.currentTarget);
@@ -2060,7 +2204,7 @@
           state.ui.nav.sectionKey = sec;
           state.ui.nav.exerciseFilterKey = value;
           state.ui.tab = "forma";
-          DB.patchUiState({ exerciseValue: value, nav: { sectionKey: sec, exerciseFilterKey: value }, tab: "forma" });
+          applyUiPatch({ exerciseValue: value, nav: { sectionKey: sec, exerciseFilterKey: value }, tab: "forma" });
           renderActiveTab();
           renderTitleBar();
         }, PICK_DELAY_MS);
@@ -2072,7 +2216,7 @@
         if (filterIsAll) {
           state.ui.nav.exerciseFilterKey = value;
           state.ui.nav.sectionKey = sectionKeyForExerciseValue(value);
-          DB.patchUiState({ nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
+          applyUiPatch({ nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
           renderNavTab(content);
           return;
         }
@@ -2130,7 +2274,7 @@
     content.querySelector("[data-btca-polez-catalog]").addEventListener("click", function (event) {
       openPicker("Каталог", catalogOptions, catalogKey, function (value) {
         state.ui.polez.catalogKey = value;
-        DB.patchUiState({ polez: { catalogKey: value } });
+        applyUiPatch({ polez: { catalogKey: value } });
         renderPolezTab(content);
       }, event.currentTarget, {
         rowHeight: PICKER_ROW_GROUP,
@@ -2147,7 +2291,7 @@
         var key = btn.getAttribute("data-btca-polez-image");
         if (catalogKey === POLEZ_ALL) {
           state.ui.polez.catalogKey = key;
-          DB.patchUiState({ polez: { catalogKey: key } });
+          applyUiPatch({ polez: { catalogKey: key } });
           renderPolezTab(content);
           return;
         }
@@ -2255,7 +2399,7 @@
 
   function setSheet(key) {
     state.ui.tab = key;
-    DB.patchUiState({ tab: key });
+    applyUiPatch({ tab: key });
     renderSheetMenu(false);
     if (key === "baza") {
       refreshBazaContext().then(function () {
@@ -2315,7 +2459,9 @@
   }
 
   function boot() {
-    if (booted) return Promise.resolve({ ui: state.ui, data: state.data });
+    if (booted) {
+      return Promise.resolve({ ui: state.ui, data: state.data });
+    }
     if (bootPromise) return bootPromise;
     DB = window.BTCA_LEVEL2_DB;
     if (!DB) {
@@ -2325,6 +2471,8 @@
       return DB.loadUiState();
     }).then(function (ui) {
       state.ui = ui;
+      return DB.warmDb ? DB.warmDb() : Promise.resolve();
+    }).then(function () {
       booted = true;
       return { ui: state.ui, data: state.data };
     });
@@ -2364,6 +2512,8 @@
 
   function unmount() {
     if (state.pickTimer) window.clearTimeout(state.pickTimer);
+    clearFormaSaveWatchdog();
+    formaSaveInFlight = false;
     state.mounted = false;
     state.root = null;
   }
