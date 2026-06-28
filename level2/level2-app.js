@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.67";
+  var VERSION = "8.1.68";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -392,7 +392,15 @@
     if (label) label.classList.toggle("btca-l1-save__label--disabled", !canSave);
   }
 
-  var formaOkFocusState = { task: null };
+  var formaOkFocusState = { task: null, blockDismissUntil: 0 };
+
+  function markFormaNumpadInteraction() {
+    formaOkFocusState.blockDismissUntil = Date.now() + 450;
+  }
+
+  function shouldBlockFormaNumpadDismiss() {
+    return Date.now() < formaOkFocusState.blockDismissUntil;
+  }
 
   function isAppleTouchDevice() {
     var ua = navigator.userAgent || "";
@@ -443,7 +451,17 @@
     var display = document.createElement("span");
     display.className = "btca-l1-ok-display";
     display.setAttribute("data-btca-forma-ok-display", "");
-    display.textContent = row.okRaw || "";
+    var value = document.createElement("span");
+    value.className = "btca-l1-ok-value";
+    value.setAttribute("data-btca-forma-ok-value", "");
+    value.textContent = row.okRaw || "";
+    var caret = document.createElement("span");
+    caret.className = "btca-l1-ok-caret";
+    caret.setAttribute("data-btca-forma-ok-caret", "");
+    caret.setAttribute("aria-hidden", "true");
+    caret.hidden = true;
+    display.appendChild(value);
+    display.appendChild(caret);
     btn.appendChild(display);
     slot.textContent = "";
     slot.appendChild(btn);
@@ -530,6 +548,7 @@
         var cellTask = Number(cell.getAttribute("data-btca-forma-ok-cell"));
         cell.classList.toggle("btca-l1-ok-cell--active", cellTask === task);
       });
+      syncFormaOkCaret(content);
       return;
     }
     content.querySelectorAll("[data-btca-forma-ok-input]").forEach(function (input) {
@@ -553,13 +572,17 @@
     if (useFormaCustomNumpad()) ensureFormaNumpad(content);
   }
 
-  function openFormaOkCell(content, task) {
+  function openFormaOkCell(content, task, opts) {
+    opts = opts || {};
+    markFormaNumpadInteraction();
     setActiveFormaOkCell(content, task);
-    scrollFormaOkRowIntoView(content, task);
     if (useFormaCustomNumpad()) {
       setFormaNumpadOpen(content, true);
+      syncFormaOkCaret(content);
+      if (opts.scroll) scrollFormaOkRowIntoView(content, task);
       return;
     }
+    if (opts.scroll) scrollFormaOkRowIntoView(content, task);
     var input = getFormaOkInput(content, task);
     if (!input) return;
     var digits = state.ui.taskOk[String(task)] || "";
@@ -571,13 +594,24 @@
     input.focus({ preventScroll: true });
   }
 
+  function syncFormaOkCaret(content) {
+    if (!useFormaCustomNumpad()) return;
+    var activeTask = formaOkFocusState.task;
+    content.querySelectorAll("[data-btca-forma-ok-caret]").forEach(function (caret) {
+      var cell = caret.closest("[data-btca-forma-ok-cell]");
+      if (!cell) return;
+      var cellTask = Number(cell.getAttribute("data-btca-forma-ok-cell"));
+      caret.hidden = cellTask !== activeTask;
+    });
+  }
+
   function syncFormaOkTableDom(content, forma) {
     forma.rows.forEach(function (row) {
       if (useFormaCustomNumpad()) {
         var cell = getFormaOkCell(content, row.task);
         if (!cell) return;
-        var display = cell.querySelector("[data-btca-forma-ok-display]");
-        if (display) display.textContent = row.okRaw || "";
+        var valueEl = cell.querySelector("[data-btca-forma-ok-value]");
+        if (valueEl) valueEl.textContent = row.okRaw || "";
         cell.classList.toggle("btca-l1-ok-cell--invalid", !!row.invalid);
         cell.classList.toggle("btca-l1-ok-cell--active", formaOkFocusState.task === row.task);
       } else {
@@ -598,6 +632,7 @@
       var pctCell = rowEl.querySelector(".btca-l1-col--pct .btca-l1-td");
       if (pctCell) pctCell.textContent = row.pct;
     });
+    syncFormaOkCaret(content);
     syncFormaSaveButton(content, forma.canSave);
   }
 
@@ -618,7 +653,7 @@
     if (!isFormaOkValueValid(digits, req)) return;
     var next = neighborActiveOkTask(task, 1, b5);
     if (next !== null) {
-      openFormaOkCell(content, next);
+      openFormaOkCell(content, next, { scroll: true });
       return;
     }
     if (!useFormaCustomNumpad()) {
@@ -657,31 +692,43 @@
     handleFormaOkDigits(content, task, digits.slice(0, -1));
   }
 
+  function handleFormaNumpadKey(content, key) {
+    var task = formaOkFocusState.task;
+    if (task === null) return;
+    if (key === "backspace") backspaceFormaOkDigit(content, task);
+    else if (key === "enter") {
+      var b5 = b5FromSelectValue(state.ui.exerciseValue);
+      var req = requiredStrikesFormL1(b5, task);
+      var digits = state.ui.taskOk[String(task)] || "";
+      if (isFormaOkValueValid(digits, req)) finishOrAdvanceFormaOkTask(content, task);
+      else closeFormaOkCell(content);
+    } else appendFormaOkDigit(content, task, key);
+  }
+
   function wireFormaNumpad(content, dock) {
     if (!dock || dock.getAttribute("data-btca-forma-numpad-wired") === "1") return;
     dock.setAttribute("data-btca-forma-numpad-wired", "1");
     dock.querySelectorAll("[data-btca-forma-numpad-key]").forEach(function (keyBtn) {
-      keyBtn.addEventListener("click", function (event) {
+      function onNumpadPress(event) {
+        event.preventDefault();
         event.stopPropagation();
-        var task = formaOkFocusState.task;
-        if (task === null) return;
-        var key = keyBtn.getAttribute("data-btca-forma-numpad-key");
-        if (key === "backspace") backspaceFormaOkDigit(content, task);
-        else if (key === "enter") {
-          var b5 = b5FromSelectValue(state.ui.exerciseValue);
-          var req = requiredStrikesFormL1(b5, task);
-          var digits = state.ui.taskOk[String(task)] || "";
-          if (isFormaOkValueValid(digits, req)) finishOrAdvanceFormaOkTask(content, task);
-          else closeFormaOkCell(content);
-        } else appendFormaOkDigit(content, task, key);
+        markFormaNumpadInteraction();
+        handleFormaNumpadKey(content, keyBtn.getAttribute("data-btca-forma-numpad-key"));
+      }
+      keyBtn.addEventListener("pointerdown", onNumpadPress);
+      keyBtn.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
       });
     });
-    dock.addEventListener("click", function (event) {
+    dock.addEventListener("pointerdown", function (event) {
       event.stopPropagation();
+      markFormaNumpadInteraction();
     });
     if (!content._formaNumpadDismissWired) {
       content._formaNumpadDismissWired = true;
       document.addEventListener("click", function (event) {
+        if (shouldBlockFormaNumpadDismiss()) return;
         var forma = content.querySelector(".btca-l1-forma");
         if (!forma || !forma.classList.contains("btca-l1-forma--numpad-open")) return;
         if (event.target.closest("[data-btca-forma-numpad]")) return;
@@ -708,7 +755,6 @@
       });
       input.addEventListener("focus", function () {
         setActiveFormaOkCell(content, task);
-        scrollFormaOkRowIntoView(content, task);
         reinforceFormaOkInputKeyboard(input);
       });
       input.addEventListener("blur", function () {
