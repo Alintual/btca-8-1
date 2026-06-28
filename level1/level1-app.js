@@ -43,6 +43,11 @@
     formaFlags: {},
     bazaStats: { empty: true, fillText: "пуста" },
     bazaRows: [],
+    bazaExpandedRows: [],
+    bazaOwnKeys: [],
+    bazaRuleTasks: [],
+    bazaNoExercisesInPeriod: false,
+    bazaOwnEmpty: true,
     bazaMenuOpen: false,
     bazaDeleteConfirm: null,
     bazaIdentifierMode: null,
@@ -703,13 +708,121 @@
       '<span class="btca-l1-face__text">' + escapeHtml(label) + "</span></button>";
   }
 
-  function getBazaChartTitle(exercise) {
-    var showChart = exercise !== "all" && String(exercise || "").trim() !== "";
+  function getBazaChartTitle(exercise, exerciseFilterDisabled) {
+    var showChart = !exerciseFilterDisabled && exercise !== "all" && String(exercise || "").trim() !== "";
     return {
       text: showChart ? "Успешные удары по упражнению за период" : "Нет данных по упражнению",
       showChart: showChart,
-      arrowDisabled: !showChart,
+      arrowDisabled: exerciseFilterDisabled || !showChart,
     };
+  }
+
+  function taskNumbersForExercise(exerciseKey) {
+    var rules = exerciseRulesL1(b5FromSelectValue(exerciseKey));
+    var out = [];
+    for (var i = 0; i < rules.requiredByTask.length; i += 1) {
+      if (rules.requiredByTask[i] != null) out.push(i + 1);
+    }
+    return out;
+  }
+
+  function expandBazaRowsL1(rawRows, exerciseFilter) {
+    if (exerciseFilter === "all") return [];
+    var rules = exerciseRulesL1(b5FromSelectValue(exerciseFilter));
+    var allowed = taskNumbersForExercise(exerciseFilter);
+    var byDate = {};
+    rawRows.forEach(function (r) {
+      var d = String(r.date || "");
+      var t = Number(r.task || 0);
+      if (!d || !Number.isFinite(t)) return;
+      if (!byDate[d]) byDate[d] = {};
+      byDate[d][t] = r;
+    });
+    var out = [];
+    Object.keys(byDate).sort().forEach(function (d) {
+      var byTask = byDate[d];
+      var first = true;
+      allowed.forEach(function (t) {
+        var r = byTask[t];
+        var reqFromRule = rules.requiredByTask[t - 1];
+        out.push({
+          date: first ? d : "",
+          exercise: first ? exerciseFilter : "",
+          exerciseKey: exerciseFilter,
+          task: t,
+          req: r && r.req != null ? r.req : (reqFromRule == null ? null : Number(reqFromRule)),
+          ok: r && r.ok != null ? r.ok : null,
+          pct: r && r.pct != null ? r.pct : null,
+          sets: r && r.sets != null ? r.sets : null,
+          clusterFirst: first,
+        });
+        first = false;
+      });
+    });
+    return out;
+  }
+
+  function bazaFiltersDisabled() {
+    return state.bazaStats.empty || state.bazaOwnEmpty;
+  }
+
+  function buildBazaExercisePickerOptions() {
+    if (state.bazaOwnEmpty) return [];
+    var out = [{ value: "all", label: "Все" }];
+    state.bazaOwnKeys.forEach(function (key) {
+      out.push({ value: key, label: labelForExerciseValue(key) });
+    });
+    return out;
+  }
+
+  function bazaExerciseFaceLabel(exercise, disabled) {
+    if (disabled) return "---";
+    if (exercise === "all") return "Все";
+    return labelForExerciseValue(exercise);
+  }
+
+  function isBazaExerciseSelectionValid(exercise) {
+    if (exercise === "all") return true;
+    return state.bazaOwnKeys.indexOf(exercise) >= 0;
+  }
+
+  function bazaChartDisplayRows(baza) {
+    var rows = state.bazaExpandedRows;
+    if (baza.task !== "all") {
+      var t = Number(baza.task);
+      rows = rows.filter(function (r) { return r.task === t; });
+    }
+    return rows;
+  }
+
+  function bazaTableDisplayRows(baza) {
+    if (baza.exercise === "all") return state.bazaRows;
+    var rows = state.bazaExpandedRows;
+    if (baza.task !== "all") {
+      var t = Number(baza.task);
+      rows = rows.filter(function (r) { return r.task === t; });
+    }
+    return rows;
+  }
+
+  function onPickBazaExercise(item) {
+    if (!item || item.groupHeader) return;
+    if (item.value === "all") {
+      state.ui.baza.exercise = "all";
+      state.ui.baza.task = "all";
+      applyUiPatch({ baza: { exercise: "all", task: "all" } });
+      return refreshBazaContext().then(function () {
+        renderActiveTab();
+        renderTitleBar();
+      });
+    }
+    state.ui.baza.exercise = item.value;
+    state.ui.baza.task = "all";
+    applyUiPatch({ baza: { exercise: item.value, task: "all" } });
+    return refreshBazaContext().then(function () {
+      renderActiveTab();
+      renderTitleBar();
+    });
   }
 
   function safeGutter() {
@@ -1133,7 +1246,7 @@
         state.formaFlags.suppressExerciseActive = false;
         renderTitleBar();
       }, 5000);
-      refreshBazaStats().then(function () {
+      refreshBazaContext().then(function () {
         renderActiveTab();
         renderTitleBar();
       });
@@ -1153,15 +1266,87 @@
     });
   }
 
+  function refreshBazaContext() {
+    var baza = state.ui.baza;
+    var today = DB.formatYmd(new Date());
+    var from = baza.periodFrom || today;
+    var to = baza.periodTo || today;
+    return Promise.all([
+      DB.dbStats(),
+      refreshBazaStats(),
+      DB.bazaQuery({ from: from, to: to, exercise: "all", task: "all" }),
+    ]).then(function (parts) {
+      var ownStats = parts[0];
+      var periodQuery = parts[2];
+      state.bazaOwnKeys = periodQuery.exercises || [];
+      state.bazaOwnEmpty = Number(ownStats.totalRows || 0) <= 0;
+      var ex = baza.exercise;
+      var tk = baza.task;
+
+      if (ex !== "all" && !isBazaExerciseSelectionValid(ex)) {
+        ex = "all";
+        tk = "all";
+      }
+
+      state.bazaNoExercisesInPeriod = state.bazaOwnKeys.length <= 0;
+
+      if (ex !== baza.exercise || tk !== baza.task) {
+        applyUiPatch({ baza: { exercise: ex, task: tk } });
+      }
+
+      if (!state.bazaOwnKeys.length) {
+        state.bazaRuleTasks = [];
+        state.bazaRows = [];
+        state.bazaExpandedRows = [];
+        return;
+      }
+
+      if (ex !== "all") {
+        state.bazaRuleTasks = taskNumbersForExercise(ex);
+        if (tk !== "all" && state.bazaRuleTasks.indexOf(Number(tk)) < 0) {
+          tk = "all";
+          applyUiPatch({ baza: { task: "all" } });
+        }
+      } else {
+        state.bazaRuleTasks = [];
+        if (tk !== "all") {
+          tk = "all";
+          applyUiPatch({ baza: { task: "all" } });
+        }
+      }
+
+      return refreshBazaRows();
+    });
+  }
+
   function refreshBazaRows() {
+    var baza = state.ui.baza;
+    if (baza.exercise === "all") {
+      state.bazaRows = [];
+      state.bazaExpandedRows = [];
+      return Promise.resolve({ rows: [] });
+    }
     return DB.bazaQuery({
-      from: state.ui.baza.periodFrom,
-      to: state.ui.baza.periodTo,
-      exercise: state.ui.baza.exercise,
-      task: state.ui.baza.task,
+      from: baza.periodFrom,
+      to: baza.periodTo,
+      exercise: baza.exercise,
+      task: "all",
     }).then(function (result) {
-      state.bazaRows = result.rows || [];
-      return result;
+      var rawRows = result.rows || [];
+      state.bazaExpandedRows = expandBazaRowsL1(rawRows, baza.exercise);
+      if (baza.task === "all") {
+        state.bazaRows = rawRows;
+        return result;
+      }
+      return DB.bazaQuery({
+        from: baza.periodFrom,
+        to: baza.periodTo,
+        exercise: baza.exercise,
+        task: baza.task,
+      }).then(function (filtered) {
+        state.bazaRows = filtered.rows || [];
+        return filtered;
+      });
     });
   }
 
@@ -1199,8 +1384,9 @@
 
   function bazaMenuCapabilities() {
     var baza = state.ui.baza;
-    var chartMeta = getBazaChartTitle(baza.exercise);
-    var chartRows = chartMeta.showChart ? state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; }) : [];
+    var exerciseDisabled = bazaFiltersDisabled() || state.bazaNoExercisesInPeriod;
+    var chartMeta = getBazaChartTitle(baza.exercise, exerciseDisabled);
+    var chartRows = chartMeta.showChart ? bazaChartDisplayRows(baza) : [];
     return {
       canDeleteOwn: !state.bazaStats.empty,
       canScreenshot: chartMeta.showChart && chartRows.length > 0,
@@ -1285,7 +1471,7 @@
 
   function runBazaScreenshot(userId) {
     var baza = state.ui.baza;
-    var chartRows = state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; });
+    var chartRows = bazaChartDisplayRows(baza);
     if (!chartRows.length) {
       showBazaToast("Нет диаграммы для сохранения.", "#E53935");
       return;
@@ -1376,12 +1562,12 @@
     DB.bazaDeleteCurrentByFilters({
       from: baza.periodFrom,
       to: baza.periodTo,
-      exercise: baza.exercise,
-      task: baza.task,
+      exercise: baza.exercise === "all" ? "all" : baza.exercise,
+      task: "all",
     }).then(function () {
       state.bazaMenuOpen = false;
       renderBazaMenuLayer();
-      return refreshBazaStats().then(function () { return refreshBazaRows(); });
+      return refreshBazaContext();
     }).then(function () {
       renderActiveTab();
       renderTitleBar();
@@ -1407,13 +1593,16 @@
 
   function renderBazaTab(content) {
     var baza = state.ui.baza;
-    var fromLabel = formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—";
-    var toLabel = formatIsoDateAsDdMmYyyy(baza.periodTo) || "—";
-    var exerciseLabel = baza.exercise === "all" ? "Все" : labelForExerciseValue(baza.exercise);
-    var taskLabel = baza.exercise === "all" ? "Все" : (baza.task === "all" ? "Все" : baza.task);
-    var taskDisabled = baza.exercise === "all";
-    var chartMeta = getBazaChartTitle(baza.exercise);
-    var chartRows = chartMeta.showChart ? state.bazaRows.filter(function (r) { return r.exercise === baza.exercise; }) : [];
+    var periodDisabled = bazaFiltersDisabled();
+    var exerciseDisabled = periodDisabled || state.bazaNoExercisesInPeriod;
+    var taskFilterEmpty = exerciseDisabled;
+    var fromLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—");
+    var toLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodTo) || "—");
+    var exerciseLabel = bazaExerciseFaceLabel(baza.exercise, exerciseDisabled);
+    var taskLabel = taskFilterEmpty || baza.exercise === "all" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
+    var taskDisabled = taskFilterEmpty || baza.exercise === "all";
+    var chartMeta = getBazaChartTitle(baza.exercise, exerciseDisabled);
+    var chartRows = chartMeta.showChart ? bazaChartDisplayRows(baza) : [];
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-baza">' +
@@ -1421,8 +1610,8 @@
       '<div class="btca-l1-baza-filter-row">' +
       '<span class="btca-l1-field-label btca-l1-field-label--center">Период</span>' +
       '<div class="btca-l1-period-faces">' +
-      periodDateFaceHtml(fromLabel, "data-btca-baza-from") +
-      periodDateFaceHtml(toLabel, "data-btca-baza-to") +
+      periodDateFaceHtml(fromLabel, "data-btca-baza-from", periodDisabled) +
+      periodDateFaceHtml(toLabel, "data-btca-baza-to", periodDisabled) +
       "</div></div>" +
       '<div class="btca-l1-baza-filter-row">' +
       '<div class="btca-l1-baza-labels-row">' +
@@ -1431,7 +1620,7 @@
       "</div>" +
       '<div class="btca-l1-baza-fields-row">' +
       '<div class="btca-l1-exercise-col">' +
-      filterFaceHtml(exerciseLabel, { wide: true, dataAttr: "data-btca-baza-exercise" }) +
+      filterFaceHtml(exerciseLabel, { wide: true, disabled: exerciseDisabled, dataAttr: "data-btca-baza-exercise" }) +
       "</div>" +
       '<div class="btca-l1-trailing-slot btca-l1-task-field-col">' +
       filterFaceHtml(taskLabel, { wide: true, disabled: taskDisabled, dataAttr: "data-btca-baza-task" }) +
@@ -1455,56 +1644,55 @@
               "<span>" + (row.pct == null ? "—" : row.pct + "%") + "</span></div>";
           }).join("") +
           (chartRows.length ? "" : '<p class="btca-l1-empty">Нет данных за выбранный период</p>') +
-          "</section>"
+          "</div></section>"
         : "") +
       "</div></div>";
 
-    content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
-      openDateInput(baza.periodFrom, function (iso) {
-        state.ui.baza.periodFrom = iso;
-        applyUiPatch({ baza: { periodFrom: iso } });
-        refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, "Период с");
-    });
-    content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
-      openDateInput(baza.periodTo, function (iso) {
-        state.ui.baza.periodTo = iso;
-        applyUiPatch({ baza: { periodTo: iso } });
-        refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, "Период по");
-    });
-    var exerciseOptions = [{ value: "all", label: "Все" }].concat(state.data.exercises.map(function (it) {
-      return { value: it.value, label: it.label };
-    }));
-    content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
-      openPicker("Упражнение", exerciseOptions, baza.exercise, function (value) {
-        state.ui.baza.exercise = value;
-        state.ui.baza.task = "all";
-        applyUiPatch({ baza: { exercise: value, task: "all" } });
-        refreshBazaRows().then(function () { renderBazaTab(content); renderTitleBar(); });
-      }, event.currentTarget);
-    });
-    var taskBtn = content.querySelector("[data-btca-baza-task]");
-    if (taskBtn) taskBtn.addEventListener("click", function (event) {
-      if (baza.exercise === "all") return;
-      var tasks = [];
-      var seen = {};
-      state.bazaRows.forEach(function (r) {
-        if (r.exercise === baza.exercise && !seen[r.task]) { seen[r.task] = true; tasks.push(r.task); }
+    if (!periodDisabled) {
+      content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
+        openDateInput(baza.periodFrom, function (iso) {
+          state.ui.baza.periodFrom = iso;
+          applyUiPatch({ baza: { periodFrom: iso } });
+          refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
+        }, "Период с");
       });
-      tasks.sort(function (a, b) { return a - b; });
-      var options = [{ value: "all", label: "Все" }].concat(tasks.map(function (t) { return { value: String(t), label: String(t) }; }));
-      openPicker("Задача", options, baza.task, function (value) {
-        state.ui.baza.task = value;
-        applyUiPatch({ baza: { task: value } });
-        refreshBazaRows().then(function () { renderBazaTab(content); });
-      }, event.currentTarget);
-    });
+      content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
+        openDateInput(baza.periodTo, function (iso) {
+          state.ui.baza.periodTo = iso;
+          applyUiPatch({ baza: { periodTo: iso } });
+          refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
+        }, "Период по");
+      });
+    }
+    if (!exerciseDisabled) {
+      var exerciseOptions = buildBazaExercisePickerOptions();
+      content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
+        openPicker("Упражнение", exerciseOptions, baza.exercise, function (value) {
+          var item = exerciseOptions.filter(function (o) { return o.value === value; })[0];
+          onPickBazaExercise(item || { value: value });
+        }, event.currentTarget);
+      });
+    }
+    var taskBtn = content.querySelector("[data-btca-baza-task]");
+    if (taskBtn && !taskDisabled) {
+      taskBtn.addEventListener("click", function (event) {
+        var options = [{ value: "all", label: "Все" }].concat(
+          state.bazaRuleTasks.map(function (t) { return { value: String(t), label: String(t) }; })
+        );
+        openPicker("Задача", options, baza.task, function (value) {
+          state.ui.baza.task = value;
+          applyUiPatch({ baza: { task: value } });
+          refreshBazaRows().then(function () { renderBazaTab(content); });
+        }, event.currentTarget);
+      });
+    }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
-    if (tableBtn) tableBtn.addEventListener("click", function () { openBazaTable(); });
+    if (tableBtn && !chartMeta.arrowDisabled) tableBtn.addEventListener("click", function () { openBazaTable(); });
   }
 
   function openBazaTable() {
+    var baza = state.ui.baza;
+    var rows = bazaTableDisplayRows(baza);
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--baza-table";
     overlay.innerHTML =
@@ -1521,10 +1709,11 @@
       '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
       "</div></div>" +
       '<div class="btca-l1-baza-table-scroll"><div class="btca-l1-baza-table-body">' +
-      state.bazaRows.map(function (row) {
-        return '<div class="btca-l1-baza-table-row">' +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' + escapeHtml(formatIsoDateAsDdMmYyyy(row.date)) + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(row.exercise) + "</span></div>" +
+      rows.map(function (row) {
+        var exKey = row.exerciseKey || row.exercise;
+        return '<div class="btca-l1-baza-table-row' + (row.clusterFirst === false ? " btca-l1-baza-table-row--cluster" : "") + '">' +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' + escapeHtml(row.date ? formatIsoDateAsDdMmYyyy(row.date) : "") + "</span></div>" +
+          '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(row.exercise || exKey) + "</span></div>" +
           '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>' + row.task + "</span></div>" +
           '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + (row.req == null ? "—" : row.req) + "</span></div>" +
           '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>' + (row.ok == null ? "—" : row.ok) + "</span></div>" +
@@ -1808,9 +1997,7 @@
     applyUiPatch({ tab: key });
     renderSheetMenu(false);
     if (key === "baza") {
-      refreshBazaStats().then(function () {
-        return refreshBazaRows();
-      }).then(function () {
+      refreshBazaContext().then(function () {
         renderActiveTab();
         renderTitleBar();
       });
@@ -1886,9 +2073,7 @@
     if (!booted) {
       return Promise.reject(new Error("Приложение ещё не завершило загрузку. Перезапустите."));
     }
-    return refreshBazaStats().then(function () {
-      return refreshBazaRows();
-    }).then(function () {
+    return refreshBazaContext().then(function () {
       renderTitleBar();
       renderActiveTab();
       var menuBtn = rootEl.querySelector("[data-btca-level1-menu]");
