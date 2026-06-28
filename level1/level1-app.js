@@ -713,8 +713,103 @@
     return {
       text: showChart ? "Успешные удары по упражнению за период" : "Нет данных по упражнению",
       showChart: showChart,
-      arrowDisabled: exerciseFilterDisabled || !showChart,
+      arrowDisabled: exerciseFilterDisabled,
     };
+  }
+
+  function buildBazaTableTitle(baza) {
+    var from = String(baza.periodFrom || "").trim();
+    var to = String(baza.periodTo || "").trim();
+    var fromLabel = formatIsoDateAsDdMmYyyy(from) || from;
+    var toLabel = formatIsoDateAsDdMmYyyy(to) || to;
+    var exercisePart = baza.exercise === "all"
+      ? "по всем упражнениям"
+      : "по упражнению " + labelForExerciseValue(baza.exercise);
+    var periodPart = from && to && from === to
+      ? "на " + fromLabel
+      : "за период с " + fromLabel + " по " + toLabel;
+    return "БД " + exercisePart + " " + periodPart;
+  }
+
+  function setBazaTableLandscape(on) {
+    document.body.classList.toggle("btca-force-landscape-table", !!on);
+    if (on && screen.orientation && typeof screen.orientation.lock === "function") {
+      screen.orientation.lock("landscape").catch(function () {});
+    } else if (!on && screen.orientation && typeof screen.orientation.unlock === "function") {
+      screen.orientation.unlock().catch(function () {});
+    }
+  }
+
+  function expandBazaRowsAllL1(rawRows) {
+    var byDateExercise = {};
+    rawRows.forEach(function (r) {
+      var d = String(r.date || "");
+      var ex = String(r.exercise || "");
+      var t = Number(r.task || 0);
+      if (!d || !ex || !Number.isFinite(t)) return;
+      if (!byDateExercise[d]) byDateExercise[d] = {};
+      if (!byDateExercise[d][ex]) byDateExercise[d][ex] = {};
+      byDateExercise[d][ex][t] = r;
+    });
+    var out = [];
+    Object.keys(byDateExercise).sort().forEach(function (d) {
+      Object.keys(byDateExercise[d]).sort().forEach(function (ex) {
+        var byTask = byDateExercise[d][ex];
+        var rules = exerciseRulesL1(b5FromSelectValue(ex));
+        var allowed = taskNumbersForExercise(ex);
+        var first = true;
+        allowed.forEach(function (t) {
+          var r = byTask[t];
+          var reqFromRule = rules.requiredByTask[t - 1];
+          out.push({
+            date: first ? d : "",
+            exercise: first ? labelForExerciseValue(ex) : "",
+            exerciseKey: ex,
+            task: t,
+            req: r && r.req != null ? r.req : (reqFromRule == null ? null : Number(reqFromRule)),
+            ok: r && r.ok != null ? r.ok : null,
+            pct: r && r.pct != null ? r.pct : null,
+            sets: r && r.sets != null ? r.sets : null,
+            clusterFirst: first,
+          });
+          first = false;
+        });
+      });
+    });
+    return out;
+  }
+
+  function loadBazaTableRows(baza) {
+    var queryEx = baza.exercise;
+    var task = baza.task === "all" ? "all" : baza.task;
+    return DB.bazaQuery({
+      from: baza.periodFrom,
+      to: baza.periodTo,
+      exercise: queryEx,
+      task: task,
+    }).then(function (result) {
+      var raw = result.rows || [];
+      if (queryEx === "all") return expandBazaRowsAllL1(raw);
+      return expandBazaRowsL1(raw, queryEx).map(function (row) {
+        if (row.exercise) row.exercise = labelForExerciseValue(row.exerciseKey || row.exercise);
+        return row;
+      });
+    });
+  }
+
+  function renderBazaTableBodyHtml(rows) {
+    return rows.map(function (row) {
+      var exKey = row.exerciseKey || row.exercise;
+      var exLabel = row.exercise || labelForExerciseValue(exKey);
+      return '<div class="btca-l1-baza-table-row' + (row.clusterFirst === false ? " btca-l1-baza-table-row--cluster" : "") + '">' +
+        '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' +
+        escapeHtml(row.date ? formatIsoDateAsDdMmYyyy(row.date) : "") + "</span></div>" +
+        '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(exLabel) + "</span></div>" +
+        '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>' + row.task + "</span></div>" +
+        '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + (row.req == null ? "—" : row.req) + "</span></div>" +
+        '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>' + (row.ok == null ? "—" : row.ok) + "</span></div>" +
+        '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>' + (row.pct == null ? "—" : row.pct + "%") + "</span></div></div>";
+    }).join("");
   }
 
   function taskNumbersForExercise(exerciseKey) {
@@ -747,7 +842,7 @@
         var reqFromRule = rules.requiredByTask[t - 1];
         out.push({
           date: first ? d : "",
-          exercise: first ? exerciseFilter : "",
+          exercise: first ? labelForExerciseValue(exerciseFilter) : "",
           exerciseKey: exerciseFilter,
           task: t,
           req: r && r.req != null ? r.req : (reqFromRule == null ? null : Number(reqFromRule)),
@@ -1670,7 +1765,7 @@
         openPicker("Упражнение", exerciseOptions, baza.exercise, function (value) {
           var item = exerciseOptions.filter(function (o) { return o.value === value; })[0];
           onPickBazaExercise(item || { value: value });
-        }, event.currentTarget);
+        }, event.currentTarget, { rowHeight: PICKER_ROW_SIMPLE });
       });
     }
     var taskBtn = content.querySelector("[data-btca-baza-task]");
@@ -1683,7 +1778,7 @@
           state.ui.baza.task = value;
           applyUiPatch({ baza: { task: value } });
           refreshBazaRows().then(function () { renderBazaTab(content); });
-        }, event.currentTarget);
+        }, event.currentTarget, { rowHeight: PICKER_ROW_SIMPLE });
       });
     }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
@@ -1692,13 +1787,14 @@
 
   function openBazaTable() {
     var baza = state.ui.baza;
-    var rows = bazaTableDisplayRows(baza);
+    var title = buildBazaTableTitle(baza);
+    setBazaTableLandscape(true);
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--baza-table";
     overlay.innerHTML =
-      '<header class="btca-l1-overlay__header">' +
+      '<header class="btca-l1-overlay__header btca-l1-overlay__header--baza-table">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
-      "<strong>База данных</strong><span></span></header>" +
+      "<strong>" + escapeHtml(title) + "</strong></header>" +
       '<div class="btca-l1-baza-table-wrap">' +
       '<div class="btca-l1-baza-table-head"><div class="btca-l1-baza-table-row">' +
       '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>Дата</span></div>' +
@@ -1708,21 +1804,17 @@
       '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>Успех</span></div>' +
       '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
       "</div></div>" +
-      '<div class="btca-l1-baza-table-scroll"><div class="btca-l1-baza-table-body">' +
-      rows.map(function (row) {
-        var exKey = row.exerciseKey || row.exercise;
-        return '<div class="btca-l1-baza-table-row' + (row.clusterFirst === false ? " btca-l1-baza-table-row--cluster" : "") + '">' +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' + escapeHtml(row.date ? formatIsoDateAsDdMmYyyy(row.date) : "") + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(row.exercise || exKey) + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>' + row.task + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + (row.req == null ? "—" : row.req) + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>' + (row.ok == null ? "—" : row.ok) + "</span></div>" +
-          '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>' + (row.pct == null ? "—" : row.pct + "%") + "</span></div></div>";
-      }).join("") +
-      "</div></div></div>";
+      '<div class="btca-l1-baza-table-scroll"><div class="btca-l1-baza-table-body"></div></div></div>';
     state.root.appendChild(overlay);
-    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () {
+    var bodyEl = overlay.querySelector(".btca-l1-baza-table-body");
+    function closeTable() {
+      setBazaTableLandscape(false);
       overlay.remove();
+    }
+    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeTable);
+    loadBazaTableRows(baza).then(function (rows) {
+      if (!bodyEl || !overlay.isConnected) return;
+      bodyEl.innerHTML = rows.length ? renderBazaTableBodyHtml(rows) : "";
     });
   }
 

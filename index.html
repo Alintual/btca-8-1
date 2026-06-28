@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.151" />
+    <meta name="btca-cache-version" content="btca-web-8.1.152" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -828,9 +828,33 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   visibility: hidden;
 }
 
-.btca-level1-picker__item--baza {
-  white-space: pre-line;
-  text-align: left;
+body.btca-apple-comfort.btca-force-landscape-table {
+  overflow: hidden;
+}
+
+body.btca-apple-comfort.btca-force-landscape-table #root {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vh;
+  width: 100dvh;
+  height: 100vw;
+  height: 100dvw;
+  max-width: none;
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+}
+
+@media (orientation: landscape) {
+  body.btca-apple-comfort.btca-force-landscape-table #root {
+    position: static;
+    width: min(var(--btca-layout-min), 100%);
+    height: auto;
+    max-width: var(--btca-layout-min);
+    margin-inline: auto;
+    transform: none;
+  }
 }
 
 .btca-level1-picker--anchored .btca-level1-picker__group {
@@ -2724,6 +2748,18 @@ body.btca-level2-mode .btca-date-picker-day--selected {
   background: #1f4f5c;
 }
 
+.btca-l1-overlay__header--baza-table {
+  grid-template-columns: 48px 1fr;
+}
+
+.btca-l1-overlay__header--baza-table strong {
+  padding: 0 4px;
+  font-size: calc(14rem / 17);
+  font-weight: 600;
+  line-height: calc(18rem / 17);
+  white-space: normal;
+}
+
 .btca-l1-baza-table-wrap {
   display: flex;
   flex: 1;
@@ -3157,8 +3193,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.151:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.151:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.152:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.152:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
