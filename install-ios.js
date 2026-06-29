@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.156:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.156:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.157:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.157:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -176,14 +176,18 @@
     return steps.reduce(function (chain, step, index) {
       return chain.then(function () {
         report((index / total) * 100);
-        return step.run();
+        return withTimeout(
+          step.run(),
+          45000,
+          "Таймаут загрузки модулей БТКА"
+        );
       });
     }, Promise.resolve()).then(function () {
       report(100);
-      hideHomeSplashIndicator();
     }).catch(function (error) {
-      hideHomeSplashIndicator();
       console.warn("BTCA module preload failed", error);
+    }).then(function () {
+      hideHomeSplashIndicator();
     });
   }
 
@@ -347,6 +351,20 @@
     });
   }
 
+  function purgeObsoleteMediaCaches() {
+    if (!("caches" in window)) return Promise.resolve();
+    var generation = getCacheGeneration();
+    return caches.keys().then(function (names) {
+      return Promise.all(names.filter(function (name) {
+        return name.indexOf("btca-web-") === 0 &&
+          name.endsWith(":static-media") &&
+          name.indexOf(generation) !== 0;
+      }).map(function (name) {
+        return caches.delete(name);
+      }));
+    }).catch(function () {});
+  }
+
   function flushClientDataBeforeReload() {
     var tasks = [];
     try {
@@ -371,7 +389,7 @@
     if (metaGen && metaGen !== generation && !window.__BTCA_META_RELOAD__) {
       window.__BTCA_META_RELOAD__ = true;
       window.location.reload();
-      return;
+      return false;
     }
 
     try {
@@ -379,6 +397,7 @@
     } catch (_) {
       invalidatePreparedClientState();
     }
+    return true;
   }
 
   function purgeObsoleteInstallCaches() {
@@ -386,7 +405,10 @@
     var generation = getCacheGeneration();
     return caches.keys().then(function (names) {
       return Promise.all(names.filter(function (name) {
-        return name.indexOf("btca-web-") === 0 && name.indexOf(generation) !== 0;
+        if (name.indexOf("btca-web-") !== 0) return false;
+        if (name.indexOf(generation) === 0) return false;
+        if (name.endsWith(":static-media")) return false;
+        return true;
       }).map(function (name) {
         return caches.delete(name);
       }));
@@ -1538,64 +1560,70 @@
       });
   }
 
-  function initStandaloneApp() {
-    if (!window.isSecureContext || !("caches" in window)) {
-      renderInfo("iOS/iPadOS", "Для offline-режима откройте приложение через HTTPS.");
-      return;
-    }
-
+  function bootstrapStandaloneShell(mediaReady) {
     function showHome() {
       renderInstalledHome();
       return preloadAppModulesForHome();
     }
 
-    if (isAppPreparedSync()) {
-      showHome();
-      refreshShellCacheQuietly();
+    if (!mediaReady) {
+      renderInstalledHome();
+      prepareOffline();
       return;
     }
 
-    ensureMediaCacheReady().then(function (ready) {
-      if (ready && isPreparedStateCurrent(readAppPreparedState())) {
-        markAppPrepared();
-        showHome();
-        refreshShellCacheQuietly();
-        return;
-      }
-      if (isAppPreparedSync()) {
-        showHome();
-        refreshShellCacheQuietly();
-        return;
-      }
-      renderInstalledHome();
-      prepareOffline();
-    }).catch(function (error) {
-      renderInfo("iOS/iPadOS", error && (error.message || error));
-      renderInstalledHome();
-    });
+    if (!readAppPreparedState()) {
+      markAppPrepared();
+    }
+
+    showHome();
+    refreshShellCacheQuietly();
   }
 
   function init() {
     var els = getEls();
     window.__BTCA_IOS_INSTALLER_READY__ = true;
     window.__BTCA_OPEN_DATE_INPUT__ = openCenteredDatePicker;
-    clearStaleClientState();
-    purgeObsoleteInstallCaches();
-    ensureFreshShellAfterDeploy();
-    cleanupOrphanHomePhraseMarkup();
-    syncPortraitMode();
-    window.addEventListener("orientationchange", syncPortraitMode);
-    window.addEventListener("resize", syncPortraitMode);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", syncPortraitMode);
-    }
-    document.addEventListener("click", handleAppNavigation, true);
-    if (els.button) {
-      els.button.addEventListener("click", prepareOffline);
-    }
-    if (isStandalone()) {
-      initStandaloneApp();
-    }
+    if (!clearStaleClientState()) return;
+
+    ensureMediaCacheReady()
+      .then(function (mediaReady) {
+        return purgeObsoleteInstallCaches().then(function () {
+          if (!mediaReady) return false;
+          return purgeObsoleteMediaCaches().then(function () { return true; });
+        });
+      })
+      .then(function (mediaReady) {
+        ensureFreshShellAfterDeploy();
+        cleanupOrphanHomePhraseMarkup();
+        syncPortraitMode();
+        window.addEventListener("orientationchange", syncPortraitMode);
+        window.addEventListener("resize", syncPortraitMode);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", syncPortraitMode);
+        }
+        document.addEventListener("click", handleAppNavigation, true);
+        if (els.button) {
+          els.button.addEventListener("click", prepareOffline);
+        }
+        if (isStandalone()) {
+          bootstrapStandaloneShell(mediaReady);
+        }
+      })
+      .catch(function (error) {
+        console.warn("BTCA bootstrap failed", error);
+        ensureFreshShellAfterDeploy();
+        cleanupOrphanHomePhraseMarkup();
+        syncPortraitMode();
+        document.addEventListener("click", handleAppNavigation, true);
+        if (els.button) {
+          els.button.addEventListener("click", prepareOffline);
+        }
+        if (isStandalone()) {
+          renderInstalledHome();
+          prepareOffline();
+        }
+      });
   }
 
   if (document.readyState === "loading") {
