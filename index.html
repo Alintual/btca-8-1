@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.154" />
+    <meta name="btca-cache-version" content="btca-web-8.1.156" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -192,6 +192,7 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--one-tablet,
 body:not(.btca-installed-mode) .home__tagline-slot .home__phrase--two-tablet {
   display: none;
 }
+
 body:not(.btca-installed-mode) .home__tagline-slot .home__phrase {
   position: absolute;
   margin: 0;
@@ -300,6 +301,7 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line2 {
 
 /* ===== Фразы 1/2 — БЛОК 2: PWA смартфон (rem, изолировано) ===== */
 @media (max-width: 743px) {
+
   body.btca-installed-mode .home__tagline-slot .home__phrase--one-tablet,
   body.btca-installed-mode .home__tagline-slot .home__phrase--two-tablet {
     display: none;
@@ -471,7 +473,7 @@ code {
   margin-top: 18px;
 }
 
-.platform-menu + .ios-panel {
+.platform-menu+.ios-panel {
   margin-top: 18px;
 }
 
@@ -544,7 +546,7 @@ code {
   cursor: not-allowed;
 }
 
-.btca-installed-mode .platform-menu + .ios-panel {
+.btca-installed-mode .platform-menu+.ios-panel {
   margin-top: calc(18rem / 17);
 }
 
@@ -697,9 +699,17 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   line-height: 1;
 }
 
-.btca-l2-baza-menu__icon--export { color: #1e88e5; }
-.btca-l2-baza-menu__icon--import { color: #fb8c00; }
-.btca-l2-baza-menu__icon--shot { color: #15a60e; }
+.btca-l2-baza-menu__icon--export {
+  color: #1e88e5;
+}
+
+.btca-l2-baza-menu__icon--import {
+  color: #fb8c00;
+}
+
+.btca-l2-baza-menu__icon--shot {
+  color: #15a60e;
+}
 
 .btca-l2-baza-menu__chevron {
   margin-left: auto;
@@ -727,8 +737,13 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   border-radius: 50%;
 }
 
-.btca-l2-baza-menu__dot--own { background: #bb20e8; }
-.btca-l2-baza-menu__dot--import { background: #fb8c00; }
+.btca-l2-baza-menu__dot--own {
+  background: #bb20e8;
+}
+
+.btca-l2-baza-menu__dot--import {
+  background: #fb8c00;
+}
 
 .btca-l2-baza-id-dialog {
   position: fixed;
@@ -858,7 +873,16 @@ body.btca-apple-comfort.btca-force-landscape-table #root {
 }
 
 .btca-level1-picker--anchored .btca-level1-picker__group {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 var(--btca-l1-picker-group, 40px);
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  height: var(--btca-l1-picker-group, 40px);
   min-height: var(--btca-l1-picker-group, 40px);
+  max-height: var(--btca-l1-picker-group, 40px);
+  margin: 0;
   padding: calc(6rem / 17) calc(10rem / 17);
   border-bottom: 1px solid rgba(17, 24, 39, 0.12);
   color: rgba(17, 24, 39, 0.72);
@@ -867,6 +891,9 @@ body.btca-apple-comfort.btca-force-landscape-table #root {
   font-weight: 700;
   line-height: var(--btca-l1-lh, calc(26rem / 17));
   text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .btca-level1-picker--anchored .btca-level1-picker__group--section {
@@ -1100,7 +1127,7 @@ body.btca-apple-comfort .btca-back-button {
   --btca-l1-section-w: min(81vw, calc(324rem / 17));
   --btca-l1-arrow: calc(32rem / 17);
   --btca-l1-table-row: calc(40rem / 17);
-  --btca-l1-picker-row: calc(50rem / 17);
+  --btca-l1-picker-row: var(--btca-l1-field-h);
   --btca-l1-picker-group: calc(40rem / 17);
   --btca-l1-picker-polez: calc(70rem / 17);
   --btca-l1-radius: var(--btca-r-md, 12px);
@@ -1120,7 +1147,7 @@ body.btca-apple-comfort .btca-level1-screen {
   --btca-l1-section-w: min(81vw, calc(324rem / 17));
   --btca-l1-arrow: calc(32rem / 17);
   --btca-l1-table-row: calc(40rem / 17);
-  --btca-l1-picker-row: calc(50rem / 17);
+  --btca-l1-picker-row: var(--btca-l1-field-h);
   --btca-l1-picker-group: calc(40rem / 17);
   --btca-l1-picker-polez: calc(70rem / 17);
   --btca-l1-radius: var(--btca-r-md);
@@ -1401,7 +1428,7 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 .btca-l1-exercise-col,
 .btca-l1-baza-fields-row .btca-l1-exercise-col,
 .btca-l1-exercise-row .btca-l1-exercise-col,
-.btca-l1-baza-labels-row > .btca-l1-field-label:first-child {
+.btca-l1-baza-labels-row>.btca-l1-field-label:first-child {
   flex: 0 0 var(--btca-l1-exercise-w);
   width: var(--btca-l1-exercise-w);
   max-width: var(--btca-l1-exercise-w);
@@ -1657,7 +1684,9 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 .btca-l1-face {
   display: inline-flex;
   width: 100%;
+  height: var(--btca-l1-field-h);
   min-height: var(--btca-l1-field-h);
+  max-height: var(--btca-l1-field-h);
   align-items: center;
   justify-content: center;
   padding: 0 12px;
@@ -1752,11 +1781,7 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 .btca-l1-forma .btca-l1-exercise-row .btca-l1-trailing-slot .btca-l1-green-arrow,
 .btca-l1-nav .btca-l1-exercise-row .btca-l1-trailing-slot .btca-l1-green-arrow,
 .btca-l1-baza-chart-header .btca-l1-chart-arrow-slot .btca-l1-green-arrow {
-  transform: translateX(calc(
-    (var(--btca-l1-trailing-w) / 2) -
-    var(--btca-l1-pick-est-half-w) +
-    var(--btca-l1-chrome-btn-shift-x)
-  ));
+  transform: translateX(calc((var(--btca-l1-trailing-w) / 2) - var(--btca-l1-pick-est-half-w) + var(--btca-l1-chrome-btn-shift-x)));
 }
 
 .btca-l1-polez-catalog-col {
@@ -1987,6 +2012,7 @@ body.btca-apple-comfort .btca-l1-chart-panel {
 }
 
 @keyframes btca-l1-ok-caret-blink {
+
   0%,
   100% {
     opacity: 1;
@@ -2370,18 +2396,29 @@ body.btca-apple-comfort .btca-l1-ok-input {
 .btca-level1-picker--anchored .btca-level1-picker__list {
   flex: 1;
   min-height: 0;
-  display: grid;
-  gap: calc(2rem / 17);
-  padding: calc(6rem / 17);
+  display: flex;
+  flex-direction: column;
+  align-content: flex-start;
+  align-items: stretch;
+  gap: calc(4rem / 17);
+  padding: calc(4rem / 17);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .btca-level1-picker--anchored .btca-level1-picker__item {
   box-sizing: border-box;
+  display: flex;
+  flex: 0 0 var(--btca-l1-field-h);
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
   width: 100%;
-  min-height: var(--btca-l1-picker-row);
-  padding: calc(8rem / 17);
+  height: var(--btca-l1-field-h);
+  min-height: var(--btca-l1-field-h);
+  max-height: var(--btca-l1-field-h);
+  margin: 0;
+  padding: 0 calc(14rem / 17);
   border: 1px solid transparent;
   border-radius: var(--btca-l1-radius);
   color: #111827;
@@ -2390,23 +2427,44 @@ body.btca-apple-comfort .btca-l1-ok-input {
   font-weight: 600;
   line-height: var(--btca-l1-lh);
   text-align: center;
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
 }
 
-.btca-level1-picker--anchored .btca-level1-picker__item--catalog {
-  min-height: var(--btca-l1-field-h);
-  font-weight: 400;
-  text-align: left;
+.btca-level1-picker--anchored .btca-level1-picker__text {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.btca-level1-picker--anchored .btca-level1-picker__item--catalog.btca-level1-picker__item--active {
+.btca-level1-picker--anchored .btca-level1-picker__item:active:not(.btca-level1-picker__item--active) {
   border-color: rgba(17, 24, 39, 0.6);
   background: #d6e4e7;
   color: #000000;
 }
 
+.btca-level1-picker--anchored .btca-level1-picker__item--catalog {
+  justify-content: flex-start;
+  font-weight: 400;
+  text-align: left;
+}
+
+.btca-level1-picker--anchored .btca-level1-picker__item--catalog .btca-level1-picker__text {
+  text-align: left;
+}
+
+.btca-level1-picker--anchored .btca-level1-picker__item--catalog.btca-level1-picker__item--active {
+  border-color: rgba(17, 24, 39, 0.6);
+  background: #d9d9d9;
+  color: #000000;
+}
+
 .btca-level1-picker--anchored .btca-level1-picker__item--polez {
-  min-height: var(--btca-l1-picker-polez);
-  padding: calc(8rem / 17);
+  justify-content: flex-start;
   font-weight: 400;
   text-align: left;
 }
@@ -2414,7 +2472,7 @@ body.btca-apple-comfort .btca-l1-ok-input {
 .btca-level1-picker--anchored .btca-level1-picker__item--active {
   border-color: rgba(17, 24, 39, 0.6);
   border-radius: var(--btca-l1-radius);
-  background: #d6e4e7;
+  background: #d9d9d9;
   color: #000000;
 }
 
@@ -2485,10 +2543,7 @@ body.btca-apple-comfort .btca-l1-ok-input {
   display: grid;
   place-items: center;
   padding:
-    max(12px, env(safe-area-inset-top))
-    max(12px, env(safe-area-inset-right))
-    max(12px, env(safe-area-inset-bottom))
-    max(12px, env(safe-area-inset-left));
+    max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
 
 .btca-date-picker-layer__backdrop {
@@ -3200,8 +3255,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.154:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.154:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.156:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.156:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3430,11 +3485,28 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   }
 
   function isPreparedStateCurrent(state) {
-    if (!state || state.cacheGeneration !== getCacheGeneration()) return false;
-    var modules = readPreparedModuleVersions(state);
-    if (modules.level1 !== LEVEL1_MODULE_VERSION) return false;
-    if (modules.level2 !== LEVEL2_MODULE_VERSION) return false;
-    return true;
+    return Boolean(state && state.preparedAt);
+  }
+
+  function migratePreparedClientMarkers() {
+    var generation = getCacheGeneration();
+    try {
+      var readyState = readAppPreparedState();
+      if (readyState && readyState.preparedAt) {
+        readyState.cacheGeneration = generation;
+        readyState.level1ModuleVersion = LEVEL1_MODULE_VERSION;
+        readyState.level2ModuleVersion = LEVEL2_MODULE_VERSION;
+        localStorage.setItem(APP_READY_KEY, JSON.stringify(readyState));
+      }
+      var mediaRaw = localStorage.getItem(MEDIA_STATE_KEY);
+      if (mediaRaw) {
+        var mediaState = JSON.parse(mediaRaw);
+        if (mediaState && mediaState.files) {
+          mediaState.cacheGeneration = generation;
+          localStorage.setItem(MEDIA_STATE_KEY, JSON.stringify(mediaState));
+        }
+      }
+    } catch (_) {}
   }
 
   function invalidatePreparedClientState() {
@@ -3483,13 +3555,67 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       var raw = localStorage.getItem(MEDIA_STATE_KEY);
       if (!raw) return false;
       var state = JSON.parse(raw);
-      if (!state || state.cacheGeneration !== getCacheGeneration() || !state.files) return false;
+      if (!state || !state.files) return false;
       return Object.keys(state.files).some(function (key) {
         return (state.files[key] || 0) > 0;
       });
     } catch (_) {
       return false;
     }
+  }
+
+  function migrateMediaCacheFromPreviousGeneration() {
+    if (!("caches" in window)) return Promise.resolve(false);
+    return caches.keys().then(function (names) {
+      var candidates = names.filter(function (name) {
+        return name.indexOf("btca-web-") === 0 && name.endsWith(":static-media") && name !== MEDIA_CACHE;
+      });
+      if (!candidates.length) return false;
+      candidates.sort();
+      var sourceName = candidates[candidates.length - 1];
+      return caches.open(sourceName).then(function (src) {
+        return caches.open(MEDIA_CACHE).then(function (dst) {
+          return src.keys().then(function (keys) {
+            if (!keys.length) return false;
+            return Promise.all(keys.map(function (req) {
+              return src.match(req).then(function (res) {
+                if (res) return dst.put(req, res);
+              });
+            })).then(function () { return true; });
+          });
+        });
+      });
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function ensureMediaCacheReady() {
+    return verifyMediaCacheReady().then(function (ready) {
+      if (ready) return true;
+      return migrateMediaCacheFromPreviousGeneration().then(function (migrated) {
+        if (!migrated) return false;
+        return verifyMediaCacheReady();
+      });
+    });
+  }
+
+  function flushClientDataBeforeReload() {
+    var tasks = [];
+    try {
+      if (window.BTCA_LEVEL1_DB && window.BTCA_LEVEL1_DB.flushUiState) {
+        tasks.push(window.BTCA_LEVEL1_DB.flushUiState());
+      }
+      if (window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_DB.flushUiState) {
+        tasks.push(window.BTCA_LEVEL2_DB.flushUiState());
+      }
+    } catch (_) {}
+    return Promise.all(tasks).catch(function () {});
+  }
+
+  function refreshShellCacheQuietly() {
+    if (!("caches" in window)) return Promise.resolve();
+    return cacheCoreAssets(null, 0, 0).catch(function () {});
   }
 
   function clearStaleClientState() {
@@ -3502,19 +3628,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     }
 
     try {
-      var readyState = readAppPreparedState();
-      if (readyState && !isPreparedStateCurrent(readyState)) {
-        localStorage.removeItem(APP_READY_KEY);
-        window.__BTCA_APP_BOOT_READY__ = false;
-      }
-
-      var mediaRaw = localStorage.getItem(MEDIA_STATE_KEY);
-      if (mediaRaw) {
-        var mediaState = JSON.parse(mediaRaw);
-        if (!mediaState || mediaState.cacheGeneration !== generation) {
-          localStorage.removeItem(MEDIA_STATE_KEY);
-        }
-      }
+      migratePreparedClientMarkers();
     } catch (_) {
       invalidatePreparedClientState();
     }
@@ -3557,7 +3671,9 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       navigator.serviceWorker.addEventListener("controllerchange", function () {
         if (window.__BTCA_SHELL_RELOADED__) return;
         window.__BTCA_SHELL_RELOADED__ = true;
-        window.location.reload();
+        flushClientDataBeforeReload().then(function () {
+          window.location.reload();
+        });
       });
     }).catch(function () {});
   }
@@ -4688,17 +4804,20 @@ body.btca-apple-comfort.btca-landscape-mode #root {
 
     if (isAppPreparedSync()) {
       showHome();
+      refreshShellCacheQuietly();
       return;
     }
 
-    verifyMediaCacheReady().then(function (ready) {
+    ensureMediaCacheReady().then(function (ready) {
       if (ready && isPreparedStateCurrent(readAppPreparedState())) {
         markAppPrepared();
         showHome();
+        refreshShellCacheQuietly();
         return;
       }
       if (isAppPreparedSync()) {
         showHome();
+        refreshShellCacheQuietly();
         return;
       }
       renderInstalledHome();

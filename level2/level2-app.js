@@ -7,10 +7,10 @@
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
-    var NAV_FILTER_ALL = "all";
+  var NAV_FILTER_ALL = "all";
   var POLEZ_ALL = "all";
-    var PICK_DELAY_MS = 1500;
-  var PICKER_ROW_SIMPLE = 50;
+  var PICK_DELAY_MS = 1500;
+  var PICKER_ROW_SIMPLE = 40;
   var PICKER_ROW_GROUP = 40;
   var PICKER_LIST_PAD = 4;
   var SCREEN_EDGE_GUTTER = 4;
@@ -701,6 +701,11 @@
     return h > 0 ? h + 8 : 220;
   }
 
+  function scrollFormaTableToTop(content) {
+    var scroll = content && content.querySelector("[data-btca-forma-table-scroll]");
+    if (scroll) scroll.scrollTop = 0;
+  }
+
   function scrollFormaOkRowIntoView(content, task) {
     var scroll = content.querySelector("[data-btca-forma-table-scroll]");
     var anchor = getFormaOkAnchor(content, task);
@@ -992,9 +997,9 @@
   function setBazaTableLandscape(on) {
     document.body.classList.toggle("btca-force-landscape-table", !!on);
     if (on && screen.orientation && typeof screen.orientation.lock === "function") {
-      screen.orientation.lock("landscape").catch(function () {});
+      screen.orientation.lock("landscape").catch(function () { });
     } else if (!on && screen.orientation && typeof screen.orientation.unlock === "function") {
-      screen.orientation.unlock().catch(function () {});
+      screen.orientation.unlock().catch(function () { });
     }
   }
 
@@ -1184,7 +1189,7 @@
       (sheet.emoji ? '<span class="btca-level1-titlebar__emoji' +
         (state.ui.tab === "forma" ? " btca-level1-titlebar__emoji--forma" :
           state.ui.tab === "nav" ? " btca-level1-titlebar__emoji--nav" :
-          state.ui.tab === "polez" ? " btca-level1-titlebar__emoji--polez" : "") +
+            state.ui.tab === "polez" ? " btca-level1-titlebar__emoji--polez" : "") +
         '" aria-hidden="true">' + sheet.emoji + "</span>" : "") +
       "</div>" +
       '<span class="btca-level1-titlebar__spacer"></span>' +
@@ -1228,9 +1233,10 @@
           return '<div class="' + groupClass + '">' + escapeHtml(opt.label) + "</div>";
         }
         var active = opt.value === current;
-        return '<button type="button" class="btca-level1-picker__item' + itemExtraClass +
+        return '<button type="button" class="btca-level1-picker__item btca-level1-picker__item--catalog' + itemExtraClass +
           (active ? " btca-level1-picker__item--active" : "") +
-          '" data-btca-picker-value="' + escapeHtml(opt.value) + '">' + escapeHtml(opt.label) + "</button>";
+          '" data-btca-picker-value="' + escapeHtml(opt.value) + '"><span class="btca-level1-picker__text">' +
+          escapeHtml(opt.label) + "</span></button>";
       }).join("") +
       "</div></div>";
     var listEl = layer.querySelector("[data-btca-picker-list]");
@@ -1331,7 +1337,7 @@
         var rowClass = !row.active || row.required === null ? "btca-l1-table__row--unused" : (idx % 2 ? "btca-l1-table__row--odd" : "btca-l1-table__row--even");
         var okCell = row.active && row.required !== null
           ? '<div class="btca-l1-table-cell btca-l1-col--ok' + (row.invalid ? " btca-l1-table-cell--invalid" : "") +
-            '" data-btca-forma-ok-slot="' + row.task + '"></div>'
+          '" data-btca-forma-ok-slot="' + row.task + '"></div>'
           : '<div class="btca-l1-table-cell btca-l1-col--ok btca-l1-table-cell--unused"></div>';
         return '<div class="btca-l1-table-row ' + rowClass + '">' +
           '<div class="btca-l1-table-cell btca-l1-col--task"><span class="btca-l1-td' +
@@ -1367,6 +1373,7 @@
         applyUiPatch({ exerciseValue: value, taskOk: {}, nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
         renderFormaTab(content);
         renderTitleBar();
+        scrollFormaTableToTop(content);
       }, event.currentTarget);
     });
     content.querySelector("[data-btca-forma-desc]").addEventListener("click", function () {
@@ -1720,7 +1727,7 @@
       (state.bazaIdentifierMode === "import"
         ? '<p class="btca-l2-baza-id-hint">Выберите файл резервной копии BTCA (JSON).</p>'
         : '<label class="btca-l2-baza-id-label">Идентификатор<input class="btca-l2-baza-id-input" type="text" value="' +
-          escapeHtml(state.bazaIdentifierDraft) + '" placeholder="Идентификатор анг..." maxlength="32"></label>') +
+        escapeHtml(state.bazaIdentifierDraft) + '" placeholder="Идентификатор анг..." maxlength="32"></label>') +
       (state.bazaIdentifierError
         ? '<p class="btca-l2-baza-id-error">' + escapeHtml(state.bazaIdentifierError) + "</p>" : "") +
       '<div class="btca-l2-baza-id-actions">' +
@@ -2160,7 +2167,7 @@
           '<div class="btca-l1-nav-card-frame">' +
           (img
             ? '<button type="button" class="btca-l1-card-image-btn" data-btca-nav-image="' + escapeHtml(item.value) +
-              '"><img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy"></button>'
+            '"><img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy"></button>'
             : '<div class="btca-l1-card-placeholder">' + escapeHtml(item.label) + "</div>") +
           "</div></div></article>";
       }).join("") +
@@ -2253,14 +2260,14 @@
           '<div class="btca-l1-polez-card-inner">' +
           (single && hasDesc
             ? '<div class="btca-l1-nav-card-top">' +
-              '<button type="button" class="btca-l1-pick" data-btca-polez-desc="' + escapeHtml(row.key) + '">' +
-              '<span class="btca-l1-pick__icon" aria-hidden="true">📖</span>' +
-              '<span class="btca-l1-pick__text">Описание</span></button></div>'
+            '<button type="button" class="btca-l1-pick" data-btca-polez-desc="' + escapeHtml(row.key) + '">' +
+            '<span class="btca-l1-pick__icon" aria-hidden="true">📖</span>' +
+            '<span class="btca-l1-pick__text">Описание</span></button></div>'
             : "") +
           '<div class="btca-l1-polez-card-frame">' +
           (img
             ? '<button type="button" class="btca-l1-card-image-btn" data-btca-polez-image="' + escapeHtml(row.key) + '">' +
-              '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>'
+            '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>'
             : '<div class="btca-l1-card-placeholder">' + escapeHtml(row.label) + "</div>") +
           "</div></div></article>";
       }).join("") +
@@ -2271,10 +2278,7 @@
         state.ui.polez.catalogKey = value;
         applyUiPatch({ polez: { catalogKey: value } });
         renderPolezTab(content);
-      }, event.currentTarget, {
-        rowHeight: PICKER_ROW_GROUP,
-        itemClass: " btca-level1-picker__item--catalog",
-      });
+      }, event.currentTarget);
     });
     content.querySelectorAll("[data-btca-polez-desc]").forEach(function (btn) {
       btn.addEventListener("click", function () {

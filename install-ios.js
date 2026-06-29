@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.154:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.154:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.156:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.156:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -232,11 +232,28 @@
   }
 
   function isPreparedStateCurrent(state) {
-    if (!state || state.cacheGeneration !== getCacheGeneration()) return false;
-    var modules = readPreparedModuleVersions(state);
-    if (modules.level1 !== LEVEL1_MODULE_VERSION) return false;
-    if (modules.level2 !== LEVEL2_MODULE_VERSION) return false;
-    return true;
+    return Boolean(state && state.preparedAt);
+  }
+
+  function migratePreparedClientMarkers() {
+    var generation = getCacheGeneration();
+    try {
+      var readyState = readAppPreparedState();
+      if (readyState && readyState.preparedAt) {
+        readyState.cacheGeneration = generation;
+        readyState.level1ModuleVersion = LEVEL1_MODULE_VERSION;
+        readyState.level2ModuleVersion = LEVEL2_MODULE_VERSION;
+        localStorage.setItem(APP_READY_KEY, JSON.stringify(readyState));
+      }
+      var mediaRaw = localStorage.getItem(MEDIA_STATE_KEY);
+      if (mediaRaw) {
+        var mediaState = JSON.parse(mediaRaw);
+        if (mediaState && mediaState.files) {
+          mediaState.cacheGeneration = generation;
+          localStorage.setItem(MEDIA_STATE_KEY, JSON.stringify(mediaState));
+        }
+      }
+    } catch (_) {}
   }
 
   function invalidatePreparedClientState() {
@@ -285,13 +302,67 @@
       var raw = localStorage.getItem(MEDIA_STATE_KEY);
       if (!raw) return false;
       var state = JSON.parse(raw);
-      if (!state || state.cacheGeneration !== getCacheGeneration() || !state.files) return false;
+      if (!state || !state.files) return false;
       return Object.keys(state.files).some(function (key) {
         return (state.files[key] || 0) > 0;
       });
     } catch (_) {
       return false;
     }
+  }
+
+  function migrateMediaCacheFromPreviousGeneration() {
+    if (!("caches" in window)) return Promise.resolve(false);
+    return caches.keys().then(function (names) {
+      var candidates = names.filter(function (name) {
+        return name.indexOf("btca-web-") === 0 && name.endsWith(":static-media") && name !== MEDIA_CACHE;
+      });
+      if (!candidates.length) return false;
+      candidates.sort();
+      var sourceName = candidates[candidates.length - 1];
+      return caches.open(sourceName).then(function (src) {
+        return caches.open(MEDIA_CACHE).then(function (dst) {
+          return src.keys().then(function (keys) {
+            if (!keys.length) return false;
+            return Promise.all(keys.map(function (req) {
+              return src.match(req).then(function (res) {
+                if (res) return dst.put(req, res);
+              });
+            })).then(function () { return true; });
+          });
+        });
+      });
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function ensureMediaCacheReady() {
+    return verifyMediaCacheReady().then(function (ready) {
+      if (ready) return true;
+      return migrateMediaCacheFromPreviousGeneration().then(function (migrated) {
+        if (!migrated) return false;
+        return verifyMediaCacheReady();
+      });
+    });
+  }
+
+  function flushClientDataBeforeReload() {
+    var tasks = [];
+    try {
+      if (window.BTCA_LEVEL1_DB && window.BTCA_LEVEL1_DB.flushUiState) {
+        tasks.push(window.BTCA_LEVEL1_DB.flushUiState());
+      }
+      if (window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_DB.flushUiState) {
+        tasks.push(window.BTCA_LEVEL2_DB.flushUiState());
+      }
+    } catch (_) {}
+    return Promise.all(tasks).catch(function () {});
+  }
+
+  function refreshShellCacheQuietly() {
+    if (!("caches" in window)) return Promise.resolve();
+    return cacheCoreAssets(null, 0, 0).catch(function () {});
   }
 
   function clearStaleClientState() {
@@ -304,19 +375,7 @@
     }
 
     try {
-      var readyState = readAppPreparedState();
-      if (readyState && !isPreparedStateCurrent(readyState)) {
-        localStorage.removeItem(APP_READY_KEY);
-        window.__BTCA_APP_BOOT_READY__ = false;
-      }
-
-      var mediaRaw = localStorage.getItem(MEDIA_STATE_KEY);
-      if (mediaRaw) {
-        var mediaState = JSON.parse(mediaRaw);
-        if (!mediaState || mediaState.cacheGeneration !== generation) {
-          localStorage.removeItem(MEDIA_STATE_KEY);
-        }
-      }
+      migratePreparedClientMarkers();
     } catch (_) {
       invalidatePreparedClientState();
     }
@@ -359,7 +418,9 @@
       navigator.serviceWorker.addEventListener("controllerchange", function () {
         if (window.__BTCA_SHELL_RELOADED__) return;
         window.__BTCA_SHELL_RELOADED__ = true;
-        window.location.reload();
+        flushClientDataBeforeReload().then(function () {
+          window.location.reload();
+        });
       });
     }).catch(function () {});
   }
@@ -1490,17 +1551,20 @@
 
     if (isAppPreparedSync()) {
       showHome();
+      refreshShellCacheQuietly();
       return;
     }
 
-    verifyMediaCacheReady().then(function (ready) {
+    ensureMediaCacheReady().then(function (ready) {
       if (ready && isPreparedStateCurrent(readAppPreparedState())) {
         markAppPrepared();
         showHome();
+        refreshShellCacheQuietly();
         return;
       }
       if (isAppPreparedSync()) {
         showHome();
+        refreshShellCacheQuietly();
         return;
       }
       renderInstalledHome();

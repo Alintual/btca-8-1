@@ -11,7 +11,7 @@
   var POLEZ_ALL = "all";
   var POLEZ_HIDDEN = { fig8: 1, fig9: 1, fig10: 1, fig11: 1, fig20: 1, fig21: 1 };
   var PICK_DELAY_MS = 1500;
-  var PICKER_ROW_SIMPLE = 50;
+  var PICKER_ROW_SIMPLE = 40;
   var PICKER_ROW_GROUP = 40;
   var PICKER_LIST_PAD = 4;
   var SCREEN_EDGE_GUTTER = 4;
@@ -453,6 +453,11 @@
     if (!dock) return 220;
     var h = dock.getBoundingClientRect().height;
     return h > 0 ? h + 8 : 220;
+  }
+
+  function scrollFormaTableToTop(content) {
+    var scroll = content && content.querySelector("[data-btca-forma-table-scroll]");
+    if (scroll) scroll.scrollTop = 0;
   }
 
   function scrollFormaOkRowIntoView(content, task) {
@@ -1093,10 +1098,17 @@
       '<div class="' + pickerClass + '" role="dialog" aria-label="' + escapeHtml(title) + '"' + pickerStyle + ">" +
       '<div class="btca-level1-picker__list" data-btca-picker-list>' +
       options.map(function (opt) {
+        if (opt.groupHeader) {
+          var groupClass = "btca-level1-picker__group";
+          if (opt.sectionHeader) groupClass += " btca-level1-picker__group--section";
+          if (opt.disabledHeader) groupClass += " btca-level1-picker__group--disabled";
+          return '<div class="' + groupClass + '">' + escapeHtml(opt.label) + "</div>";
+        }
         var active = opt.value === current;
-        return '<button type="button" class="btca-level1-picker__item' + itemExtraClass +
+        return '<button type="button" class="btca-level1-picker__item btca-level1-picker__item--catalog' + itemExtraClass +
           (active ? " btca-level1-picker__item--active" : "") +
-          '" data-btca-picker-value="' + escapeHtml(opt.value) + '">' + escapeHtml(opt.label) + "</button>";
+          '" data-btca-picker-value="' + escapeHtml(opt.value) + '"><span class="btca-level1-picker__text">' +
+          escapeHtml(opt.label) + "</span></button>";
       }).join("") +
       "</div></div>";
     var listEl = layer.querySelector("[data-btca-picker-list]");
@@ -1105,8 +1117,10 @@
       if (event.target.closest("[data-btca-picker-close]")) { closePicker(); return; }
       var btn = event.target.closest("[data-btca-picker-value]");
       if (!btn) return;
+      var value = btn.getAttribute("data-btca-picker-value");
+      if (!value || value.indexOf("__group:") === 0 || value.indexOf("__section:") === 0) return;
       closePicker();
-      onSelect(btn.getAttribute("data-btca-picker-value"));
+      onSelect(value);
     };
   }
 
@@ -1229,6 +1243,7 @@
         applyUiPatch({ exerciseValue: value, taskOk: {}, nav: { exerciseFilterKey: value } });
         renderFormaTab(content);
         renderTitleBar();
+        scrollFormaTableToTop(content);
       }, event.currentTarget);
     });
     content.querySelector("[data-btca-forma-desc]").addEventListener("click", function () {
@@ -1945,10 +1960,7 @@
         state.ui.polez.catalogKey = value;
         applyUiPatch({ polez: { catalogKey: value } });
         renderPolezTab(content);
-      }, event.currentTarget, {
-        rowHeight: PICKER_ROW_GROUP,
-        itemClass: " btca-level1-picker__item--catalog",
-      });
+      }, event.currentTarget);
     });
     content.querySelectorAll("[data-btca-polez-desc]").forEach(function (btn) {
       btn.addEventListener("click", function () {

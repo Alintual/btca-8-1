@@ -634,4 +634,13 @@
     bazaFillStatusText: bazaFillStatusText,
     formatYmd: formatYmd,
   };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("pagehide", function () {
+      flushUiState();
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") flushUiState();
+    });
+  }
 })();
