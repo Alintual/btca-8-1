@@ -603,12 +603,30 @@
     return pct <= 0 ? "< 1 %" : pct + " %";
   }
 
+  function wipeTrainingDatabase() {
+    uiCache = null;
+    return runTx(["results"], "readwrite", function (transaction, finish, fail) {
+      var req = transaction.objectStore("results").clear();
+      req.onsuccess = function () { finish(); };
+      req.onerror = function () { fail(req.error); };
+    }).then(function () {
+      return runTx(["foreign_results"], "readwrite", function (transaction, finish, fail) {
+        var req = transaction.objectStore("foreign_results").clear();
+        req.onsuccess = function () { finish(); };
+        req.onerror = function () { fail(req.error); };
+      });
+    }).then(function () {
+      return clearImportFileIdentifier();
+    });
+  }
+
   window.BTCA_LEVEL2_DB = {
     DB_MAX_ROWS: DB_MAX_ROWS,
     BACKUP_LEVEL_MARKER: BACKUP_LEVEL_MARKER,
     loadUiState: loadUiState,
     patchUiState: patchUiState,
     flushUiState: flushUiState,
+    wipeTrainingDatabase: wipeTrainingDatabase,
     getUiState: function () { return uiCache; },
     warmDb: warmDb,
     saveCluster: saveCluster,

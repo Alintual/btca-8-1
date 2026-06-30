@@ -424,11 +424,21 @@
     }).catch(function () { return { ok: false }; });
   }
 
+  function wipeTrainingDatabase() {
+    uiCache = null;
+    return runTx(["results"], "readwrite", function (transaction, finish, fail) {
+      var req = transaction.objectStore("results").clear();
+      req.onsuccess = function () { finish(); };
+      req.onerror = function () { fail(req.error); };
+    });
+  }
+
   window.BTCA_LEVEL1_DB = {
     DB_MAX_ROWS: DB_MAX_ROWS,
     loadUiState: loadUiState,
     patchUiState: patchUiState,
     flushUiState: flushUiState,
+    wipeTrainingDatabase: wipeTrainingDatabase,
     getUiState: function () { return uiCache; },
     warmDb: warmDb,
     saveCluster: saveCluster,

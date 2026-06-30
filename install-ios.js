@@ -2,11 +2,12 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.157:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.157:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.159:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.159:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
+  var INSTALL_SESSION_KEY = "btca-web:install-session";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -271,6 +272,128 @@
   function purgeGenerationRuntimeCache() {
     if (!("caches" in window)) return Promise.resolve();
     return caches.delete(getCacheGeneration() + ":runtime").catch(function () {});
+  }
+
+  function readInstallSession() {
+    try {
+      return String(localStorage.getItem(INSTALL_SESSION_KEY) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function isPwaReinstall() {
+    return isStandalone() && !readInstallSession();
+  }
+
+  function recordInstallSession() {
+    if (!isStandalone() || readInstallSession()) return;
+    try {
+      localStorage.setItem(
+        INSTALL_SESSION_KEY,
+        String(Date.now()) + "-" + Math.random().toString(36).slice(2, 10)
+      );
+    } catch (_) {}
+  }
+
+  function resolvePwaShortcutName() {
+    var meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (meta) {
+      var title = String(meta.getAttribute("content") || "").trim();
+      if (title) return title;
+    }
+    var manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink && manifestLink.href) {
+      var manifestName = String(manifestLink.getAttribute("data-short-name") || "").trim();
+      if (manifestName) return manifestName;
+    }
+    return "БТКА 8.1";
+  }
+
+  function hasLegacyHomeScreenMarkers() {
+    if (readInstallSession()) return true;
+    if (readAppPreparedState()) return true;
+    if (hasPreparedMediaState()) return true;
+    return false;
+  }
+
+  function probeInstalledRelatedApps() {
+    if (!navigator.getInstalledRelatedApps) return Promise.resolve(null);
+    return navigator.getInstalledRelatedApps().then(function (apps) {
+      if (!apps || !apps.length) return false;
+      var manifestLink = document.querySelector('link[rel="manifest"]');
+      var manifestHref = manifestLink
+        ? new URL(manifestLink.href, window.location.href).href
+        : "";
+      for (var i = 0; i < apps.length; i += 1) {
+        var app = apps[i];
+        if (app.platform === "webapp") return true;
+        if (manifestHref && app.id === manifestHref) return true;
+      }
+      return false;
+    }).catch(function () {
+      return null;
+    });
+  }
+
+  function clearInstallSessionMarker() {
+    try {
+      localStorage.removeItem(INSTALL_SESSION_KEY);
+    } catch (_) {}
+  }
+
+  function syncInstallSessionWithShortcutPresence() {
+    if (isStandalone()) return Promise.resolve();
+    return probeInstalledRelatedApps().then(function (apiResult) {
+      if (apiResult === false) clearInstallSessionMarker();
+    });
+  }
+
+  function detectHomeScreenShortcut() {
+    if (isStandalone()) return Promise.resolve(false);
+    return probeInstalledRelatedApps().then(function (apiResult) {
+      if (apiResult === true) return true;
+      if (apiResult === false) {
+        clearInstallSessionMarker();
+        return false;
+      }
+      return hasLegacyHomeScreenMarkers();
+    });
+  }
+
+  function renderShortcutRemovalWarning(shortcutName) {
+    var name = String(shortcutName || resolvePwaShortcutName() || "приложения").trim();
+    var message =
+      "ВНИМАНИЕ. Для корректной загрузки сначала следует удалить ярлык приложения " +
+      name +
+      ", а затем перезагрузить страницу и повторить загрузку.";
+    setPanel(
+      '<div class="ios-panel__header"><strong>iOS/iPadOS</strong></div>' +
+      '<p class="prepare-status prepare-status--warning">' + escapeHtml(message) + "</p>"
+    );
+  }
+
+  function wipeTrainingDatabasesOnReinstall() {
+    if (!isPwaReinstall()) {
+      recordInstallSession();
+      return Promise.resolve();
+    }
+    return ensureLevel1Module().then(function () {
+      var tasks = [];
+      if (window.BTCA_LEVEL1_DB && window.BTCA_LEVEL1_DB.wipeTrainingDatabase) {
+        tasks.push(window.BTCA_LEVEL1_DB.wipeTrainingDatabase());
+      }
+      return ensureLevel2Module().then(function () {
+        if (window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_DB.wipeTrainingDatabase) {
+          tasks.push(window.BTCA_LEVEL2_DB.wipeTrainingDatabase());
+        }
+        return Promise.all(tasks);
+      });
+    }).catch(function (error) {
+      console.warn("BTCA reinstall training DB wipe failed", error);
+    }).then(function () {
+      recordInstallSession();
+    });
   }
 
   function readAppPreparedState() {
@@ -1514,6 +1637,17 @@
       return;
     }
 
+    detectHomeScreenShortcut().then(function (hasShortcut) {
+      if (hasShortcut) {
+        renderShortcutRemovalWarning(resolvePwaShortcutName());
+        setButtonState(false, "Загрузить все данные для offline");
+        return;
+      }
+      beginOfflinePreparation();
+    });
+  }
+
+  function beginOfflinePreparation() {
     setButtonState(true, "Подготовка offline...");
 
     var report = function (pct, msg) {
@@ -1606,8 +1740,13 @@
         if (els.button) {
           els.button.addEventListener("click", prepareOffline);
         }
+        if (!isStandalone()) {
+          syncInstallSessionWithShortcutPresence();
+        }
         if (isStandalone()) {
-          bootstrapStandaloneShell(mediaReady);
+          return wipeTrainingDatabasesOnReinstall().then(function () {
+            bootstrapStandaloneShell(mediaReady);
+          });
         }
       })
       .catch(function (error) {
@@ -1619,9 +1758,14 @@
         if (els.button) {
           els.button.addEventListener("click", prepareOffline);
         }
+        if (!isStandalone()) {
+          syncInstallSessionWithShortcutPresence();
+        }
         if (isStandalone()) {
-          renderInstalledHome();
-          prepareOffline();
+          return wipeTrainingDatabasesOnReinstall().then(function () {
+            renderInstalledHome();
+            prepareOffline();
+          });
         }
       });
   }
