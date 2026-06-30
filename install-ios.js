@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.166:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.166:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.167:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.167:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -312,8 +312,23 @@
     return "БТКА 8.1";
   }
 
-  function hasActiveShortcutMarkers() {
-    return Boolean(readInstallSession() || hasHomeShortcutMarker());
+  function hasInstalledOnDeviceMarkers() {
+    if (readInstallSession()) return true;
+    if (hasHomeShortcutMarker()) return true;
+    if (readAppPreparedState() && hasPreparedMediaState()) return true;
+    return false;
+  }
+
+  function clearBrowserPrepMarkers() {
+    try {
+      localStorage.removeItem(APP_READY_KEY);
+      localStorage.removeItem(MEDIA_STATE_KEY);
+    } catch (_) {}
+  }
+
+  function clearAllInstallMarkers() {
+    clearShortcutPresenceMarkers();
+    clearBrowserPrepMarkers();
   }
 
   function hasHomeShortcutMarker() {
@@ -372,7 +387,7 @@
         return;
       }
       if (apiResult === false) {
-        clearShortcutPresenceMarkers();
+        clearAllInstallMarkers();
       }
     });
   }
@@ -387,13 +402,11 @@
         return;
       }
       if (apiResult === false) {
-        clearShortcutPresenceMarkers();
+        clearAllInstallMarkers();
         return;
       }
-      if (!readInstallSession() && hasHomeShortcutMarker()) {
-        try {
-          localStorage.removeItem(HOME_SHORTCUT_KEY);
-        } catch (_) {}
+      if (!readInstallSession() && !hasHomeShortcutMarker()) {
+        clearBrowserPrepMarkers();
       }
     });
   }
@@ -403,10 +416,10 @@
     return probeInstalledRelatedApps().then(function (apiResult) {
       if (apiResult === true) return true;
       if (apiResult === false) {
-        clearShortcutPresenceMarkers();
+        clearAllInstallMarkers();
         return false;
       }
-      return hasActiveShortcutMarkers();
+      return hasInstalledOnDeviceMarkers();
     });
   }
 
@@ -1692,14 +1705,13 @@
         return detectHomeScreenShortcut();
       })
       .then(function (hasShortcut) {
-      if (hasShortcut) {
-        renderShortcutRemovalWarning(resolvePwaShortcutName());
-        setButtonState(false, "Загрузить все данные для offline");
-        return;
-      }
-      clearShortcutPresenceMarkers();
-      beginOfflinePreparation();
-    });
+        if (hasShortcut) {
+          renderShortcutRemovalWarning(resolvePwaShortcutName());
+          setButtonState(false, "Загрузить все данные для offline");
+          return;
+        }
+        beginOfflinePreparation();
+      });
   }
 
   function beginOfflinePreparation() {
