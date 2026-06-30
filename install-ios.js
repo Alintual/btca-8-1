@@ -2,12 +2,13 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.162:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.162:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.163:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.163:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var INSTALL_SESSION_KEY = "btca-web:install-session";
+  var HOME_SHORTCUT_KEY = "btca-web:home-shortcut";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -294,6 +295,7 @@
         String(Date.now()) + "-" + Math.random().toString(36).slice(2, 10)
       );
     } catch (_) {}
+    markHomeShortcutPresent();
   }
 
   function resolvePwaShortcutName() {
@@ -312,9 +314,30 @@
 
   function hasInstalledAppMarkers() {
     if (readInstallSession()) return true;
-    if (readAppPreparedState()) return true;
-    if (hasPreparedMediaState()) return true;
+    if (hasHomeShortcutMarker()) return true;
+    if (readAppPreparedState() && hasPreparedMediaState()) return true;
     return false;
+  }
+
+  function hasHomeShortcutMarker() {
+    try {
+      return localStorage.getItem(HOME_SHORTCUT_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function markHomeShortcutPresent() {
+    try {
+      localStorage.setItem(HOME_SHORTCUT_KEY, "1");
+    } catch (_) {}
+  }
+
+  function clearShortcutPresenceMarkers() {
+    clearInstallSessionMarker();
+    try {
+      localStorage.removeItem(HOME_SHORTCUT_KEY);
+    } catch (_) {}
   }
 
   function probeInstalledRelatedApps() {
@@ -347,8 +370,12 @@
   function syncInstallSessionWithShortcutPresence() {
     if (isStandalone()) return Promise.resolve();
     return probeInstalledRelatedApps().then(function (apiResult) {
-      if (apiResult === false && !isAppleMobile() && !isDebugAppleMode()) {
-        clearInstallSessionMarker();
+      if (apiResult === true) {
+        markHomeShortcutPresent();
+        return;
+      }
+      if (apiResult === false) {
+        clearShortcutPresenceMarkers();
       }
     });
   }
@@ -357,16 +384,20 @@
     if (isStandalone()) return Promise.resolve(false);
     return probeInstalledRelatedApps().then(function (apiResult) {
       if (apiResult === true) return true;
-      if (apiResult === false) {
-        clearInstallSessionMarker();
-        return false;
-      }
+      if (apiResult === false) return false;
       return hasInstalledAppMarkers();
     });
   }
 
-  function confirmShortcutRemovalAndPrepare() {
-    beginOfflinePreparation();
+  function runDownloadPageShortcutCheck() {
+    if (isStandalone()) return Promise.resolve(false);
+    if (!isAppleMobile() && !isDebugAppleMode()) return Promise.resolve(false);
+    return detectHomeScreenShortcut().then(function (hasShortcut) {
+      if (hasShortcut) {
+        renderShortcutRemovalWarning(resolvePwaShortcutName());
+      }
+      return hasShortcut;
+    });
   }
 
   function renderShortcutRemovalWarning(shortcutName) {
@@ -374,17 +405,11 @@
     var message =
       "ВНИМАНИЕ. Для корректной загрузки сначала следует удалить ярлык приложения " +
       name +
-      ", перезагрузить страницу и нажать «Ярлык удалён — продолжить загрузку».";
+      ", а затем перезагрузить страницу и повторить загрузку.";
     setPanel(
       '<div class="ios-panel__header"><strong>iOS/iPadOS</strong></div>' +
-      '<p class="prepare-status prepare-status--warning">' + escapeHtml(message) + "</p>" +
-      '<button type="button" class="platform-button platform-button--ios btca-shortcut-continue" data-btca-shortcut-continue>Ярлык удалён — продолжить загрузку</button>'
+      '<p class="prepare-status prepare-status--warning">' + escapeHtml(message) + "</p>"
     );
-    var panel = getEls().panel;
-    var continueBtn = panel && panel.querySelector("[data-btca-shortcut-continue]");
-    if (continueBtn) {
-      continueBtn.addEventListener("click", confirmShortcutRemovalAndPrepare);
-    }
     setButtonState(false, "Загрузить все данные для offline");
   }
 
@@ -1756,7 +1781,7 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence();
+          syncInstallSessionWithShortcutPresence().then(runDownloadPageShortcutCheck);
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
@@ -1774,7 +1799,7 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence();
+          syncInstallSessionWithShortcutPresence().then(runDownloadPageShortcutCheck);
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
