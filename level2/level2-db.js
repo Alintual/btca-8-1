@@ -95,8 +95,8 @@
     var today = formatYmd(new Date());
     return {
       v: 1,
-      tab: "forma",
-      exerciseValue: "10",
+      tab: "nav",
+      exerciseValue: "1",
       trainingDate: today,
       taskOk: {},
       baza: { periodFrom: today, periodTo: today, exercise: "all", task: "all", dataSource: "own" },
@@ -603,8 +603,16 @@
     return pct <= 0 ? "< 1 %" : pct + " %";
   }
 
+  function resetUiStateForNormalize() {
+    if (uiSaveTimer) {
+      window.clearTimeout(uiSaveTimer);
+      uiSaveTimer = null;
+    }
+    uiCache = defaultUiState();
+    return writeKv(KV_UI_KEY, JSON.stringify(uiCache));
+  }
+
   function wipeTrainingDatabase() {
-    uiCache = null;
     return runTx(["results"], "readwrite", function (transaction, finish, fail) {
       var req = transaction.objectStore("results").clear();
       req.onsuccess = function () { finish(); };
@@ -617,6 +625,8 @@
       });
     }).then(function () {
       return clearImportFileIdentifier();
+    }).then(function () {
+      return resetUiStateForNormalize();
     });
   }
 
@@ -627,6 +637,7 @@
     patchUiState: patchUiState,
     flushUiState: flushUiState,
     wipeTrainingDatabase: wipeTrainingDatabase,
+    resetUiStateForNormalize: resetUiStateForNormalize,
     getUiState: function () { return uiCache; },
     warmDb: warmDb,
     saveCluster: saveCluster,

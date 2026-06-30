@@ -103,7 +103,7 @@
     var today = formatYmd(new Date());
     return {
       v: 1,
-      tab: "forma",
+      tab: "nav",
       exerciseValue: "1",
       trainingDate: today,
       taskOk: {},
@@ -424,12 +424,22 @@
     }).catch(function () { return { ok: false }; });
   }
 
+  function resetUiStateForNormalize() {
+    if (uiSaveTimer) {
+      window.clearTimeout(uiSaveTimer);
+      uiSaveTimer = null;
+    }
+    uiCache = defaultUiState();
+    return writeKv(KV_UI_KEY, JSON.stringify(uiCache));
+  }
+
   function wipeTrainingDatabase() {
-    uiCache = null;
     return runTx(["results"], "readwrite", function (transaction, finish, fail) {
       var req = transaction.objectStore("results").clear();
       req.onsuccess = function () { finish(); };
       req.onerror = function () { fail(req.error); };
+    }).then(function () {
+      return resetUiStateForNormalize();
     });
   }
 
@@ -439,6 +449,7 @@
     patchUiState: patchUiState,
     flushUiState: flushUiState,
     wipeTrainingDatabase: wipeTrainingDatabase,
+    resetUiStateForNormalize: resetUiStateForNormalize,
     getUiState: function () { return uiCache; },
     warmDb: warmDb,
     saveCluster: saveCluster,

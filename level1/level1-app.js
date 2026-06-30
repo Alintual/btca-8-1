@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.79";
+  var VERSION = "8.1.80";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2133,7 +2133,12 @@
 
   function boot() {
     if (booted) {
-      return Promise.resolve({ ui: state.ui, data: state.data });
+      return loadData().then(function () {
+        return DB.loadUiState();
+      }).then(function (ui) {
+        state.ui = ui;
+        return { ui: state.ui, data: state.data };
+      });
     }
     if (bootPromise) return bootPromise;
     DB = window.BTCA_LEVEL1_DB;
