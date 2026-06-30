@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.176:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.176:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.177:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.177:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -501,7 +501,7 @@
 
   function refreshShellCacheQuietly() {
     if (!("caches" in window)) return Promise.resolve();
-    return cacheCoreAssets(null, 0, 0).catch(function () {});
+    return cacheCoreAssets(function () {}, 0, 0).catch(function () {});
   }
 
   function clearStaleClientState() {
@@ -1562,7 +1562,9 @@
   function cacheCoreAssets(onProgress, pctStart, pctEnd) {
     var start = pctStart == null ? 3 : pctStart;
     var end = pctEnd == null ? 15 : pctEnd;
-    var emitProgress = resolveProgressCallback(onProgress);
+    var emitProgress = typeof onProgress === "function"
+      ? onProgress
+      : (start !== end ? resolveProgressCallback(onProgress) : function () {});
     return caches.open(INSTALL_CACHE).then(function (cache) {
       var documentAssets = Array.prototype.slice
         .call(document.querySelectorAll("script[src], link[rel='stylesheet'][href], link[rel='modulepreload'][href]"))
@@ -1782,8 +1784,9 @@
       markAppPrepared();
     }
 
-    showHome();
-    refreshShellCacheQuietly();
+    showHome().then(function () {
+      refreshShellCacheQuietly();
+    });
   }
 
   function init() {
