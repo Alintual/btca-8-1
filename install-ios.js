@@ -2,13 +2,14 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.160:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.160:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.161:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.161:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var INSTALL_SESSION_KEY = "btca-web:install-session";
   var SHORTCUT_REMOVAL_RELOAD_KEY = "btca-web:shortcut-removal-reload";
+  var SHORTCUT_REMOVAL_CONFIRMED_KEY = "btca-web:shortcut-removal-confirmed";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -311,14 +312,39 @@
     return "БТКА 8.1";
   }
 
-  function hasLegacyHomeScreenMarkers() {
-    return Boolean(readInstallSession());
+  function hasInstalledAppMarkers() {
+    if (readInstallSession()) return true;
+    if (readAppPreparedState()) return true;
+    if (hasPreparedMediaState()) return true;
+    return false;
+  }
+
+  function wasShortcutRemovalConfirmed() {
+    try {
+      return Boolean(localStorage.getItem(SHORTCUT_REMOVAL_CONFIRMED_KEY));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function markShortcutRemovalConfirmed() {
+    try {
+      localStorage.setItem(SHORTCUT_REMOVAL_CONFIRMED_KEY, "1");
+    } catch (_) {}
+  }
+
+  function clearShortcutRemovalConfirmed() {
+    try {
+      localStorage.removeItem(SHORTCUT_REMOVAL_CONFIRMED_KEY);
+    } catch (_) {}
   }
 
   function probeInstalledRelatedApps() {
     if (!navigator.getInstalledRelatedApps) return Promise.resolve(null);
     return navigator.getInstalledRelatedApps().then(function (apps) {
-      if (!apps || !apps.length) return false;
+      if (!apps || !apps.length) {
+        return isAppleMobile() || isDebugAppleMode() ? null : false;
+      }
       var manifestLink = document.querySelector('link[rel="manifest"]');
       var manifestHref = manifestLink
         ? new URL(manifestLink.href, window.location.href).href
@@ -328,7 +354,7 @@
         if (app.platform === "webapp") return true;
         if (manifestHref && app.id === manifestHref) return true;
       }
-      return false;
+      return isAppleMobile() || isDebugAppleMode() ? null : false;
     }).catch(function () {
       return null;
     });
@@ -358,6 +384,7 @@
         return;
       }
       clearInstallSessionMarker();
+      markShortcutRemovalConfirmed();
     });
   }
 
@@ -370,19 +397,22 @@
   function syncInstallSessionWithShortcutPresence() {
     if (isStandalone()) return Promise.resolve();
     return probeInstalledRelatedApps().then(function (apiResult) {
-      if (apiResult === false) clearInstallSessionMarker();
+      if (apiResult === false && !isAppleMobile() && !isDebugAppleMode()) {
+        clearInstallSessionMarker();
+      }
     });
   }
 
   function detectHomeScreenShortcut() {
     if (isStandalone()) return Promise.resolve(false);
+    if (wasShortcutRemovalConfirmed()) return Promise.resolve(false);
     return probeInstalledRelatedApps().then(function (apiResult) {
       if (apiResult === true) return true;
       if (apiResult === false) {
         clearInstallSessionMarker();
         return false;
       }
-      return hasLegacyHomeScreenMarkers();
+      return hasInstalledAppMarkers();
     });
   }
 
@@ -941,6 +971,7 @@
       ? "Offline-пакет подготовлен. Приложение уже открыто с экрана Домой."
       : "Offline-пакет подготовлен. В Safari нажмите «Поделиться» и выберите «На экран Домой».";
     markAppPrepared();
+    if (!isStandalone()) clearShortcutRemovalConfirmed();
     if (isStandalone()) {
       renderInstalledHome();
       return;
