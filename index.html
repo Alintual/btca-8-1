@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.174" />
+    <meta name="btca-cache-version" content="btca-web-8.1.175" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -86,6 +86,13 @@ html.btca-early-apple:not(.btca-installed-mode) .app {
   html.btca-early-apple:not(.btca-installed-mode) .app {
     padding-top: max(20px, env(safe-area-inset-top));
   }
+}
+
+html.btca-standalone-boot:not(.btca-shell-ready) .home__intro,
+html.btca-standalone-boot:not(.btca-shell-ready) .platform-menu,
+html.btca-standalone-boot:not(.btca-shell-ready) #btca-static-ios-panel,
+html.btca-standalone-boot:not(.btca-shell-ready) .footer {
+  display: none !important;
 }
 
 body.btca-apple-comfort:not(.btca-installed-mode) .app {
@@ -3182,6 +3189,14 @@ body.btca-apple-comfort.btca-landscape-mode #root {
         if (/iPhone|iPad|iPod/.test(ua) || iPadDesktop) {
           document.documentElement.classList.add("btca-early-apple");
         }
+        var standalone = false;
+        try {
+          standalone = window.matchMedia("(display-mode: standalone)").matches;
+        } catch (_) {}
+        if (window.navigator.standalone) standalone = true;
+        if (standalone) {
+          document.documentElement.classList.add("btca-standalone-boot");
+        }
       })();
     </script>
   </head>
@@ -3284,8 +3299,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.174:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.174:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.175:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.175:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -4672,6 +4687,12 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     }
   }
 
+  function markStandaloneShellReady() {
+    if (typeof document !== "undefined" && document.documentElement) {
+      document.documentElement.classList.add("btca-shell-ready");
+    }
+  }
+
   function renderInstalledHome(options) {
     options = options || {};
     var preserveSplash = Boolean(options.preserveSplash);
@@ -4704,6 +4725,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     cleanupOrphanHomePhraseMarkup();
     installedHomeSnapshot = "";
     syncPortraitMode();
+    markStandaloneShellReady();
   }
 
   function renderError(error) {
@@ -5010,6 +5032,10 @@ body.btca-apple-comfort.btca-landscape-mode #root {
 
     cleanupOrphanHomePhraseMarkup();
     syncPortraitModeImmediate();
+
+    if (isStandalone()) {
+      renderInstalledHome();
+    }
 
     ensureMediaCacheReady()
       .then(function (mediaReady) {

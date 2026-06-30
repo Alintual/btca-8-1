@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.174:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.174:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.175:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.175:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -1390,6 +1390,12 @@
     }
   }
 
+  function markStandaloneShellReady() {
+    if (typeof document !== "undefined" && document.documentElement) {
+      document.documentElement.classList.add("btca-shell-ready");
+    }
+  }
+
   function renderInstalledHome(options) {
     options = options || {};
     var preserveSplash = Boolean(options.preserveSplash);
@@ -1422,6 +1428,7 @@
     cleanupOrphanHomePhraseMarkup();
     installedHomeSnapshot = "";
     syncPortraitMode();
+    markStandaloneShellReady();
   }
 
   function renderError(error) {
@@ -1728,6 +1735,10 @@
 
     cleanupOrphanHomePhraseMarkup();
     syncPortraitModeImmediate();
+
+    if (isStandalone()) {
+      renderInstalledHome();
+    }
 
     ensureMediaCacheReady()
       .then(function (mediaReady) {
