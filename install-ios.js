@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.167:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.167:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.168:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.168:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -386,27 +386,8 @@
         markHomeShortcutPresent();
         return;
       }
-      if (apiResult === false) {
+      if (apiResult === false && !isAppleMobile() && !isDebugAppleMode()) {
         clearAllInstallMarkers();
-      }
-    });
-  }
-
-  function reconcileIosShortcutMarkers() {
-    if (isStandalone() || (!isAppleMobile() && !isDebugAppleMode())) {
-      return Promise.resolve();
-    }
-    return probeInstalledRelatedApps().then(function (apiResult) {
-      if (apiResult === true) {
-        markHomeShortcutPresent();
-        return;
-      }
-      if (apiResult === false) {
-        clearAllInstallMarkers();
-        return;
-      }
-      if (!readInstallSession() && !hasHomeShortcutMarker()) {
-        clearBrowserPrepMarkers();
       }
     });
   }
@@ -415,7 +396,7 @@
     if (isStandalone()) return Promise.resolve(false);
     return probeInstalledRelatedApps().then(function (apiResult) {
       if (apiResult === true) return true;
-      if (apiResult === false) {
+      if (apiResult === false && !isAppleMobile() && !isDebugAppleMode()) {
         clearAllInstallMarkers();
         return false;
       }
@@ -1700,11 +1681,7 @@
       return;
     }
 
-    reconcileIosShortcutMarkers()
-      .then(function () {
-        return detectHomeScreenShortcut();
-      })
-      .then(function (hasShortcut) {
+    detectHomeScreenShortcut().then(function (hasShortcut) {
         if (hasShortcut) {
           renderShortcutRemovalWarning(resolvePwaShortcutName());
           setButtonState(false, "Загрузить все данные для offline");
@@ -1808,7 +1785,7 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence().then(reconcileIosShortcutMarkers);
+          syncInstallSessionWithShortcutPresence();
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
@@ -1826,7 +1803,7 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence().then(reconcileIosShortcutMarkers);
+          syncInstallSessionWithShortcutPresence();
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
