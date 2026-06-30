@@ -2,12 +2,13 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.159:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.159:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.160:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.160:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var INSTALL_SESSION_KEY = "btca-web:install-session";
+  var SHORTCUT_REMOVAL_RELOAD_KEY = "btca-web:shortcut-removal-reload";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -311,10 +312,7 @@
   }
 
   function hasLegacyHomeScreenMarkers() {
-    if (readInstallSession()) return true;
-    if (readAppPreparedState()) return true;
-    if (hasPreparedMediaState()) return true;
-    return false;
+    return Boolean(readInstallSession());
   }
 
   function probeInstalledRelatedApps() {
@@ -342,6 +340,33 @@
     } catch (_) {}
   }
 
+  function acknowledgeShortcutRemovalReload() {
+    if (isStandalone()) return Promise.resolve();
+    var pending = false;
+    try {
+      pending = Boolean(sessionStorage.getItem(SHORTCUT_REMOVAL_RELOAD_KEY));
+      if (!pending) return Promise.resolve();
+      sessionStorage.removeItem(SHORTCUT_REMOVAL_RELOAD_KEY);
+    } catch (_) {
+      return Promise.resolve();
+    }
+    return probeInstalledRelatedApps().then(function (apiResult) {
+      if (apiResult === true) {
+        try {
+          sessionStorage.setItem(SHORTCUT_REMOVAL_RELOAD_KEY, "1");
+        } catch (_) {}
+        return;
+      }
+      clearInstallSessionMarker();
+    });
+  }
+
+  function markShortcutRemovalReloadPending() {
+    try {
+      sessionStorage.setItem(SHORTCUT_REMOVAL_RELOAD_KEY, "1");
+    } catch (_) {}
+  }
+
   function syncInstallSessionWithShortcutPresence() {
     if (isStandalone()) return Promise.resolve();
     return probeInstalledRelatedApps().then(function (apiResult) {
@@ -362,6 +387,7 @@
   }
 
   function renderShortcutRemovalWarning(shortcutName) {
+    markShortcutRemovalReloadPending();
     var name = String(shortcutName || resolvePwaShortcutName() || "приложения").trim();
     var message =
       "ВНИМАНИЕ. Для корректной загрузки сначала следует удалить ярлык приложения " +
@@ -1741,7 +1767,7 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence();
+          acknowledgeShortcutRemovalReload().then(syncInstallSessionWithShortcutPresence);
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
@@ -1759,7 +1785,7 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence();
+          acknowledgeShortcutRemovalReload().then(syncInstallSessionWithShortcutPresence);
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
