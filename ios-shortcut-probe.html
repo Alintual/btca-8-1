@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a4854" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="БТКА 8.1" />
+    <link rel="manifest" href="/btca-8-1/manifest.webmanifest" />
+    <title>BTCA — проверка ярлыка iOS</title>
+    <style>
+      :root {
+        color: #fff;
+        background: #1a4854;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.45;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        max-width: 720px;
+      }
+      h1 {
+        font-size: 1.15rem;
+        margin: 0 0 8px;
+      }
+      .hint {
+        color: #dcecef;
+        margin: 0 0 16px;
+        font-size: 0.92rem;
+      }
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 10px;
+        background: #2f8ea0;
+        color: #fff;
+        font-size: 1rem;
+        padding: 12px 16px;
+        margin: 0 8px 12px 0;
+      }
+      .verdict {
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin: 12px 0;
+        background: #0f323b;
+      }
+      .verdict--warn {
+        background: #4a3a12;
+        border: 1px solid #c9a227;
+      }
+      .verdict--ok {
+        background: #12352a;
+        border: 1px solid #5bc49a;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #0b242b;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 0.82rem;
+        overflow: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        margin: 12px 0;
+      }
+      th, td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 6px;
+      }
+      th {
+        width: 42%;
+        color: #b7d5dc;
+        font-weight: 600;
+      }
+      a {
+        color: #9de3f0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Проверка ярлыка БТКА на устройстве</h1>
+    <p class="hint">
+      Откройте эту страницу в <strong>Safari</strong> (не из ярлыка PWA). Нажмите «Запустить проверку».
+      Сравните результат <strong>до</strong> и <strong>после</strong> удаления ярлыка с экрана Домой.
+    </p>
+    <p class="hint">
+      <a href="/btca-8-1/">← Вернуться на страницу загрузки</a>
+    </p>
+    <button type="button" id="run-probe">Запустить проверку</button>
+    <button type="button" id="copy-report">Копировать отчёт</button>
+    <div id="verdict" class="verdict">Ожидание проверки…</div>
+    <table id="summary" hidden>
+      <tbody></tbody>
+    </table>
+    <pre id="raw" hidden></pre>
+    <script src="/btca-8-1/ios-shortcut-probe.js"></script>
+    <script>
+      (function () {
+        var lastReport = null;
+        var verdictEl = document.getElementById("verdict");
+        var summaryEl = document.getElementById("summary");
+        var summaryBody = summaryEl.querySelector("tbody");
+        var rawEl = document.getElementById("raw");
+
+        function row(name, value) {
+          var tr = document.createElement("tr");
+          var th = document.createElement("th");
+          var td = document.createElement("td");
+          th.textContent = name;
+          td.textContent = value;
+          tr.appendChild(th);
+          tr.appendChild(td);
+          return tr;
+        }
+
+        function renderReport(report) {
+          lastReport = report;
+          var ev = report.evaluation;
+          verdictEl.className = "verdict " + (ev.shouldWarnOnDownloadPage ? "verdict--warn" : "verdict--ok");
+          verdictEl.innerHTML =
+            "<strong>" + ev.label + "</strong><br>" +
+            "Показывать предупреждение на странице загрузки: <strong>" +
+            (ev.shouldWarnOnDownloadPage ? "ДА" : "НЕТ") + "</strong> (" + ev.confidence + ")";
+
+          summaryBody.innerHTML = "";
+          summaryBody.appendChild(row("Режим", report.context.isStandalone ? "standalone (ярлык)" : "браузер Safari"));
+          summaryBody.appendChild(row("Apple mobile", report.context.isAppleMobile ? "да" : "нет"));
+          summaryBody.appendChild(row("getInstalledRelatedApps", report.relatedApps.supported
+            ? (report.relatedApps.matched ? "BTCA найден" : "список пуст или без BTCA (" + report.relatedApps.apps.length + ")")
+            : "недоступен"));
+          summaryBody.appendChild(row("install-session", report.markers.installSession || "—"));
+          summaryBody.appendChild(row("home-shortcut", report.markers.homeShortcut || "—"));
+          summaryBody.appendChild(row("app-ready", report.markers.flags.hasAppReady ? "да" : "нет"));
+          summaryBody.appendChild(row("media-state", report.markers.flags.hasMediaState ? "да" : "нет"));
+          summaryBody.appendChild(row("Service Worker", report.serviceWorker.scope || "нет"));
+          summaryBody.appendChild(row("Cache BTCA", report.caches.btcaNames.join(", ") || "нет"));
+          summaryBody.appendChild(row("Причины", ev.reasons.join(" ")));
+
+          summaryEl.hidden = false;
+          rawEl.hidden = false;
+          rawEl.textContent = JSON.stringify(report, null, 2);
+        }
+
+        document.getElementById("run-probe").addEventListener("click", function () {
+          verdictEl.textContent = "Проверка…";
+          window.BTCA_SHORTCUT_PROBE.runFullProbe()
+            .then(renderReport)
+            .catch(function (error) {
+              verdictEl.textContent = "Ошибка: " + (error && error.message ? error.message : error);
+            });
+        });
+
+        document.getElementById("copy-report").addEventListener("click", function () {
+          if (!lastReport) return;
+          var text = JSON.stringify(lastReport, null, 2);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text);
+          }
+        });
+
+        window.BTCA_SHORTCUT_PROBE.runFullProbe()
+          .then(renderReport)
+          .catch(function (error) {
+            verdictEl.textContent = "Ошибка: " + (error && error.message ? error.message : error);
+          });
+      })();
+    </script>
+  </body>
+</html>
