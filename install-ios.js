@@ -2,13 +2,14 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.169:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.169:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.170:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.170:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var INSTALL_SESSION_KEY = "btca-web:install-session";
   var HOME_SHORTCUT_KEY = "btca-web:home-shortcut";
+  var SHORTCUT_COOKIE = "btca-web-home-shortcut=1";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -312,13 +313,104 @@
     return "БТКА 8.1";
   }
 
-  function hasShortcutSpecificMarkers() {
-    return Boolean(readInstallSession() || hasHomeShortcutMarker());
+  function shortcutCookiePath() {
+    var path = String(BTCA_BASE || "/");
+    if (path.charAt(path.length - 1) !== "/") path += "/";
+    return path;
   }
 
-  function shouldWarnAboutHomeScreenShortcut(apiResult) {
-    if (apiResult === true) return true;
-    return hasShortcutSpecificMarkers();
+  function hasShortcutCookie() {
+    try {
+      return document.cookie.indexOf(SHORTCUT_COOKIE) !== -1;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function setShortcutCookie() {
+    try {
+      document.cookie =
+        SHORTCUT_COOKIE +
+        "; path=" + shortcutCookiePath() +
+        "; max-age=34560000; SameSite=Lax; Secure";
+    } catch (_) {}
+  }
+
+  function clearShortcutCookie() {
+    try {
+      document.cookie =
+        SHORTCUT_COOKIE +
+        "; path=" + shortcutCookiePath() +
+        "; max-age=0; SameSite=Lax; Secure";
+    } catch (_) {}
+  }
+
+  function reconcileIosShortcutMarkersFromCookie() {
+    if (isStandalone() || (!isAppleMobile() && !isDebugAppleMode())) return;
+    if (hasShortcutCookie()) {
+      if (!hasHomeShortcutMarker()) {
+        try {
+          localStorage.setItem(HOME_SHORTCUT_KEY, "1");
+        } catch (_) {}
+      }
+      return;
+    }
+    if (readInstallSession() || hasHomeShortcutMarker()) {
+      setShortcutCookie();
+    }
+  }
+
+  function readShortcutMarkerFlags() {
+    return {
+      hasInstallSession: Boolean(readInstallSession()),
+      hasHomeShortcut: hasHomeShortcutMarker(),
+      hasAppReady: isPreparedStateCurrent(readAppPreparedState()),
+      hasMediaState: hasPreparedMediaState(),
+    };
+  }
+
+  function evaluateShortcutPresence(report) {
+    var reasons = [];
+    var blockers = [];
+    var context = report.context;
+    var markers = report.markers.flags;
+    var related = report.relatedApps;
+
+    if (context.isStandalone) {
+      return {
+        verdict: "opened_from_home_screen",
+        shouldWarnOnDownloadPage: false,
+      };
+    }
+
+    if (related.supported && related.matched) {
+      blockers.push("getInstalledRelatedApps");
+    }
+
+    if (markers.hasInstallSession) blockers.push("installSession");
+    if (markers.hasHomeShortcut) blockers.push("homeShortcut");
+
+    var shortcutSpecific = markers.hasInstallSession || markers.hasHomeShortcut;
+    var pwaDataOnly = markers.hasAppReady || markers.hasMediaState;
+
+    if (blockers.indexOf("getInstalledRelatedApps") >= 0 || shortcutSpecific) {
+      return {
+        verdict: "shortcut_likely",
+        shouldWarnOnDownloadPage: true,
+      };
+    }
+
+    if (pwaDataOnly) {
+      return {
+        verdict: "pwa_data_only",
+        shouldWarnOnDownloadPage: false,
+      };
+    }
+
+    return {
+      verdict: "clean_browser",
+      shouldWarnOnDownloadPage: false,
+    };
   }
 
   function clearBrowserPrepMarkers() {
@@ -345,6 +437,7 @@
     try {
       localStorage.setItem(HOME_SHORTCUT_KEY, "1");
     } catch (_) {}
+    setShortcutCookie();
   }
 
   function clearShortcutPresenceMarkers() {
@@ -352,6 +445,7 @@
     try {
       localStorage.removeItem(HOME_SHORTCUT_KEY);
     } catch (_) {}
+    clearShortcutCookie();
   }
 
   function probeInstalledRelatedApps() {
@@ -396,12 +490,27 @@
 
   function detectHomeScreenShortcut() {
     if (isStandalone()) return Promise.resolve(false);
+    reconcileIosShortcutMarkersFromCookie();
     return probeInstalledRelatedApps().then(function (apiResult) {
       if (apiResult === false && !isAppleMobile() && !isDebugAppleMode()) {
         clearAllInstallMarkers();
         return false;
       }
-      return shouldWarnAboutHomeScreenShortcut(apiResult);
+      if (apiResult === true) {
+        markHomeShortcutPresent();
+      }
+      var evaluation = evaluateShortcutPresence({
+        context: { isStandalone: false },
+        markers: { flags: readShortcutMarkerFlags() },
+        relatedApps: {
+          supported: typeof navigator.getInstalledRelatedApps === "function",
+          matched: apiResult === true,
+          apps: apiResult === true ? [{}] : [],
+        },
+        serviceWorker: { scope: "" },
+        caches: { btcaNames: [] },
+      });
+      return evaluation.shouldWarnOnDownloadPage;
     });
   }
 
