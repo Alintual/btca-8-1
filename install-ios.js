@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.172:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.172:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.173:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.173:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -736,19 +736,23 @@
     window.requestAnimationFrame(syncHomeTaglineLayout);
   }
 
-  function syncPortraitMode() {
+  function syncPortraitModeImmediate() {
     applyBrowserLayoutMode();
     updateComfortTypography();
     updateLandscapeWindowLayout();
-    window.setTimeout(function () {
-      updateComfortTypography();
-      updateLandscapeWindowLayout();
+    if (!isBrowserLoadingHomePage()) {
       syncHomeTaglineLayout();
+    }
+  }
+
+  function syncPortraitMode() {
+    syncPortraitModeImmediate();
+    if (isBrowserLoadingHomePage()) return;
+    window.setTimeout(function () {
+      syncPortraitModeImmediate();
     }, 80);
     window.setTimeout(function () {
-      updateComfortTypography();
-      updateLandscapeWindowLayout();
-      syncHomeTaglineLayout();
+      syncPortraitModeImmediate();
     }, 260);
   }
 
@@ -1722,6 +1726,9 @@
     window.__BTCA_OPEN_DATE_INPUT__ = openCenteredDatePicker;
     if (!clearStaleClientState()) return;
 
+    cleanupOrphanHomePhraseMarkup();
+    syncPortraitModeImmediate();
+
     ensureMediaCacheReady()
       .then(function (mediaReady) {
         return purgeObsoleteInstallCaches().then(function () {
@@ -1731,8 +1738,12 @@
       })
       .then(function (mediaReady) {
         ensureFreshShellAfterDeploy();
-        cleanupOrphanHomePhraseMarkup();
-        syncPortraitMode();
+        if (!isStandalone()) {
+          cleanupOrphanHomePhraseMarkup();
+          syncPortraitModeImmediate();
+        } else {
+          syncPortraitMode();
+        }
         window.addEventListener("orientationchange", syncPortraitMode);
         window.addEventListener("resize", syncPortraitMode);
         if (window.visualViewport) {
@@ -1751,8 +1762,13 @@
       .catch(function (error) {
         console.warn("BTCA bootstrap failed", error);
         ensureFreshShellAfterDeploy();
-        cleanupOrphanHomePhraseMarkup();
-        syncPortraitMode();
+        if (!isStandalone()) {
+          cleanupOrphanHomePhraseMarkup();
+          syncPortraitModeImmediate();
+        } else {
+          cleanupOrphanHomePhraseMarkup();
+          syncPortraitMode();
+        }
         document.addEventListener("click", handleAppNavigation, true);
         if (els.button) {
           els.button.addEventListener("click", prepareOffline);
