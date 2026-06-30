@@ -2,14 +2,12 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.170:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.170:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.171:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.171:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var INSTALL_SESSION_KEY = "btca-web:install-session";
-  var HOME_SHORTCUT_KEY = "btca-web:home-shortcut";
-  var SHORTCUT_COOKIE = "btca-web-home-shortcut=1";
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -296,7 +294,6 @@
         String(Date.now()) + "-" + Math.random().toString(36).slice(2, 10)
       );
     } catch (_) {}
-    markHomeShortcutPresent();
   }
 
   function resolvePwaShortcutName() {
@@ -313,160 +310,11 @@
     return "БТКА 8.1";
   }
 
-  function shortcutCookiePath() {
-    var path = String(BTCA_BASE || "/");
-    if (path.charAt(path.length - 1) !== "/") path += "/";
-    return path;
-  }
-
-  function hasShortcutCookie() {
-    try {
-      return document.cookie.indexOf(SHORTCUT_COOKIE) !== -1;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function setShortcutCookie() {
-    try {
-      document.cookie =
-        SHORTCUT_COOKIE +
-        "; path=" + shortcutCookiePath() +
-        "; max-age=34560000; SameSite=Lax; Secure";
-    } catch (_) {}
-  }
-
-  function clearShortcutCookie() {
-    try {
-      document.cookie =
-        SHORTCUT_COOKIE +
-        "; path=" + shortcutCookiePath() +
-        "; max-age=0; SameSite=Lax; Secure";
-    } catch (_) {}
-  }
-
-  function reconcileIosShortcutMarkersFromCookie() {
-    if (isStandalone() || (!isAppleMobile() && !isDebugAppleMode())) return;
-    if (hasShortcutCookie()) {
-      if (!hasHomeShortcutMarker()) {
-        try {
-          localStorage.setItem(HOME_SHORTCUT_KEY, "1");
-        } catch (_) {}
-      }
-      return;
-    }
-    if (readInstallSession() || hasHomeShortcutMarker()) {
-      setShortcutCookie();
-    }
-  }
-
-  function readShortcutMarkerFlags() {
-    return {
-      hasInstallSession: Boolean(readInstallSession()),
-      hasHomeShortcut: hasHomeShortcutMarker(),
-      hasAppReady: isPreparedStateCurrent(readAppPreparedState()),
-      hasMediaState: hasPreparedMediaState(),
-    };
-  }
-
-  function evaluateShortcutPresence(report) {
-    var reasons = [];
-    var blockers = [];
-    var context = report.context;
-    var markers = report.markers.flags;
-    var related = report.relatedApps;
-
-    if (context.isStandalone) {
-      return {
-        verdict: "opened_from_home_screen",
-        shouldWarnOnDownloadPage: false,
-      };
-    }
-
-    if (related.supported && related.matched) {
-      blockers.push("getInstalledRelatedApps");
-    }
-
-    if (markers.hasInstallSession) blockers.push("installSession");
-    if (markers.hasHomeShortcut) blockers.push("homeShortcut");
-
-    var shortcutSpecific = markers.hasInstallSession || markers.hasHomeShortcut;
-    var pwaDataOnly = markers.hasAppReady || markers.hasMediaState;
-
-    if (blockers.indexOf("getInstalledRelatedApps") >= 0 || shortcutSpecific) {
-      return {
-        verdict: "shortcut_likely",
-        shouldWarnOnDownloadPage: true,
-      };
-    }
-
-    if (pwaDataOnly) {
-      return {
-        verdict: "pwa_data_only",
-        shouldWarnOnDownloadPage: false,
-      };
-    }
-
-    return {
-      verdict: "clean_browser",
-      shouldWarnOnDownloadPage: false,
-    };
-  }
-
   function clearBrowserPrepMarkers() {
     try {
       localStorage.removeItem(APP_READY_KEY);
       localStorage.removeItem(MEDIA_STATE_KEY);
     } catch (_) {}
-  }
-
-  function clearAllInstallMarkers() {
-    clearShortcutPresenceMarkers();
-    clearBrowserPrepMarkers();
-  }
-
-  function hasHomeShortcutMarker() {
-    try {
-      return localStorage.getItem(HOME_SHORTCUT_KEY) === "1";
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function markHomeShortcutPresent() {
-    try {
-      localStorage.setItem(HOME_SHORTCUT_KEY, "1");
-    } catch (_) {}
-    setShortcutCookie();
-  }
-
-  function clearShortcutPresenceMarkers() {
-    clearInstallSessionMarker();
-    try {
-      localStorage.removeItem(HOME_SHORTCUT_KEY);
-    } catch (_) {}
-    clearShortcutCookie();
-  }
-
-  function probeInstalledRelatedApps() {
-    if (!navigator.getInstalledRelatedApps) return Promise.resolve(null);
-    return navigator.getInstalledRelatedApps().then(function (apps) {
-      if (!apps || !apps.length) {
-        return isAppleMobile() || isDebugAppleMode() ? null : false;
-      }
-      var manifestLink = document.querySelector('link[rel="manifest"]');
-      var manifestHref = manifestLink
-        ? new URL(manifestLink.href, window.location.href).href
-        : "";
-      for (var i = 0; i < apps.length; i += 1) {
-        var app = apps[i];
-        if (app.platform === "webapp") return true;
-        if (manifestHref && app.id === manifestHref) return true;
-      }
-      return isAppleMobile() || isDebugAppleMode() ? null : false;
-    }).catch(function () {
-      return null;
-    });
   }
 
   function clearInstallSessionMarker() {
@@ -475,56 +323,26 @@
     } catch (_) {}
   }
 
-  function syncInstallSessionWithShortcutPresence() {
-    if (isStandalone()) return Promise.resolve();
-    return probeInstalledRelatedApps().then(function (apiResult) {
-      if (apiResult === true) {
-        markHomeShortcutPresent();
-        return;
-      }
-      if (apiResult === false && !isAppleMobile() && !isDebugAppleMode()) {
-        clearAllInstallMarkers();
-      }
-    });
+  function clearAllInstallMarkers() {
+    clearInstallSessionMarker();
+    clearBrowserPrepMarkers();
   }
 
-  function detectHomeScreenShortcut() {
-    if (isStandalone()) return Promise.resolve(false);
-    reconcileIosShortcutMarkersFromCookie();
-    return probeInstalledRelatedApps().then(function (apiResult) {
-      if (apiResult === false && !isAppleMobile() && !isDebugAppleMode()) {
-        clearAllInstallMarkers();
-        return false;
+  function wipeTrainingDatabasesInBrowser() {
+    return ensureLevel1Module().then(function () {
+      var tasks = [];
+      if (window.BTCA_LEVEL1_DB && window.BTCA_LEVEL1_DB.wipeTrainingDatabase) {
+        tasks.push(window.BTCA_LEVEL1_DB.wipeTrainingDatabase());
       }
-      if (apiResult === true) {
-        markHomeShortcutPresent();
-      }
-      var evaluation = evaluateShortcutPresence({
-        context: { isStandalone: false },
-        markers: { flags: readShortcutMarkerFlags() },
-        relatedApps: {
-          supported: typeof navigator.getInstalledRelatedApps === "function",
-          matched: apiResult === true,
-          apps: apiResult === true ? [{}] : [],
-        },
-        serviceWorker: { scope: "" },
-        caches: { btcaNames: [] },
+      return ensureLevel2Module().then(function () {
+        if (window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_DB.wipeTrainingDatabase) {
+          tasks.push(window.BTCA_LEVEL2_DB.wipeTrainingDatabase());
+        }
+        return Promise.all(tasks);
       });
-      return evaluation.shouldWarnOnDownloadPage;
+    }).catch(function (error) {
+      console.warn("BTCA Safari training DB wipe failed", error);
     });
-  }
-
-  function renderShortcutRemovalWarning(shortcutName) {
-    var name = String(shortcutName || resolvePwaShortcutName() || "приложения").trim();
-    var message =
-      "ВНИМАНИЕ. Для корректной загрузки сначала следует удалить ярлык приложения " +
-      name +
-      ", а затем перезагрузить страницу и повторить загрузку.";
-    setPanel(
-      '<div class="ios-panel__header"><strong>iOS/iPadOS</strong></div>' +
-      '<p class="prepare-status prepare-status--warning">' + escapeHtml(message) + "</p>"
-    );
-    setButtonState(false, "Загрузить все данные для offline");
   }
 
   function wipeTrainingDatabasesOnReinstall() {
@@ -695,6 +513,33 @@
   function purgeShellInstallCache() {
     if (!("caches" in window)) return Promise.resolve();
     return caches.delete(INSTALL_CACHE).catch(function () {});
+  }
+
+  function unregisterOfflineServiceWorker() {
+    if (!("serviceWorker" in navigator)) return Promise.resolve();
+    return navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
+      if (!registration) return;
+      return registration.unregister();
+    }).catch(function () {});
+  }
+
+  function deleteAllBtcaCaches() {
+    if (!("caches" in window)) return Promise.resolve();
+    return caches.keys().then(function (names) {
+      return Promise.all(names.filter(function (name) {
+        return name.indexOf("btca-web-") === 0;
+      }).map(function (name) {
+        return caches.delete(name);
+      }));
+    }).catch(function () {});
+  }
+
+  function resetSafariInstallEnvironment() {
+    if (isStandalone()) return Promise.resolve();
+    invalidatePreparedClientState();
+    clearAllInstallMarkers();
+    window.__BTCA_APP_BOOT_READY__ = false;
+    return unregisterOfflineServiceWorker().then(deleteAllBtcaCaches);
   }
 
   function cachePutAsset(cache, assetUrl) {
@@ -1065,9 +910,12 @@
   }
 
   function renderReady() {
+    var shortcutName = resolvePwaShortcutName();
     var hint = isStandalone()
       ? "Offline-пакет подготовлен. Приложение уже открыто с экрана Домой."
-      : "Offline-пакет подготовлен. В Safari нажмите «Поделиться» и выберите «На экран Домой».";
+      : "Offline-пакет подготовлен. Если на экране «Домой» остался старый ярлык «" +
+        shortcutName +
+        "» — удалите его вручную (iOS не позволяет сделать это из Safari), затем «Поделиться» → «На экран Домой».";
     markAppPrepared();
     if (isStandalone()) {
       renderInstalledHome();
@@ -1791,13 +1639,18 @@
       return;
     }
 
-    detectHomeScreenShortcut().then(function (hasShortcut) {
-        if (hasShortcut) {
-          renderShortcutRemovalWarning(resolvePwaShortcutName());
-          setButtonState(false, "Загрузить все данные для offline");
-          return;
-        }
+    setButtonState(true, "Подготовка offline...");
+    renderProgress("Подготовка iOS/iPadOS", 0, "Очистка данных предыдущей установки в Safari...");
+    resetSafariInstallEnvironment()
+      .then(function () {
+        return wipeTrainingDatabasesInBrowser();
+      })
+      .then(function () {
         beginOfflinePreparation();
+      })
+      .catch(function (error) {
+        renderError(error);
+        setButtonState(false, "Загрузить все данные для offline");
       });
   }
 
@@ -1894,9 +1747,6 @@
         if (els.button) {
           els.button.addEventListener("click", prepareOffline);
         }
-        if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence();
-        }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
             bootstrapStandaloneShell(mediaReady);
@@ -1911,9 +1761,6 @@
         document.addEventListener("click", handleAppNavigation, true);
         if (els.button) {
           els.button.addEventListener("click", prepareOffline);
-        }
-        if (!isStandalone()) {
-          syncInstallSessionWithShortcutPresence();
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
