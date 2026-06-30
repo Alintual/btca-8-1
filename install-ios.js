@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.171:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.171:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.172:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.172:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -889,6 +889,16 @@
       .replace(/\n/g, "<br>");
   }
 
+  function iosInstallGuidanceHtml() {
+    var name = resolvePwaShortcutName();
+    return (
+      '<p class="hint">Offline-пакет подготовлен, далее нужно установить ярлык приложения ' +
+      escapeHtml(name) +
+      ' - Поделиться → Добавить на экран &quot;Домой&quot;.</p>' +
+      '<p class="prepare-status prepare-status--warning">ВНИМАНИЕ. Если ярлык уже установлен, то для корректной работы следует удалить ярлык, а затем перезагрузить страницу и повторить загрузку.</p>'
+    );
+  }
+
   function renderProgress(title, percent, message) {
     var pct = Math.max(0, Math.min(100, Math.round(percent)));
     if (isStandalone()) {
@@ -898,7 +908,8 @@
     setPanel(
       '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + pct + "%</span></div>" +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
-      '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>"
+      '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>" +
+      iosInstallGuidanceHtml()
     );
   }
 
@@ -910,12 +921,6 @@
   }
 
   function renderReady() {
-    var shortcutName = resolvePwaShortcutName();
-    var hint = isStandalone()
-      ? "Offline-пакет подготовлен. Приложение уже открыто с экрана Домой."
-      : "Offline-пакет подготовлен. Если на экране «Домой» остался старый ярлык «" +
-        shortcutName +
-        "» — удалите его вручную (iOS не позволяет сделать это из Safari), затем «Поделиться» → «На экран Домой».";
     markAppPrepared();
     if (isStandalone()) {
       renderInstalledHome();
@@ -925,7 +930,7 @@
       '<div class="ios-panel__header"><strong>iOS/iPadOS</strong><span>100%</span></div>' +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:100%"></div></div>' +
       '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
-      '<p class="hint">' + escapeHtml(hint) + "</p>"
+      iosInstallGuidanceHtml()
     );
   }
 
@@ -1640,18 +1645,7 @@
     }
 
     setButtonState(true, "Подготовка offline...");
-    renderProgress("Подготовка iOS/iPadOS", 0, "Очистка данных предыдущей установки в Safari...");
-    resetSafariInstallEnvironment()
-      .then(function () {
-        return wipeTrainingDatabasesInBrowser();
-      })
-      .then(function () {
-        beginOfflinePreparation();
-      })
-      .catch(function (error) {
-        renderError(error);
-        setButtonState(false, "Загрузить все данные для offline");
-      });
+    beginOfflinePreparation();
   }
 
   function beginOfflinePreparation() {
@@ -1661,28 +1655,29 @@
       renderProgress("Подготовка iOS/iPadOS", pct, msg);
     };
 
-    report(1, "Регистрация offline-службы...");
-    registerOfflineServiceWorker()
+    report(0, "Очистка данных предыдущей установки в Safari...");
+    resetSafariInstallEnvironment()
       .then(function () {
-        report(2, "Очистка устаревшей оболочки...");
+        report(3, "Очистка баз тренировок...");
+        return wipeTrainingDatabasesInBrowser();
+      })
+      .then(function () {
+        report(6, "Регистрация offline-службы...");
+        return registerOfflineServiceWorker();
+      })
+      .then(function () {
+        report(8, "Очистка устаревшей оболочки...");
         return purgeShellInstallCache().then(function () {
           return purgeGenerationRuntimeCache();
         });
       })
       .then(function () {
-        report(3, "Загрузка оболочки приложения...");
-        return cacheCoreAssets(report, 3, 15);
+        report(10, "Загрузка оболочки приложения...");
+        return cacheCoreAssets(report, 10, 22);
       })
       .then(function () {
-        return verifyMediaCacheReady();
-      })
-      .then(function (mediaReady) {
-        if (mediaReady) {
-          report(95, "Материалы уже распакованы");
-          return;
-        }
-        report(15, "Загрузка и распаковка ZIP-архивов...");
-        return prepareMediaArchives(report, 15, 95);
+        report(22, "Загрузка и распаковка ZIP-архивов...");
+        return prepareMediaArchives(report, 22, 95);
       })
       .then(function () {
         if (isStandalone()) {
