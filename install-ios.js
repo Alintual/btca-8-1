@@ -2,12 +2,15 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.175:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.175:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.176:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.176:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var INSTALL_SESSION_KEY = "btca-web:install-session";
+  var OFFLINE_PREP_SESSION_KEY = "btca-web:offline-prep-active";
+  var META_RELOAD_SESSION_KEY = "btca-web:meta-reload";
+  var offlinePreparationActive = false;
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
   var IOS_TYPO_IPHONE_MIN = 390;
@@ -226,6 +229,29 @@
   function readMetaCacheVersion() {
     var meta = document.querySelector('meta[name="btca-cache-version"]');
     return meta ? String(meta.getAttribute("content") || "").trim() : "";
+  }
+
+  function isOfflinePreparationActive() {
+    if (offlinePreparationActive) return true;
+    try {
+      return sessionStorage.getItem(OFFLINE_PREP_SESSION_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function setOfflinePreparationActive(active) {
+    offlinePreparationActive = Boolean(active);
+    try {
+      if (active) sessionStorage.setItem(OFFLINE_PREP_SESSION_KEY, "1");
+      else sessionStorage.removeItem(OFFLINE_PREP_SESSION_KEY);
+    } catch (_) {}
+  }
+
+  function shouldRunShellUpdateCheck() {
+    if (isOfflinePreparationActive()) return false;
+    if (isStandalone()) return true;
+    return isAppPreparedSync();
   }
 
   function readPreparedModuleVersions(state) {
@@ -481,8 +507,13 @@
   function clearStaleClientState() {
     var generation = getCacheGeneration();
     var metaGen = readMetaCacheVersion();
-    if (metaGen && metaGen !== generation && !window.__BTCA_META_RELOAD__) {
-      window.__BTCA_META_RELOAD__ = true;
+    if (metaGen && metaGen !== generation) {
+      try {
+        if (sessionStorage.getItem(META_RELOAD_SESSION_KEY) === generation) {
+          return true;
+        }
+        sessionStorage.setItem(META_RELOAD_SESSION_KEY, generation);
+      } catch (_) {}
       window.location.reload();
       return false;
     }
@@ -553,18 +584,44 @@
 
   function ensureFreshShellAfterDeploy() {
     if (!("serviceWorker" in navigator)) return;
+    if (!shouldRunShellUpdateCheck()) return;
+
     navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
-      if (!registration) return;
+      if (!registration || !shouldRunShellUpdateCheck()) return;
       registration.update().catch(function () {});
       if (registration.waiting) {
         registration.waiting.postMessage({ type: "SKIP_WAITING" });
       }
       navigator.serviceWorker.addEventListener("controllerchange", function () {
         if (window.__BTCA_SHELL_RELOADED__) return;
+        if (isOfflinePreparationActive()) return;
         window.__BTCA_SHELL_RELOADED__ = true;
         flushClientDataBeforeReload().then(function () {
           window.location.reload();
         });
+      });
+    }).catch(function () {});
+  }
+
+  function activateRegisteredServiceWorker() {
+    if (!("serviceWorker" in navigator)) return Promise.resolve();
+    return navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
+      if (!registration) return;
+      var worker = registration.waiting || registration.installing;
+      if (!worker) return;
+      worker.postMessage({ type: "SKIP_WAITING" });
+      return new Promise(function (resolve) {
+        if (navigator.serviceWorker.controller) {
+          resolve();
+          return;
+        }
+        var timeoutId = window.setTimeout(resolve, 4000);
+        function onControllerChange() {
+          navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+          window.clearTimeout(timeoutId);
+          resolve();
+        }
+        navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
       });
     }).catch(function () {});
   }
@@ -1496,13 +1553,10 @@
 
   function registerOfflineServiceWorker() {
     return withTimeout(
-      navigator.serviceWorker.register(assetPath("sw.js"), { scope: BTCA_BASE })
-        .then(function () { return navigator.serviceWorker.ready; }),
+      navigator.serviceWorker.register(assetPath("sw.js"), { scope: BTCA_BASE }),
       12000,
       "Safari не завершил регистрацию offline-службы. Обновите страницу и попробуйте ещё раз."
-    ).then(function () {
-      return undefined;
-    });
+    );
   }
 
   function cacheCoreAssets(onProgress, pctStart, pctEnd) {
@@ -1660,6 +1714,7 @@
   }
 
   function beginOfflinePreparation() {
+    setOfflinePreparationActive(true);
     setButtonState(true, "Подготовка offline...");
 
     var report = function (pct, msg) {
@@ -1691,6 +1746,9 @@
         return prepareMediaArchives(report, 22, 95);
       })
       .then(function () {
+        return activateRegisteredServiceWorker();
+      })
+      .then(function () {
         if (isStandalone()) {
           markAppPrepared();
           renderInstalledHome({ preserveSplash: true });
@@ -1703,6 +1761,7 @@
       })
       .catch(renderError)
       .then(function () {
+        setOfflinePreparationActive(false);
         setButtonState(false, "Загрузить все данные для offline");
       });
   }
@@ -1768,6 +1827,11 @@
           return wipeTrainingDatabasesOnReinstall().then(function () {
             bootstrapStandaloneShell(mediaReady);
           });
+        }
+        if (isOfflinePreparationActive() && !isAppPreparedSync()) {
+          window.setTimeout(function () {
+            prepareOffline();
+          }, 0);
         }
       })
       .catch(function (error) {

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.175";
+const CACHE_VERSION = "btca-web-8.1.176";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
@@ -58,7 +58,6 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(APP_CACHE)
       .then((cache) => cache.addAll(CORE_ASSETS))
-      .then(() => self.skipWaiting())
   );
 });
 
