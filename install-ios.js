@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.184:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.184:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.185:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.185:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -43,8 +43,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.85";
-  var LEVEL2_MODULE_VERSION = "8.1.85";
+  var LEVEL1_MODULE_VERSION = "8.1.86";
+  var LEVEL2_MODULE_VERSION = "8.1.86";
 
   var CORE_REL_PATHS = [
     "",
@@ -137,7 +137,7 @@
       return Promise.resolve();
     }
     discardStaleRuntimeModules();
-    if (level1ModuleReady() && level2ModuleReady()) {
+    if (level1ModuleFresh() && level2ModuleFresh()) {
       hideHomeSplashIndicator();
       return Promise.resolve();
     }
@@ -265,31 +265,32 @@
   }
 
   function isPreparedStateCurrent(state) {
-    if (!state || !state.preparedAt) return false;
-    var versions = readPreparedModuleVersions(state);
-    return versions.level1 === LEVEL1_MODULE_VERSION && versions.level2 === LEVEL2_MODULE_VERSION;
+    return Boolean(state && state.preparedAt);
+  }
+
+  function clearInjectedLevel1Scripts() {
+    document.querySelectorAll("script[data-btca-level1-src]").forEach(function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+    delete window.BTCA_LEVEL1;
+    delete window.BTCA_LEVEL1_DB;
+  }
+
+  function clearInjectedLevel2Scripts() {
+    document.querySelectorAll("script[data-btca-level2-src]").forEach(function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+    delete window.BTCA_LEVEL2;
+    delete window.BTCA_LEVEL2_DB;
+    delete window.BTCA_LEVEL2_BAZA;
   }
 
   function discardStaleRuntimeModules() {
-    if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1.VERSION !== LEVEL1_MODULE_VERSION) {
-      if (window.BTCA_LEVEL1.unmount) window.BTCA_LEVEL1.unmount();
-      delete window.BTCA_LEVEL1;
+    if (level1ModuleReady() && !level1ModuleFresh()) {
+      clearInjectedLevel1Scripts();
     }
-    if (window.BTCA_LEVEL1_DB) {
-      var dbTag = document.querySelector('script[data-btca-level1-src*="level1-db"]');
-      if (!dbTag) delete window.BTCA_LEVEL1_DB;
-    }
-    if (window.BTCA_LEVEL2 && window.BTCA_LEVEL2.VERSION !== LEVEL2_MODULE_VERSION) {
-      if (window.BTCA_LEVEL2.unmount) window.BTCA_LEVEL2.unmount();
-      delete window.BTCA_LEVEL2;
-    }
-    if (window.BTCA_LEVEL2_DB || window.BTCA_LEVEL2_BAZA) {
-      var l2Tag = document.querySelector('script[data-btca-level2-src*="level2-app"]');
-      if (!l2Tag) {
-        delete window.BTCA_LEVEL2_DB;
-        delete window.BTCA_LEVEL2_BAZA;
-        delete window.BTCA_LEVEL2;
-      }
+    if (level2ModuleReady() && !level2ModuleFresh()) {
+      clearInjectedLevel2Scripts();
     }
   }
 
@@ -1056,9 +1057,12 @@
     return Boolean(
       window.BTCA_LEVEL1_DB &&
       window.BTCA_LEVEL1 &&
-      window.BTCA_LEVEL1.boot &&
-      window.BTCA_LEVEL1.VERSION === LEVEL1_MODULE_VERSION
+      window.BTCA_LEVEL1.boot
     );
+  }
+
+  function level1ModuleFresh() {
+    return level1ModuleReady() && window.BTCA_LEVEL1.VERSION === LEVEL1_MODULE_VERSION;
   }
 
   function removeInjectedScript(attr, src) {
@@ -1075,8 +1079,8 @@
         resolve();
         return;
       }
-      if (isApp && window.BTCA_LEVEL1 && window.BTCA_LEVEL1.boot &&
-          window.BTCA_LEVEL1.VERSION === LEVEL1_MODULE_VERSION) {
+      if (isApp && level1ModuleFresh() &&
+          document.querySelector('script[data-btca-level1-src="' + src + '"]')) {
         resolve();
         return;
       }
@@ -1111,7 +1115,10 @@
   }
 
   function ensureLevel1Module() {
-    if (level1ModuleReady()) return Promise.resolve();
+    if (level1ModuleFresh()) return Promise.resolve();
+    if (level1ModuleReady() && !level1ModuleFresh()) {
+      clearInjectedLevel1Scripts();
+    }
     var v = LEVEL1_MODULE_VERSION;
     return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v)).then(function () {
       return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v));
@@ -1141,9 +1148,12 @@
       window.BTCA_LEVEL2_DB &&
       window.BTCA_LEVEL2_BAZA &&
       window.BTCA_LEVEL2 &&
-      window.BTCA_LEVEL2.boot &&
-      window.BTCA_LEVEL2.VERSION === LEVEL2_MODULE_VERSION
+      window.BTCA_LEVEL2.boot
     );
+  }
+
+  function level2ModuleFresh() {
+    return level2ModuleReady() && window.BTCA_LEVEL2.VERSION === LEVEL2_MODULE_VERSION;
   }
 
   function loadLevel2Script(src) {
@@ -1160,8 +1170,8 @@
         resolve();
         return;
       }
-      if (isApp && window.BTCA_LEVEL2 && window.BTCA_LEVEL2.boot &&
-          window.BTCA_LEVEL2.VERSION === LEVEL2_MODULE_VERSION) {
+      if (isApp && level2ModuleFresh() &&
+          document.querySelector('script[data-btca-level2-src="' + src + '"]')) {
         resolve();
         return;
       }
@@ -1200,7 +1210,10 @@
   }
 
   function ensureLevel2Module() {
-    if (level2ModuleReady()) return Promise.resolve();
+    if (level2ModuleFresh()) return Promise.resolve();
+    if (level2ModuleReady() && !level2ModuleFresh()) {
+      clearInjectedLevel2Scripts();
+    }
     var v = LEVEL2_MODULE_VERSION;
     return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v)).then(function () {
       return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v));
@@ -1847,7 +1860,6 @@
         window.addEventListener("orientationchange", syncPortraitMode);
         window.addEventListener("resize", syncPortraitMode);
         window.addEventListener("pageshow", function (event) {
-          discardStaleRuntimeModules();
           if (event.persisted) window.location.reload();
         });
         if (window.visualViewport) {
