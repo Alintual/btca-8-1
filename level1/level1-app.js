@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.89";
+  var VERSION = "8.1.90";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2215,8 +2215,8 @@
       '<header class="btca-l1-overlay__header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
       "<strong>Описание</strong><span></span></header>" +
-      '<article class="btca-l1-about-body"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
-      '<div class="btca-l1-about-text">' + formatPolezBody(desc.body || "") + "</div></article>";
+      '<section class="btca-about-content"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
+      '<p>' + formatPolezBody(desc.body || "") + "</p></section>";
     state.root.appendChild(overlay);
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () { overlay.remove(); });
   }

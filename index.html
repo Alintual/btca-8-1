@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.189" />
+    <meta name="btca-cache-version" content="btca-web-8.1.190" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -2527,6 +2527,7 @@ body.btca-apple-comfort .btca-l1-ok-input {
 
 .btca-level1-picker--anchored .btca-level1-picker__item--catalog .btca-level1-picker__text {
   text-align: left;
+  font-weight: 600;
 }
 
 .btca-level1-picker--anchored .btca-level1-picker__item--catalog.btca-level1-picker__item--active {
@@ -2988,6 +2989,7 @@ body.btca-level2-mode .btca-date-picker-day--selected {
   color: #111111;
 }
 
+.btca-about-content h1,
 .btca-l1-about-body h1 {
   margin: 0 0 16px;
   color: #0a0a0a;
@@ -2998,13 +3000,16 @@ body.btca-level2-mode .btca-date-picker-day--selected {
   text-align: center;
 }
 
+.btca-about-content p,
 .btca-l1-about-text {
+  margin: 0;
   color: #111111;
   font-size: 1rem;
   font-weight: 400;
   line-height: calc(26rem / 17);
 }
 
+.btca-about-content strong,
 .btca-l1-about-text strong {
   font-weight: 600;
 }
@@ -3380,8 +3385,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.189:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.189:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.190:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.190:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3421,8 +3426,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.89";
-  var LEVEL2_MODULE_VERSION = "8.1.89";
+  var LEVEL1_MODULE_VERSION = "8.1.90";
+  var LEVEL2_MODULE_VERSION = "8.1.90";
 
   var CORE_REL_PATHS = [
     "",
@@ -4007,6 +4012,30 @@ body.btca-apple-comfort.btca-landscape-mode #root {
         });
       });
     }).catch(function () {});
+  }
+
+  function probeRemoteShellVersion() {
+    if (!shouldRunShellUpdateCheck()) return Promise.resolve();
+    var currentMeta = readMetaCacheVersion();
+    if (!currentMeta) return Promise.resolve();
+    return fetch(assetPath("offline/app-shell.json"), { cache: "no-store" })
+      .then(function (response) {
+        if (!response || !response.ok) return null;
+        return response.json();
+      })
+      .then(function (payload) {
+        if (!payload) return;
+        var remote = String(payload.cacheVersion || "").trim();
+        if (!remote || remote === currentMeta) return;
+        try {
+          if (sessionStorage.getItem(META_RELOAD_SESSION_KEY) === remote) return;
+          sessionStorage.setItem(META_RELOAD_SESSION_KEY, remote);
+        } catch (_) {}
+        return flushClientDataBeforeReload().then(function () {
+          window.location.reload();
+        });
+      })
+      .catch(function () {});
   }
 
   function activateRegisteredServiceWorker() {
@@ -5229,6 +5258,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       })
       .then(function (mediaReady) {
         ensureFreshShellAfterDeploy();
+        probeRemoteShellVersion();
         if (!isStandalone()) {
           cleanupOrphanHomePhraseMarkup();
           syncPortraitModeImmediate();

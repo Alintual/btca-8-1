@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.189";
+const CACHE_VERSION = "btca-web-8.1.190";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
@@ -81,8 +81,9 @@ self.addEventListener("fetch", (event) => {
   const isLevelModule =
     /\/level[12]\/.*\.js$/i.test(requestUrl.pathname) ||
     /\/level[12]\/data\/.*\.json$/i.test(requestUrl.pathname);
+  const isShellProbe = requestUrl.pathname.endsWith("/offline/app-shell.json");
 
-  if (requestUrl.pathname === SW_PATH || event.request.mode === "navigate" || SHELL_PATHS.has(requestUrl.pathname) || isLevelModule) {
+  if (requestUrl.pathname === SW_PATH || event.request.mode === "navigate" || SHELL_PATHS.has(requestUrl.pathname) || isLevelModule || isShellProbe) {
     event.respondWith(networkFirst(event.request, RUNTIME_CACHE));
     return;
   }

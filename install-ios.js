@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.189:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.189:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.190:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.190:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -43,8 +43,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.89";
-  var LEVEL2_MODULE_VERSION = "8.1.89";
+  var LEVEL1_MODULE_VERSION = "8.1.90";
+  var LEVEL2_MODULE_VERSION = "8.1.90";
 
   var CORE_REL_PATHS = [
     "",
@@ -629,6 +629,30 @@
         });
       });
     }).catch(function () {});
+  }
+
+  function probeRemoteShellVersion() {
+    if (!shouldRunShellUpdateCheck()) return Promise.resolve();
+    var currentMeta = readMetaCacheVersion();
+    if (!currentMeta) return Promise.resolve();
+    return fetch(assetPath("offline/app-shell.json"), { cache: "no-store" })
+      .then(function (response) {
+        if (!response || !response.ok) return null;
+        return response.json();
+      })
+      .then(function (payload) {
+        if (!payload) return;
+        var remote = String(payload.cacheVersion || "").trim();
+        if (!remote || remote === currentMeta) return;
+        try {
+          if (sessionStorage.getItem(META_RELOAD_SESSION_KEY) === remote) return;
+          sessionStorage.setItem(META_RELOAD_SESSION_KEY, remote);
+        } catch (_) {}
+        return flushClientDataBeforeReload().then(function () {
+          window.location.reload();
+        });
+      })
+      .catch(function () {});
   }
 
   function activateRegisteredServiceWorker() {
@@ -1851,6 +1875,7 @@
       })
       .then(function (mediaReady) {
         ensureFreshShellAfterDeploy();
+        probeRemoteShellVersion();
         if (!isStandalone()) {
           cleanupOrphanHomePhraseMarkup();
           syncPortraitModeImmediate();
