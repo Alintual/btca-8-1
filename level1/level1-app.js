@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.86";
+  var VERSION = "8.1.87";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2127,7 +2127,7 @@
 
   function exerciseImageHeaderHtml(opts) {
     opts = opts || {};
-    if (opts.fromForma || opts.fromNav) {
+    if (opts.fromNav || opts.formaLandscape) {
       return '<header class="btca-l1-overlay__header btca-l1-overlay__header--forma-image btca-l1-overlay__header--compact">' +
         '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
         "</header>";
@@ -2138,26 +2138,69 @@
       "<span></span></header>";
   }
 
+  function openFormaExerciseImagePortrait(payload) {
+    var url = exerciseImageUrl(payload.exerciseValue);
+    if (!url) return;
+    var overlay = document.createElement("div");
+    overlay.className = "btca-l1-overlay btca-l1-overlay--forma-image-portrait";
+    overlay.innerHTML =
+      '<header class="btca-l1-overlay__header">' +
+      '<button type="button" class="btca-back-button" data-btca-forma-img-close aria-label="Назад">←</button>' +
+      "<strong>" + escapeHtml(payload.title || "Упражнение") + "</strong>" +
+      greenArrowHtml({ dataAttr: 'data-btca-forma-img-landscape aria-label="Альбомная ориентация"' }) +
+      "</header>" +
+      '<div class="btca-l1-image-view" data-btca-forma-img-swipe>' +
+      '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(payload.title || "Упражнение") + '"></div>';
+    state.root.appendChild(overlay);
+
+    function closePortrait() {
+      overlay.remove();
+    }
+    function openLandscape() {
+      overlay.remove();
+      openExerciseImage({
+        exerciseValue: payload.exerciseValue,
+        title: payload.title,
+        fromForma: true,
+        formaLandscape: true,
+      });
+    }
+
+    overlay.querySelector("[data-btca-forma-img-close]").addEventListener("click", closePortrait);
+    var landBtn = overlay.querySelector("[data-btca-forma-img-landscape]");
+    if (landBtn) landBtn.addEventListener("click", openLandscape);
+    bindHorizontalSwipe(overlay.querySelector("[data-btca-forma-img-swipe]") || overlay, {
+      onSwipeRight: openLandscape,
+    });
+  }
+
   function openExerciseImage(payload) {
     var url = exerciseImageUrl(payload.exerciseValue);
     if (!url) return;
     var fromForma = !!payload.fromForma;
     var fromNav = !!payload.fromNav;
-    var albumView = fromForma || fromNav;
+    var formaLandscape = !!payload.formaLandscape;
+
+    if (fromForma && !formaLandscape) {
+      openFormaExerciseImagePortrait(payload);
+      return;
+    }
+
+    var albumView = fromNav || formaLandscape;
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay" + (albumView ? " btca-l1-overlay--forma-image" : "");
     overlay.innerHTML =
-      exerciseImageHeaderHtml({ fromForma: fromForma, fromNav: fromNav, title: payload.title }) +
+      exerciseImageHeaderHtml({ fromNav: fromNav, formaLandscape: formaLandscape, title: payload.title }) +
       '<div class="btca-l1-image-view"><img src="' + escapeHtml(url) + '" alt="' +
       escapeHtml(payload.title || "Упражнение") + '"></div>';
     state.root.appendChild(overlay);
     function closeOverlay() {
-      if (fromNav) setBazaTableLandscape(false);
+      if (albumView) setBazaTableLandscape(false);
       overlay.remove();
     }
-    if (fromNav) setBazaTableLandscape(true);
+    if (albumView) setBazaTableLandscape(true);
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
-    if (fromNav) {
+    if (albumView) {
       bindHorizontalSwipe(overlay, { onSwipeLeft: closeOverlay });
     }
   }
