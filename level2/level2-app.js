@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.84";
+  var VERSION = "8.1.85";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -915,16 +915,9 @@
     return base.replace(/\/?$/, "/") + rel;
   }
 
-  function mediaCacheBust() {
-    var meta = document.querySelector('meta[name="btca-cache-version"]');
-    return meta ? String(meta.getAttribute("content") || "").trim() : "";
-  }
-
   function mediaUrl(packId, fileName) {
     if (!fileName) return "";
-    var url = assetPath("offline-unpacked/" + packId + "/" + fileName);
-    var bust = mediaCacheBust();
-    return bust ? url + "?v=" + encodeURIComponent(bust) : url;
+    return assetPath("offline-unpacked/" + packId + "/" + fileName);
   }
 
   function exerciseImageUrl(exerciseValue) {
