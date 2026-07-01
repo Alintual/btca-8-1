@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.88";
+  var VERSION = "8.1.89";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2419,6 +2419,14 @@
         var img = polezImageUrl(row.file);
         var hasDesc = row.key !== POLEZ_ALL && row.key !== "links";
         var single = catalogKey !== POLEZ_ALL;
+        var imageHtml = img
+          ? (single
+            ? '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy" draggable="false">'
+            : '<button type="button" class="btca-l1-card-image-btn" data-btca-polez-image="' + escapeHtml(row.key) + '">' +
+              '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>')
+          : '<div class="btca-l1-card-placeholder">' + escapeHtml(row.label) + "</div>";
+        var frameClass = "btca-l1-polez-card-frame" + (single && img ? " btca-l1-nav-card-frame--swipe" : "");
+        var frameAttr = single && img ? ' data-btca-polez-image-swipe="' + escapeHtml(row.key) + '"' : "";
         return '<article class="btca-l1-polez-card">' +
           '<div class="btca-l1-polez-card-inner">' +
           (single && hasDesc
@@ -2427,12 +2435,7 @@
             '<span class="btca-l1-pick__icon" aria-hidden="true">📖</span>' +
             '<span class="btca-l1-pick__text">Описание</span></button></div>'
             : "") +
-          '<div class="btca-l1-polez-card-frame">' +
-          (img
-            ? '<button type="button" class="btca-l1-card-image-btn" data-btca-polez-image="' + escapeHtml(row.key) + '">' +
-              '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>'
-            : '<div class="btca-l1-card-placeholder">' + escapeHtml(row.label) + "</div>") +
-          "</div></div></article>";
+          '<div class="' + frameClass + '"' + frameAttr + ">" + imageHtml + "</div></div></article>";
       }).join("") +
       "</div></div>";
 
@@ -2451,13 +2454,15 @@
     content.querySelectorAll("[data-btca-polez-image]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var key = btn.getAttribute("data-btca-polez-image");
-        if (catalogKey === POLEZ_ALL) {
-          state.ui.polez.catalogKey = key;
-          applyUiPatch({ polez: { catalogKey: key } });
-          renderPolezTab(content);
-          return;
-        }
-        openPolezImage(key);
+        state.ui.polez.catalogKey = key;
+        applyUiPatch({ polez: { catalogKey: key } });
+        renderPolezTab(content);
+      });
+    });
+    content.querySelectorAll("[data-btca-polez-image-swipe]").forEach(function (frame) {
+      var key = frame.getAttribute("data-btca-polez-image-swipe");
+      bindHorizontalSwipe(frame, {
+        onSwipeRight: function () { openPolezImageLandscape(key); },
       });
     });
   }
@@ -2544,36 +2549,34 @@
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--about";
     overlay.innerHTML =
-      '<header class="btca-l1-overlay__header btca-l1-overlay__header--about">' +
+      '<header class="btca-l1-overlay__header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
-      '<strong>Описание</strong>' +
-      greenArrowHtml({ dataAttr: 'data-btca-polez-open-image aria-label="Рисунок"' }) +
-      "</header>" +
+      "<strong>Описание</strong><span></span></header>" +
       '<article class="btca-l1-about-body"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
       '<div class="btca-l1-about-text">' + formatPolezBody(desc.body || "") + "</div></article>";
     state.root.appendChild(overlay);
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () { overlay.remove(); });
-    overlay.querySelector("[data-btca-polez-open-image]").addEventListener("click", function () {
-      overlay.remove();
-      openPolezImage(catalogKey);
-    });
   }
 
-  function openPolezImage(catalogKey) {
+  function openPolezImageLandscape(catalogKey) {
     var row = polezRowsForLevel1().filter(function (r) { return r.key === catalogKey; })[0];
     if (!row || !row.file) return;
     var url = polezImageUrl(row.file);
     var overlay = document.createElement("div");
-    overlay.className = "btca-l1-overlay";
+    overlay.className = "btca-l1-overlay btca-l1-overlay--forma-image";
     overlay.innerHTML =
-      '<header class="btca-l1-overlay__header">' +
+      '<header class="btca-l1-overlay__header btca-l1-overlay__header--forma-image btca-l1-overlay__header--compact">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
-      "<strong>" + escapeHtml(row.label) + '</strong><span></span></header>' +
+      "</header>" +
       '<div class="btca-l1-image-view"><img src="' + escapeHtml(url) + '" alt="' + escapeHtml(row.label) + '"></div>';
     state.root.appendChild(overlay);
-    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () {
+    function closeOverlay() {
+      setBazaTableLandscape(false);
       overlay.remove();
-    });
+    }
+    setBazaTableLandscape(true);
+    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
+    bindHorizontalSwipe(overlay, { onSwipeLeft: closeOverlay });
   }
 
   function formatPolezBody(body) {
