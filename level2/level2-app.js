@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.80";
+  var VERSION = "8.1.81";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -264,7 +264,7 @@
     extraSections.forEach(function (s) { secOrder.push(s); });
     var grouped = [{ value: NAV_FILTER_ALL, label: "Все" }];
     secOrder.forEach(function (sec) {
-      grouped.push({ value: "__group:" + sec, label: sec, groupHeader: true });
+      grouped.push({ value: "__group:" + sec, label: sec, groupHeader: true, sectionHeader: true });
       bySection[sec].forEach(function (row) { grouped.push(row); });
     });
     return grouped;
@@ -1233,7 +1233,10 @@
           return '<div class="' + groupClass + '">' + escapeHtml(opt.label) + "</div>";
         }
         var active = opt.value === current;
-        return '<button type="button" class="btca-level1-picker__item btca-level1-picker__item--catalog' + itemExtraClass +
+        var itemClass = "btca-level1-picker__item";
+        if (pickerOpts.catalogList) itemClass += " btca-level1-picker__item--catalog";
+        if (itemExtraClass) itemClass += itemExtraClass;
+        return '<button type="button" class="' + itemClass +
           (active ? " btca-level1-picker__item--active" : "") +
           '" data-btca-picker-value="' + escapeHtml(opt.value) + '"><span class="btca-level1-picker__text">' +
           escapeHtml(opt.label) + "</span></button>";
@@ -2278,7 +2281,7 @@
         state.ui.polez.catalogKey = value;
         applyUiPatch({ polez: { catalogKey: value } });
         renderPolezTab(content);
-      }, event.currentTarget);
+      }, event.currentTarget, { catalogList: true });
     });
     content.querySelectorAll("[data-btca-polez-desc]").forEach(function (btn) {
       btn.addEventListener("click", function () {
