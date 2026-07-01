@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.81";
+  var VERSION = "8.1.82";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -14,6 +14,40 @@
   var PICKER_ROW_GROUP = 40;
   var PICKER_LIST_PAD = 4;
   var SCREEN_EDGE_GUTTER = 4;
+  var SWIPE_DISTANCE_PX = 56;
+  var SWIPE_HORIZONTAL_DOMINANCE = 1.6;
+
+  function bindHorizontalSwipe(el, handlers) {
+    if (!el || !handlers) return;
+    var startX = 0;
+    var startY = 0;
+    var tracking = false;
+    el.addEventListener("touchstart", function (event) {
+      if (!event.touches || event.touches.length !== 1) return;
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+      tracking = true;
+    }, { passive: true });
+    el.addEventListener("touchend", function (event) {
+      if (!tracking) return;
+      tracking = false;
+      var touch = event.changedTouches && event.changedTouches[0];
+      if (!touch) return;
+      var dx = touch.clientX - startX;
+      var dy = touch.clientY - startY;
+      if (Math.abs(dx) < 12 || Math.abs(dx) <= Math.abs(dy) * SWIPE_HORIZONTAL_DOMINANCE) return;
+      if (dx >= SWIPE_DISTANCE_PX && handlers.onSwipeRight) handlers.onSwipeRight();
+      else if (dx <= -SWIPE_DISTANCE_PX && handlers.onSwipeLeft) handlers.onSwipeLeft();
+    }, { passive: true });
+  }
+
+  function openNavExerciseImage(payload) {
+    openExerciseImage({
+      exerciseValue: payload.exerciseValue,
+      title: payload.title,
+      fromNav: true,
+    });
+  }
 
   var SHEETS = [
     { key: "forma", label: "Форма", title: "Форма ввода", emoji: "📊" },
@@ -2167,11 +2201,14 @@
           '" data-btca-nav-pick="' + escapeHtml(item.value) + '"' + (consumed ? " disabled" : "") +
           '><span class="btca-l1-pick__icon" aria-hidden="true">🎯</span><span class="btca-l1-pick__text">Выбрать</span></button>' +
           "</div>" +
-          '<div class="btca-l1-nav-card-frame">' +
           (img
-            ? '<button type="button" class="btca-l1-card-image-btn" data-btca-nav-image="' + escapeHtml(item.value) +
-            '"><img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy"></button>'
-            : '<div class="btca-l1-card-placeholder">' + escapeHtml(item.label) + "</div>") +
+            ? (filterIsAll
+              ? '<div class="btca-l1-nav-card-frame">' +
+                '<button type="button" class="btca-l1-card-image-btn" data-btca-nav-image="' + escapeHtml(item.value) +
+                '"><img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy"></button></div>'
+              : '<div class="btca-l1-nav-card-frame btca-l1-nav-card-frame--swipe" data-btca-nav-image-swipe="' + escapeHtml(item.value) + '">' +
+                '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy" draggable="false"></div>')
+            : '<div class="btca-l1-nav-card-frame"><div class="btca-l1-card-placeholder">' + escapeHtml(item.label) + "</div></div>") +
           "</div></div></article>";
       }).join("") +
       "</div></div></div>";
@@ -2195,7 +2232,7 @@
     });
     var descBtn = content.querySelector("[data-btca-nav-desc]");
     if (descBtn) descBtn.addEventListener("click", function () {
-      openExerciseImage({ exerciseValue: filterKey, title: labelForExerciseValue(filterKey) });
+      openNavExerciseImage({ exerciseValue: filterKey, title: labelForExerciseValue(filterKey) });
     });
     content.querySelectorAll("[data-btca-nav-pick]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -2215,19 +2252,26 @@
         }, PICK_DELAY_MS);
       });
     });
-    content.querySelectorAll("[data-btca-nav-image]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var value = btn.getAttribute("data-btca-nav-image");
-        if (filterIsAll) {
+    if (filterIsAll) {
+      content.querySelectorAll("[data-btca-nav-image]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var value = btn.getAttribute("data-btca-nav-image");
           state.ui.nav.exerciseFilterKey = value;
           state.ui.nav.sectionKey = sectionKeyForExerciseValue(value);
           applyUiPatch({ nav: { exerciseFilterKey: value, sectionKey: state.ui.nav.sectionKey } });
           renderNavTab(content);
-          return;
-        }
-        openExerciseImage({ exerciseValue: value, title: labelForExerciseValue(value) });
+        });
       });
-    });
+    } else {
+      content.querySelectorAll("[data-btca-nav-image-swipe]").forEach(function (frame) {
+        var value = frame.getAttribute("data-btca-nav-image-swipe");
+        bindHorizontalSwipe(frame, {
+          onSwipeRight: function () {
+            openNavExerciseImage({ exerciseValue: value, title: labelForExerciseValue(value) });
+          },
+        });
+      });
+    }
   }
 
   function renderPolezTab(content) {
@@ -2304,7 +2348,7 @@
 
   function exerciseImageHeaderHtml(opts) {
     opts = opts || {};
-    if (opts.fromForma) {
+    if (opts.fromForma || opts.fromNav) {
       return '<header class="btca-l1-overlay__header btca-l1-overlay__header--forma-image btca-l1-overlay__header--compact">' +
         '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
         "</header>";
@@ -2319,16 +2363,24 @@
     var url = exerciseImageUrl(payload.exerciseValue);
     if (!url) return;
     var fromForma = !!payload.fromForma;
+    var fromNav = !!payload.fromNav;
+    var albumView = fromForma || fromNav;
     var overlay = document.createElement("div");
-    overlay.className = "btca-l1-overlay" + (fromForma ? " btca-l1-overlay--forma-image" : "");
+    overlay.className = "btca-l1-overlay" + (albumView ? " btca-l1-overlay--forma-image" : "");
     overlay.innerHTML =
-      exerciseImageHeaderHtml({ fromForma: fromForma, title: payload.title }) +
+      exerciseImageHeaderHtml({ fromForma: fromForma, fromNav: fromNav, title: payload.title }) +
       '<div class="btca-l1-image-view"><img src="' + escapeHtml(url) + '" alt="' +
       escapeHtml(payload.title || "Упражнение") + '"></div>';
     state.root.appendChild(overlay);
-    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () {
+    function closeOverlay() {
+      if (fromNav) setBazaTableLandscape(false);
       overlay.remove();
-    });
+    }
+    if (fromNav) setBazaTableLandscape(true);
+    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
+    if (fromNav) {
+      bindHorizontalSwipe(overlay, { onSwipeLeft: closeOverlay });
+    }
   }
 
   function openPolezDescription(catalogKey) {
