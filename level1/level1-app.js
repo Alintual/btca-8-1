@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.83";
+  var VERSION = "8.1.84";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -652,11 +652,13 @@
 
   function exerciseImageFile(level, exerciseValue) {
     var k = String(exerciseValue || "").trim();
-    if (level === 1) {
-      if (k === "Тест1") return "test_1.jpg";
-      var n = Number(k);
-      if (Number.isInteger(n) && n >= 1 && n <= 14) return n + ".jpg";
-      return null;
+    var testMatch = /^Тест\s*(\d+)$/i.exec(k);
+    if (testMatch) return "test_" + testMatch[1] + ".jpg";
+    var b5 = b5FromSelectValue(k);
+    if (typeof b5 === "number" && Number.isFinite(b5)) {
+      var n = Math.trunc(b5);
+      if (level === 1 && n >= 1 && n <= 14) return n + ".jpg";
+      if (level === 2 && n >= 1 && n <= 32) return n + ".jpg";
     }
     return null;
   }
@@ -667,9 +669,16 @@
     return base.replace(/\/?$/, "/") + rel;
   }
 
+  function mediaCacheBust() {
+    var meta = document.querySelector('meta[name="btca-cache-version"]');
+    return meta ? String(meta.getAttribute("content") || "").trim() : "";
+  }
+
   function mediaUrl(packId, fileName) {
     if (!fileName) return "";
-    return assetPath("offline-unpacked/" + packId + "/" + fileName);
+    var url = assetPath("offline-unpacked/" + packId + "/" + fileName);
+    var bust = mediaCacheBust();
+    return bust ? url + "?v=" + encodeURIComponent(bust) : url;
   }
 
   function exerciseImageUrl(exerciseValue) {
@@ -1889,20 +1898,123 @@
     });
   }
 
+  function isNavCardVisibleL1(item, filterKey) {
+    return filterKey === NAV_FILTER_ALL || item.value === filterKey;
+  }
+
+  function buildNavCardHtmlL1(item) {
+    var img = exerciseImageUrl(item.value);
+    return '<article class="btca-l1-nav-card" data-btca-nav-card data-btca-nav-card-value="' + escapeHtml(item.value) + '">' +
+      '<div class="btca-l1-nav-card-inner">' +
+      '<div class="btca-l1-nav-card-top">' +
+      '<button type="button" class="btca-l1-pick" data-btca-nav-pick="' + escapeHtml(item.value) + '">' +
+      '<span class="btca-l1-pick__icon" aria-hidden="true">🎯</span><span class="btca-l1-pick__text">Выбрать</span></button>' +
+      "</div>" +
+      (img
+        ? '<div class="btca-l1-nav-card-frame" data-btca-nav-card-frame data-btca-nav-card-value="' + escapeHtml(item.value) + '">' +
+          '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy" draggable="false"></div>'
+        : '<div class="btca-l1-nav-card-frame"><div class="btca-l1-card-placeholder">' + escapeHtml(item.label) + "</div></div>") +
+      "</div></article>";
+  }
+
+  function ensureNavTabDelegatesL1(content) {
+    if (content.getAttribute("data-btca-nav-delegated") === "1") return;
+    content.setAttribute("data-btca-nav-delegated", "1");
+    content.addEventListener("click", function (event) {
+      var pick = event.target.closest("[data-btca-nav-pick]");
+      if (pick && !pick.disabled) {
+        var pickValue = pick.getAttribute("data-btca-nav-pick");
+        pick.classList.add("btca-l1-pick--consumed");
+        pick.disabled = true;
+        if (state.pickTimer) window.clearTimeout(state.pickTimer);
+        state.pickTimer = window.setTimeout(function () {
+          state.ui.exerciseValue = pickValue;
+          state.ui.nav.exerciseFilterKey = pickValue;
+          state.ui.tab = "forma";
+          applyUiPatch({ exerciseValue: pickValue, nav: { exerciseFilterKey: pickValue }, tab: "forma" });
+          renderActiveTab();
+          renderTitleBar();
+        }, PICK_DELAY_MS);
+        return;
+      }
+      var frame = event.target.closest(".btca-l1-nav-card-frame--hot");
+      if (!frame) return;
+      if (state.ui.nav.exerciseFilterKey !== NAV_FILTER_ALL) return;
+      applyNavExerciseFilterChange(content, frame.getAttribute("data-btca-nav-card-value"), state.ui.nav.exerciseFilterKey);
+    });
+  }
+
+  function syncNavCardsVisibilityL1(content, filterKey) {
+    content.querySelectorAll("[data-btca-nav-card]").forEach(function (card) {
+      var value = card.getAttribute("data-btca-nav-card-value");
+      var item = state.data.exercises.filter(function (it) { return it.value === value; })[0];
+      if (!item) {
+        card.hidden = true;
+        card.classList.add("btca-l1-nav-card--hidden");
+        return;
+      }
+      var visible = isNavCardVisibleL1(item, filterKey);
+      card.hidden = !visible;
+      card.classList.toggle("btca-l1-nav-card--hidden", !visible);
+    });
+  }
+
+  function syncNavPickButtons(content) {
+    content.querySelectorAll("[data-btca-nav-pick]").forEach(function (btn) {
+      var value = btn.getAttribute("data-btca-nav-pick");
+      var consumed = state.ui.exerciseValue === value;
+      btn.classList.toggle("btca-l1-pick--consumed", consumed);
+      btn.disabled = consumed;
+    });
+  }
+
+  function syncNavCardInteractionL1(content, filterIsAll) {
+    content.querySelectorAll("[data-btca-nav-card-frame][data-btca-nav-card-value]").forEach(function (frame) {
+      var card = frame.closest("[data-btca-nav-card]");
+      if (!card || card.hidden) {
+        frame.classList.remove("btca-l1-nav-card-frame--hot", "btca-l1-nav-card-frame--swipe");
+        frame.removeAttribute("data-btca-nav-swipe-bound");
+        return;
+      }
+      frame.classList.toggle("btca-l1-nav-card-frame--hot", filterIsAll);
+      frame.classList.toggle("btca-l1-nav-card-frame--swipe", !filterIsAll);
+      frame.removeAttribute("data-btca-nav-swipe-bound");
+    });
+    if (!filterIsAll) {
+      content.querySelectorAll(".btca-l1-nav-card-frame--swipe").forEach(function (frame) {
+        if (frame.getAttribute("data-btca-nav-swipe-bound") === "1") return;
+        var value = frame.getAttribute("data-btca-nav-card-value");
+        frame.setAttribute("data-btca-nav-swipe-bound", "1");
+        bindHorizontalSwipe(frame, {
+          onSwipeRight: function () {
+            openNavExerciseImage({ exerciseValue: value, title: labelForExerciseValue(value) });
+          },
+        });
+      });
+    }
+  }
+
   function renderNavTab(content) {
     var filterKey = state.ui.nav.exerciseFilterKey;
     var sectionLabel = deriveNavSectionLabel(filterKey);
     var filterIsAll = filterKey === NAV_FILTER_ALL;
     var displayExercise = filterIsAll ? "Все" : labelForExerciseValue(filterKey);
-    var items = filterIsAll
-      ? state.data.exercises
-      : state.data.exercises.filter(function (it) { return it.value === filterKey; });
     var exerciseOptions = [{ value: NAV_FILTER_ALL, label: "Все" }].concat(state.data.exercises.map(function (it) {
       return { value: it.value, label: it.label };
     }));
 
-    content.innerHTML =
-      '<div class="btca-l1-tab btca-l1-nav">' +
+    var navRoot = content.querySelector("[data-btca-nav-root]");
+    if (!navRoot) {
+      content.innerHTML =
+        '<div class="btca-l1-tab btca-l1-nav" data-btca-nav-root>' +
+        '<div data-btca-nav-head></div>' +
+        '<div class="btca-l1-tab-body btca-l1-nav-cards" data-btca-nav-cards></div></div>';
+      navRoot = content.querySelector("[data-btca-nav-root]");
+      ensureNavTabDelegatesL1(content);
+    }
+
+    var head = navRoot.querySelector("[data-btca-nav-head]");
+    head.innerHTML =
       '<div class="btca-l1-sticky-head">' +
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
       '<div class="btca-l1-nav-section">' +
@@ -1920,71 +2032,29 @@
         disabled: filterIsAll,
         dataAttr: 'data-btca-nav-desc aria-label="Описание"',
       }) +
-      "</div></div></div></div>" +
-      '<div class="btca-l1-tab-body btca-l1-nav-cards">' +
-      items.map(function (item) {
-        var img = exerciseImageUrl(item.value);
-        var consumed = state.ui.exerciseValue === item.value;
-        return '<article class="btca-l1-nav-card">' +
-          '<div class="btca-l1-nav-card-inner">' +
-          '<div class="btca-l1-nav-card-top">' +
-          '<button type="button" class="btca-l1-pick' + (consumed ? " btca-l1-pick--consumed" : "") +
-          '" data-btca-nav-pick="' + escapeHtml(item.value) + '"' + (consumed ? " disabled" : "") +
-          '><span class="btca-l1-pick__icon" aria-hidden="true">🎯</span><span class="btca-l1-pick__text">Выбрать</span></button>' +
-          "</div>" +
-          (img
-            ? (filterIsAll
-              ? '<div class="btca-l1-nav-card-frame">' +
-                '<button type="button" class="btca-l1-card-image-btn" data-btca-nav-image="' + escapeHtml(item.value) +
-                '"><img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy"></button></div>'
-              : '<div class="btca-l1-nav-card-frame btca-l1-nav-card-frame--swipe" data-btca-nav-image-swipe="' + escapeHtml(item.value) + '">' +
-                '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy" draggable="false"></div>')
-            : '<div class="btca-l1-nav-card-frame"><div class="btca-l1-card-placeholder">' + escapeHtml(item.label) + "</div></div>") +
-          "</div></div></article>";
-      }).join("") +
-      "</div></div></div>";
+      "</div></div></div></div>";
 
-    content.querySelector("[data-btca-nav-filter]").addEventListener("click", function (event) {
+    var cardsHost = navRoot.querySelector("[data-btca-nav-cards]");
+    var cardCount = String(state.data.exercises.length);
+    if (cardsHost.getAttribute("data-btca-nav-card-count") !== cardCount) {
+      cardsHost.innerHTML = state.data.exercises.map(buildNavCardHtmlL1).join("");
+      cardsHost.setAttribute("data-btca-nav-card-count", cardCount);
+    }
+
+    syncNavCardsVisibilityL1(navRoot, filterKey);
+    syncNavPickButtons(navRoot);
+    syncNavCardInteractionL1(navRoot, filterIsAll);
+
+    head.querySelector("[data-btca-nav-filter]").addEventListener("click", function (event) {
       openPicker("Упражнение", exerciseOptions, filterKey, function (value) {
         applyNavExerciseFilterChange(content, value, filterKey);
       }, event.currentTarget);
     });
-    var descBtn = content.querySelector("[data-btca-nav-desc]");
+    var descBtn = head.querySelector("[data-btca-nav-desc]");
     if (descBtn) descBtn.addEventListener("click", function () {
       openNavExerciseImage({ exerciseValue: filterKey, title: labelForExerciseValue(filterKey) });
     });
-    content.querySelectorAll("[data-btca-nav-pick]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var value = btn.getAttribute("data-btca-nav-pick");
-        btn.classList.add("btca-l1-pick--consumed");
-        btn.disabled = true;
-        if (state.pickTimer) window.clearTimeout(state.pickTimer);
-        state.pickTimer = window.setTimeout(function () {
-          state.ui.exerciseValue = value;
-          state.ui.nav.exerciseFilterKey = value;
-          state.ui.tab = "forma";
-          applyUiPatch({ exerciseValue: value, nav: { exerciseFilterKey: value }, tab: "forma" });
-          renderActiveTab();
-          renderTitleBar();
-        }, PICK_DELAY_MS);
-      });
-    });
-    if (filterIsAll) {
-      content.querySelectorAll("[data-btca-nav-image]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          applyNavExerciseFilterChange(content, btn.getAttribute("data-btca-nav-image"), filterKey);
-        });
-      });
-    } else {
-      content.querySelectorAll("[data-btca-nav-image-swipe]").forEach(function (frame) {
-        var value = frame.getAttribute("data-btca-nav-image-swipe");
-        bindHorizontalSwipe(frame, {
-          onSwipeRight: function () {
-            openNavExerciseImage({ exerciseValue: value, title: labelForExerciseValue(value) });
-          },
-        });
-      });
-    }
+
     if (!filterIsAll) {
       requestAnimationFrame(function () { scrollNavCardsToTop(content); });
     }

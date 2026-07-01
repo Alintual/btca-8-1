@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.182" />
+    <meta name="btca-cache-version" content="btca-web-8.1.183" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -2247,6 +2247,19 @@ body.btca-apple-comfort .btca-l1-ok-input {
   overflow: visible;
 }
 
+.btca-l1-nav-card--hidden,
+.btca-l1-nav-card[hidden] {
+  display: none !important;
+}
+
+.btca-l1-nav-card-frame--hot {
+  cursor: pointer;
+}
+
+.btca-l1-nav-card-frame--hot img {
+  pointer-events: none;
+}
+
 .btca-l1-nav-card-inner {
   display: flex;
   flex-direction: column;
@@ -3324,8 +3337,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.182:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.182:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.183:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.183:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3365,8 +3378,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.83";
-  var LEVEL2_MODULE_VERSION = "8.1.83";
+  var LEVEL1_MODULE_VERSION = "8.1.84";
+  var LEVEL2_MODULE_VERSION = "8.1.84";
 
   var CORE_REL_PATHS = [
     "",
@@ -3453,10 +3466,12 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     var endPct = options.endPct != null ? options.endPct : 100;
 
     if (!isStandalone()) {
+      discardStaleRuntimeModules();
       preloadLevel1ModuleSilently();
       preloadLevel2ModuleSilently();
       return Promise.resolve();
     }
+    discardStaleRuntimeModules();
     if (level1ModuleReady() && level2ModuleReady()) {
       hideHomeSplashIndicator();
       return Promise.resolve();
@@ -3585,7 +3600,32 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   }
 
   function isPreparedStateCurrent(state) {
-    return Boolean(state && state.preparedAt);
+    if (!state || !state.preparedAt) return false;
+    var versions = readPreparedModuleVersions(state);
+    return versions.level1 === LEVEL1_MODULE_VERSION && versions.level2 === LEVEL2_MODULE_VERSION;
+  }
+
+  function discardStaleRuntimeModules() {
+    if (window.BTCA_LEVEL1 && window.BTCA_LEVEL1.VERSION !== LEVEL1_MODULE_VERSION) {
+      if (window.BTCA_LEVEL1.unmount) window.BTCA_LEVEL1.unmount();
+      delete window.BTCA_LEVEL1;
+    }
+    if (window.BTCA_LEVEL1_DB) {
+      var dbTag = document.querySelector('script[data-btca-level1-src*="level1-db"]');
+      if (!dbTag) delete window.BTCA_LEVEL1_DB;
+    }
+    if (window.BTCA_LEVEL2 && window.BTCA_LEVEL2.VERSION !== LEVEL2_MODULE_VERSION) {
+      if (window.BTCA_LEVEL2.unmount) window.BTCA_LEVEL2.unmount();
+      delete window.BTCA_LEVEL2;
+    }
+    if (window.BTCA_LEVEL2_DB || window.BTCA_LEVEL2_BAZA) {
+      var l2Tag = document.querySelector('script[data-btca-level2-src*="level2-app"]');
+      if (!l2Tag) {
+        delete window.BTCA_LEVEL2_DB;
+        delete window.BTCA_LEVEL2_BAZA;
+        delete window.BTCA_LEVEL2;
+      }
+    }
   }
 
   function migratePreparedClientMarkers() {
@@ -5141,6 +5181,10 @@ body.btca-apple-comfort.btca-landscape-mode #root {
         }
         window.addEventListener("orientationchange", syncPortraitMode);
         window.addEventListener("resize", syncPortraitMode);
+        window.addEventListener("pageshow", function (event) {
+          discardStaleRuntimeModules();
+          if (event.persisted) window.location.reload();
+        });
         if (window.visualViewport) {
           window.visualViewport.addEventListener("resize", syncPortraitMode);
         }
