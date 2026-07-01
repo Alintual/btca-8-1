@@ -3,13 +3,13 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.87";
+  var VERSION = "8.1.88";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
-  var NAV_FILTER_ALL = "all";
+    var NAV_FILTER_ALL = "all";
   var POLEZ_ALL = "all";
-  var PICK_DELAY_MS = 1500;
+    var PICK_DELAY_MS = 1500;
   var PICKER_ROW_SIMPLE = 40;
   var PICKER_ROW_GROUP = 40;
   var PICKER_LIST_PAD = 4;
@@ -337,7 +337,7 @@
     var out = [];
 
     function appendExerciseRows(source, keys) {
-      var bySection = {};
+    var bySection = {};
       keys.forEach(function (key) {
         var section = sectionForDbKey(key);
         if (!section || section === "—") {
@@ -1278,7 +1278,7 @@
       (sheet.emoji ? '<span class="btca-level1-titlebar__emoji' +
         (state.ui.tab === "forma" ? " btca-level1-titlebar__emoji--forma" :
           state.ui.tab === "nav" ? " btca-level1-titlebar__emoji--nav" :
-            state.ui.tab === "polez" ? " btca-level1-titlebar__emoji--polez" : "") +
+          state.ui.tab === "polez" ? " btca-level1-titlebar__emoji--polez" : "") +
         '" aria-hidden="true">' + sheet.emoji + "</span>" : "") +
       "</div>" +
       '<span class="btca-level1-titlebar__spacer"></span>' +
@@ -1512,17 +1512,17 @@
 
   function buildFormaSaveRows() {
     syncUiFromDb();
-    var b5 = b5FromSelectValue(state.ui.exerciseValue);
-    var rules = exerciseRulesL1(b5);
+      var b5 = b5FromSelectValue(state.ui.exerciseValue);
+      var rules = exerciseRulesL1(b5);
     var okByTask = state.ui.taskOk || {};
-    var rows = [];
-    for (var task = 1; task <= 12; task += 1) {
-      var req = rules.requiredByTask[task - 1];
+      var rows = [];
+      for (var task = 1; task <= 12; task += 1) {
+        var req = rules.requiredByTask[task - 1];
       var okRaw = okByTask[String(task)] || "";
-      var okParsed = parseNonNegativeInt(okRaw);
-      var ok = okParsed === null || Number.isNaN(okParsed) ? null : Number(okParsed);
-      rows.push({ task: task, req: req === null ? null : Number(req), ok: ok });
-    }
+        var okParsed = parseNonNegativeInt(okRaw);
+        var ok = okParsed === null || Number.isNaN(okParsed) ? null : Number(okParsed);
+        rows.push({ task: task, req: req === null ? null : Number(req), ok: ok });
+      }
     return rows;
   }
 
@@ -2143,30 +2143,30 @@
       "</div></div>";
 
     if (!periodDisabled) {
-      content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
-        openDateInput(baza.periodFrom, function (iso) {
-          state.ui.baza.periodFrom = iso;
+    content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
+      openDateInput(baza.periodFrom, function (iso) {
+        state.ui.baza.periodFrom = iso;
           applyUiPatch({ baza: { periodFrom: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
-        }, "Период с");
-      });
-      content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
-        openDateInput(baza.periodTo, function (iso) {
-          state.ui.baza.periodTo = iso;
+      }, "Период с");
+    });
+    content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
+      openDateInput(baza.periodTo, function (iso) {
+        state.ui.baza.periodTo = iso;
           applyUiPatch({ baza: { periodTo: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
-        }, "Период по");
-      });
+      }, "Период по");
+    });
     }
     if (!exerciseDisabled) {
       var exerciseOptions = buildBazaExercisePickerOptions();
       var pickerValue = baza.exercise;
-      content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
+    content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
         openPicker("Упражнение", exerciseOptions, pickerValue, function (value) {
           var item = exerciseOptions.filter(function (o) { return o.value === value; })[0];
           onPickBazaExercise(item || { value: value, source: baza.dataSource });
-        }, event.currentTarget);
-      });
+      }, event.currentTarget);
+    });
     }
     var taskBtn = content.querySelector("[data-btca-baza-task]");
     if (taskBtn && !taskDisabled) {
@@ -2174,12 +2174,12 @@
         var options = [{ value: "all", label: "Все" }].concat(
           state.bazaRuleTasks.map(function (t) { return { value: String(t), label: String(t) }; })
         );
-        openPicker("Задача", options, baza.task, function (value) {
-          state.ui.baza.task = value;
+      openPicker("Задача", options, baza.task, function (value) {
+        state.ui.baza.task = value;
           applyUiPatch({ baza: { task: value } });
-          refreshBazaRows().then(function () { renderBazaTab(content); });
-        }, event.currentTarget);
-      });
+        refreshBazaRows().then(function () { renderBazaTab(content); });
+      }, event.currentTarget);
+    });
     }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
     if (tableBtn && !chartMeta.arrowDisabled) tableBtn.addEventListener("click", function () { openBazaTable(); });
@@ -2333,7 +2333,7 @@
 
     var navRoot = content.querySelector("[data-btca-nav-root]");
     if (!navRoot) {
-      content.innerHTML =
+    content.innerHTML =
         '<div class="btca-l1-tab btca-l1-nav" data-btca-nav-root>' +
         '<div data-btca-nav-head></div>' +
         '<div class="btca-l1-tab-body btca-l1-nav-cards" data-btca-nav-cards></div></div>';
@@ -2430,7 +2430,7 @@
           '<div class="btca-l1-polez-card-frame">' +
           (img
             ? '<button type="button" class="btca-l1-card-image-btn" data-btca-polez-image="' + escapeHtml(row.key) + '">' +
-            '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>'
+              '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>'
             : '<div class="btca-l1-card-placeholder">' + escapeHtml(row.label) + "</div>") +
           "</div></div></article>";
       }).join("") +
@@ -2481,10 +2481,8 @@
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--forma-image-portrait";
     overlay.innerHTML =
-      '<header class="btca-l1-overlay__header">' +
+      '<header class="btca-l1-overlay__header btca-l1-overlay__header--forma-image btca-l1-overlay__header--compact">' +
       '<button type="button" class="btca-back-button" data-btca-forma-img-close aria-label="Назад">←</button>' +
-      "<strong>" + escapeHtml(payload.title || "Упражнение") + "</strong>" +
-      greenArrowHtml({ dataAttr: 'data-btca-forma-img-landscape aria-label="Альбомная ориентация"' }) +
       "</header>" +
       '<div class="btca-l1-image-view" data-btca-forma-img-swipe>' +
       '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(payload.title || "Упражнение") + '"></div>';
@@ -2504,8 +2502,6 @@
     }
 
     overlay.querySelector("[data-btca-forma-img-close]").addEventListener("click", closePortrait);
-    var landBtn = overlay.querySelector("[data-btca-forma-img-landscape]");
-    if (landBtn) landBtn.addEventListener("click", openLandscape);
     bindHorizontalSwipe(overlay.querySelector("[data-btca-forma-img-swipe]") || overlay, {
       onSwipeRight: openLandscape,
     });
