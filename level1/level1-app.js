@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.82";
+  var VERSION = "8.1.83";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1025,6 +1025,43 @@
     scrollPickerListActiveToCenter(listEl);
   }
 
+  function scrollNavCardsToTop(content) {
+    var el = content && content.querySelector(".btca-l1-nav-cards");
+    if (el) el.scrollTop = 0;
+  }
+
+  function scrollNavCardsToExercise(content, exerciseValue) {
+    var el = content && content.querySelector(".btca-l1-nav-cards");
+    if (!el) return;
+    var idx = -1;
+    for (var i = 0; i < state.data.exercises.length; i += 1) {
+      if (state.data.exercises[i].value === exerciseValue) { idx = i; break; }
+    }
+    if (idx < 0) return;
+    var cards = el.querySelectorAll(".btca-l1-nav-card");
+    var card = cards[idx];
+    if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function applyNavExerciseFilterChange(content, value, filterKey) {
+    if (!value || value.indexOf("__group:") === 0) return;
+    var listWasAll = filterKey === NAV_FILTER_ALL;
+    if (value === NAV_FILTER_ALL) {
+      state.ui.nav.exerciseFilterKey = NAV_FILTER_ALL;
+      applyUiPatch({ nav: { exerciseFilterKey: NAV_FILTER_ALL } });
+      renderNavTab(content);
+      scrollNavCardsToTop(content);
+      renderTitleBar();
+      return;
+    }
+    if (listWasAll) scrollNavCardsToExercise(content, value);
+    state.ui.nav.exerciseFilterKey = value;
+    applyUiPatch({ nav: { exerciseFilterKey: value } });
+    renderNavTab(content);
+    scrollNavCardsToTop(content);
+    renderTitleBar();
+  }
+
   function deriveNavSectionLabel(exerciseFilterKey) {
     if (exerciseFilterKey === NAV_FILTER_ALL) return "Все";
     if (exerciseFilterKey === "Тест1") return "Тренировочные тесты";
@@ -1909,10 +1946,7 @@
 
     content.querySelector("[data-btca-nav-filter]").addEventListener("click", function (event) {
       openPicker("Упражнение", exerciseOptions, filterKey, function (value) {
-        state.ui.nav.exerciseFilterKey = value;
-        applyUiPatch({ nav: { exerciseFilterKey: value } });
-        renderNavTab(content);
-        renderTitleBar();
+        applyNavExerciseFilterChange(content, value, filterKey);
       }, event.currentTarget);
     });
     var descBtn = content.querySelector("[data-btca-nav-desc]");
@@ -1938,10 +1972,7 @@
     if (filterIsAll) {
       content.querySelectorAll("[data-btca-nav-image]").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          var value = btn.getAttribute("data-btca-nav-image");
-          state.ui.nav.exerciseFilterKey = value;
-          applyUiPatch({ nav: { exerciseFilterKey: value } });
-          renderNavTab(content);
+          applyNavExerciseFilterChange(content, btn.getAttribute("data-btca-nav-image"), filterKey);
         });
       });
     } else {
@@ -1953,6 +1984,9 @@
           },
         });
       });
+    }
+    if (!filterIsAll) {
+      requestAnimationFrame(function () { scrollNavCardsToTop(content); });
     }
   }
 
