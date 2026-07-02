@@ -2543,26 +2543,28 @@
     }
   }
 
-  function polezDescriptionHeaderHtml() {
+  function polezDescriptionScreenHtml(desc) {
     return (
+      '<main class="btca-about-screen">' +
       '<header class="btca-screen-header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
       "<strong>Описание</strong>" +
-      '<span aria-hidden="true"></span></header>'
+      '<span aria-hidden="true"></span></header>' +
+      '<section class="btca-about-content"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
+      '<p>' + formatPolezBody(desc.body || "") + "</p></section></main>"
     );
   }
 
   function openPolezDescription(catalogKey) {
     var desc = state.data.polezDescriptions[catalogKey];
     if (!desc) return;
+    document.body.classList.add("btca-screen-mode");
     var overlay = document.createElement("div");
-    overlay.className = "btca-l1-overlay btca-l1-overlay--about";
-    overlay.innerHTML =
-      polezDescriptionHeaderHtml() +
-      '<section class="btca-about-content"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
-      '<p>' + formatPolezBody(desc.body || "") + "</p></section>";
-    state.root.appendChild(overlay);
+    overlay.className = "btca-polez-desc-root";
+    overlay.innerHTML = polezDescriptionScreenHtml(desc);
+    document.body.appendChild(overlay);
     function closeOverlay() {
+      document.body.classList.remove("btca-screen-mode");
       overlay.remove();
     }
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);

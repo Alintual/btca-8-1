@@ -983,6 +983,34 @@ body.btca-apple-comfort .btca-back-button {
   color: #111111;
 }
 
+.btca-polez-desc-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  background: #c5d9dc;
+}
+
+.btca-polez-desc-root > .btca-about-screen {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  max-height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.btca-apple-comfort.btca-landscape-mode .btca-polez-desc-root > .btca-about-screen {
+  width: min(var(--btca-layout-min), 100%);
+  max-width: var(--btca-layout-min);
+}
+
+body.btca-desktop-browser .btca-polez-desc-root > .btca-about-screen {
+  width: min(560px, 100%);
+  max-width: 560px;
+}
+
 .btca-screen-header {
   position: sticky;
   top: 0;
