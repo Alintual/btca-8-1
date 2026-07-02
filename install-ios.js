@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.201:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.201:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.202:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.202:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -43,8 +43,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.99";
-  var LEVEL2_MODULE_VERSION = "8.1.99";
+  var LEVEL1_MODULE_VERSION = "8.1.100";
+  var LEVEL2_MODULE_VERSION = "8.1.100";
 
   var CORE_REL_PATHS = [
     "",
@@ -348,10 +348,6 @@
     }
   }
 
-  function isPwaReinstall() {
-    return isStandalone() && !readInstallSession();
-  }
-
   function recordInstallSession() {
     if (!isStandalone() || readInstallSession()) return;
     try {
@@ -395,25 +391,7 @@
   }
 
   function wipeTrainingDatabasesInBrowser() {
-    return ensureLevel1Module().then(function () {
-      var tasks = [];
-      if (window.BTCA_LEVEL1_DB && window.BTCA_LEVEL1_DB.wipeTrainingDatabase) {
-        tasks.push(window.BTCA_LEVEL1_DB.wipeTrainingDatabase());
-      }
-      return ensureLevel2Module().then(function () {
-        if (window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_DB.wipeTrainingDatabase) {
-          tasks.push(window.BTCA_LEVEL2_DB.wipeTrainingDatabase());
-        }
-        return Promise.all(tasks);
-      });
-    }).catch(function (error) {
-      console.warn("BTCA Safari training DB wipe failed", error);
-    });
-  }
-
-  function wipeTrainingDatabasesOnReinstall() {
-    if (!isPwaReinstall()) {
-      recordInstallSession();
+    if (isStandalone()) {
       return Promise.resolve();
     }
     return ensureLevel1Module().then(function () {
@@ -428,9 +406,7 @@
         return Promise.all(tasks);
       });
     }).catch(function (error) {
-      console.warn("BTCA reinstall training DB wipe failed", error);
-    }).then(function () {
-      recordInstallSession();
+      console.warn("BTCA Safari training DB wipe failed", error);
     });
   }
 
@@ -1914,8 +1890,63 @@
       return;
     }
 
+    if (isStandalone()) {
+      repairStandaloneShell();
+      return;
+    }
+
     setButtonState(true, "Подготовка offline...");
     beginOfflinePreparation();
+  }
+
+  function repairStandaloneShell() {
+    if (!isStandalone()) return Promise.resolve();
+    if (!("serviceWorker" in navigator) || !("caches" in window)) {
+      return Promise.resolve();
+    }
+
+    setOfflinePreparationActive(true);
+    var report = function (pct, msg) {
+      renderProgress("Обновление offline", pct, msg);
+    };
+
+    report(0, "Проверка offline-кэша...");
+    return migrateMediaCacheFromPreviousGeneration()
+      .then(function () {
+        report(6, "Регистрация offline-службы...");
+        return registerOfflineServiceWorker();
+      })
+      .then(function () {
+        report(10, "Обновление оболочки...");
+        return cacheCoreAssets(report, 10, 22);
+      })
+      .then(function () {
+        return verifyMediaCacheReady();
+      })
+      .then(function (ready) {
+        if (ready) {
+          report(100, "Готово");
+          markAppPrepared();
+          migratePreparedClientMarkers();
+          return activateRegisteredServiceWorker();
+        }
+        report(22, "Восстановление медиа...");
+        return prepareMediaArchives(report, 22, 95).then(function () {
+          return activateRegisteredServiceWorker();
+        }).then(function () {
+          markAppPrepared();
+          migratePreparedClientMarkers();
+        });
+      })
+      .catch(function (error) {
+        console.warn("BTCA standalone repair failed", error);
+        migratePreparedClientMarkers();
+      })
+      .then(function () {
+        setOfflinePreparationActive(false);
+        hideHomeSplashIndicator();
+        renderInstalledHome();
+      });
   }
 
   function beginOfflinePreparation() {
@@ -1980,8 +2011,9 @@
 
     if (!mediaReady) {
       renderInstalledHome();
-      prepareOffline();
-      return;
+      return repairStandaloneShell().then(function () {
+        return preloadAppModulesForHome();
+      });
     }
 
     if (!readAppPreparedState()) {
@@ -2045,9 +2077,8 @@
           });
         }
         if (isStandalone()) {
-          return wipeTrainingDatabasesOnReinstall().then(function () {
-            bootstrapStandaloneShell(ctx.mediaReady);
-          });
+          recordInstallSession();
+          return bootstrapStandaloneShell(ctx.mediaReady);
         }
         if (isOfflinePreparationActive() && !isAppPreparedSync()) {
           window.setTimeout(function () {
@@ -2070,9 +2101,9 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (isStandalone()) {
-          return wipeTrainingDatabasesOnReinstall().then(function () {
-            renderInstalledHome();
-            prepareOffline();
+          recordInstallSession();
+          return repairStandaloneShell().then(function () {
+            return preloadAppModulesForHome();
           });
         }
       });
