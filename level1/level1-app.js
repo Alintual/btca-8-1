@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.90";
+  var VERSION = "8.1.91";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2225,13 +2225,14 @@
     var overlay = document.createElement("div");
     overlay.className = "btca-polez-desc-root";
     overlay.innerHTML = polezDescriptionScreenHtml(desc);
-    document.body.appendChild(overlay);
+    state.root.appendChild(overlay);
     function closeOverlay() {
       document.body.classList.remove("btca-screen-mode");
       overlay.remove();
     }
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
-    bindHorizontalSwipe(overlay, { onSwipeLeft: closeOverlay });
+    var header = overlay.querySelector(".btca-screen-header");
+    if (header) bindHorizontalSwipe(header, { onSwipeLeft: closeOverlay });
   }
 
   function openPolezImageLandscape(catalogKey) {
