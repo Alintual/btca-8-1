@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.202:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.202:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.203:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.203:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -43,8 +43,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.100";
-  var LEVEL2_MODULE_VERSION = "8.1.100";
+  var LEVEL1_MODULE_VERSION = "8.1.101";
+  var LEVEL2_MODULE_VERSION = "8.1.101";
 
   var CORE_REL_PATHS = [
     "",
@@ -57,6 +57,7 @@
     "offline/app-shell.json",
     "offline/media/manifest.json",
     "vendor/zip.min.js",
+    "btca-data-guard.js?v=" + LEVEL1_MODULE_VERSION,
     "btca-baza-diagram.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
@@ -149,6 +150,7 @@
 
     if (!level1ModuleReady()) {
       steps.push(
+        { run: function () { return loadDataGuardScript(); } },
         { run: function () { return loadBazaDiagramScript(); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v1)); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v1)); } },
@@ -160,6 +162,7 @@
     }
     if (!level2ModuleReady()) {
       steps.push(
+        { run: function () { return loadDataGuardScript(); } },
         { run: function () { return loadBazaDiagramScript(); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v2)); } },
@@ -271,6 +274,13 @@
     return Boolean(state && state.preparedAt);
   }
 
+  function clearInjectedDataGuardScript() {
+    document.querySelectorAll("script[data-btca-data-guard-src]").forEach(function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+    delete window.BTCA_DATA_GUARD;
+  }
+
   function clearInjectedBazaDiagramScript() {
     document.querySelectorAll("script[data-btca-baza-diagram-src]").forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
@@ -279,6 +289,7 @@
   }
 
   function clearInjectedLevel1Scripts() {
+    clearInjectedDataGuardScript();
     clearInjectedBazaDiagramScript();
     document.querySelectorAll("script[data-btca-level1-src]").forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
@@ -288,6 +299,7 @@
   }
 
   function clearInjectedLevel2Scripts() {
+    clearInjectedDataGuardScript();
     clearInjectedBazaDiagramScript();
     document.querySelectorAll("script[data-btca-level2-src]").forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
@@ -392,6 +404,10 @@
 
   function wipeTrainingDatabasesInBrowser() {
     if (isStandalone()) {
+      return Promise.resolve();
+    }
+    if (!window.BTCA_DATA_GUARD || !window.BTCA_DATA_GUARD.trainingWipePermitted()) {
+      console.warn("BTCA: skipped training DB wipe — Safari prep token missing");
       return Promise.resolve();
     }
     return ensureLevel1Module().then(function () {
@@ -1174,6 +1190,37 @@
     if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
+  function loadDataGuardScript() {
+    return new Promise(function (resolve, reject) {
+      var src = assetPath("btca-data-guard.js?v=" + LEVEL1_MODULE_VERSION);
+      if (window.BTCA_DATA_GUARD && document.querySelector('script[data-btca-data-guard-src="' + src + '"]')) {
+        resolve();
+        return;
+      }
+      delete window.BTCA_DATA_GUARD;
+      fetch(src, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Не удалось загрузить " + src + ": " + response.status);
+          return response.text();
+        })
+        .then(function (code) {
+          if (!/\(function\s*\(\)/.test(code)) {
+            throw new Error("Неверный ответ для " + src);
+          }
+          removeInjectedScript("data-btca-data-guard-src", src);
+          var script = document.createElement("script");
+          script.setAttribute("data-btca-data-guard-src", src);
+          script.textContent = code;
+          document.head.appendChild(script);
+          if (!window.BTCA_DATA_GUARD) {
+            throw new Error("btca-data-guard.js выполнен, но BTCA_DATA_GUARD не найден");
+          }
+          resolve();
+        })
+        .catch(reject);
+    });
+  }
+
   function loadBazaDiagramScript() {
     return new Promise(function (resolve, reject) {
       var src = assetPath("btca-baza-diagram.js?v=" + LEVEL1_MODULE_VERSION);
@@ -1255,7 +1302,9 @@
       clearInjectedLevel1Scripts();
     }
     var v = LEVEL1_MODULE_VERSION;
-    return loadBazaDiagramScript().then(function () {
+    return loadDataGuardScript().then(function () {
+      return loadBazaDiagramScript();
+    }).then(function () {
       return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v));
     }).then(function () {
       return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v));
@@ -1352,7 +1401,9 @@
       clearInjectedLevel2Scripts();
     }
     var v = LEVEL2_MODULE_VERSION;
-    return loadBazaDiagramScript().then(function () {
+    return loadDataGuardScript().then(function () {
+      return loadBazaDiagramScript();
+    }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v));
     }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v));
@@ -1950,6 +2001,11 @@
   }
 
   function beginOfflinePreparation() {
+    if (isStandalone()) {
+      repairStandaloneShell();
+      return;
+    }
+
     setOfflinePreparationActive(true);
     setButtonState(true, "Подготовка offline...");
 
@@ -1957,48 +2013,54 @@
       renderProgress("Подготовка iOS/iPadOS", pct, msg);
     };
 
-    report(0, "Очистка данных предыдущей установки в Safari...");
-    resetSafariInstallEnvironment()
-      .then(function () {
-        report(3, "Очистка баз тренировок...");
-        return wipeTrainingDatabasesInBrowser();
-      })
-      .then(function () {
-        report(6, "Регистрация offline-службы...");
-        return registerOfflineServiceWorker();
-      })
-      .then(function () {
-        report(8, "Очистка устаревшей оболочки...");
-        return purgeShellInstallCache().then(function () {
-          return purgeGenerationRuntimeCache();
+    function revokePrepToken() {
+      var prepGuard = window.BTCA_DATA_GUARD;
+      if (prepGuard && prepGuard.revokeSafariPrepWipeToken) prepGuard.revokeSafariPrepWipeToken();
+    }
+
+    loadDataGuardScript().then(function () {
+      var prepGuard = window.BTCA_DATA_GUARD;
+      if (prepGuard && prepGuard.grantSafariPrepWipeToken) prepGuard.grantSafariPrepWipeToken();
+
+      report(0, "Очистка данных предыдущей установки в Safari...");
+      return resetSafariInstallEnvironment()
+        .then(function () {
+          report(3, "Очистка баз тренировок...");
+          return wipeTrainingDatabasesInBrowser();
+        })
+        .then(function () {
+          report(6, "Регистрация offline-службы...");
+          return registerOfflineServiceWorker();
+        })
+        .then(function () {
+          report(8, "Очистка устаревшей оболочки...");
+          return purgeShellInstallCache().then(function () {
+            return purgeGenerationRuntimeCache();
+          });
+        })
+        .then(function () {
+          report(10, "Загрузка оболочки приложения...");
+          return cacheCoreAssets(report, 10, 22);
+        })
+        .then(function () {
+          report(22, "Загрузка и распаковка ZIP-архивов...");
+          return prepareMediaArchives(report, 22, 95);
+        })
+        .then(function () {
+          return activateRegisteredServiceWorker();
+        })
+        .then(function () {
+          report(100, "Готово");
+          renderReady();
+          preloadLevel1ModuleSilently();
+          preloadLevel2ModuleSilently();
         });
-      })
-      .then(function () {
-        report(10, "Загрузка оболочки приложения...");
-        return cacheCoreAssets(report, 10, 22);
-      })
-      .then(function () {
-        report(22, "Загрузка и распаковка ZIP-архивов...");
-        return prepareMediaArchives(report, 22, 95);
-      })
-      .then(function () {
-        return activateRegisteredServiceWorker();
-      })
-      .then(function () {
-        if (isStandalone()) {
-          markAppPrepared();
-          renderInstalledHome({ preserveSplash: true });
-          return preloadAppModulesForHome({ startPct: 100, endPct: 100 });
-        }
-        report(100, "Готово");
-        renderReady();
-        preloadLevel1ModuleSilently();
-        preloadLevel2ModuleSilently();
-      })
+    })
       .catch(renderError)
       .then(function () {
         setOfflinePreparationActive(false);
         setButtonState(false, "Загрузить все данные для offline");
+        revokePrepToken();
       });
   }
 

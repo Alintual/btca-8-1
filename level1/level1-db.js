@@ -425,6 +425,16 @@
   }
 
   function resetUiStateForNormalize() {
+    var guard = window.BTCA_DATA_GUARD;
+    if (!guard || !guard.assertTrainingWipePermitted) {
+      return Promise.reject(new Error("BTCA_DATA_GUARD: unavailable"));
+    }
+    try {
+      guard.assertTrainingWipePermitted();
+    } catch (error) {
+      console.error(String(error && error.message ? error.message : error));
+      return Promise.resolve({ ok: false, blocked: true });
+    }
     if (uiSaveTimer) {
       window.clearTimeout(uiSaveTimer);
       uiSaveTimer = null;
@@ -434,6 +444,17 @@
   }
 
   function wipeTrainingDatabase() {
+    var guard = window.BTCA_DATA_GUARD;
+    if (!guard || !guard.assertTrainingWipePermitted) {
+      console.error("BTCA_DATA_GUARD: unavailable — training DB wipe blocked");
+      return Promise.resolve({ ok: false, blocked: true });
+    }
+    try {
+      guard.assertTrainingWipePermitted();
+    } catch (error) {
+      console.error(String(error && error.message ? error.message : error));
+      return Promise.resolve({ ok: false, blocked: true });
+    }
     return runTx(["results"], "readwrite", function (transaction, finish, fail) {
       var req = transaction.objectStore("results").clear();
       req.onsuccess = function () { finish(); };
