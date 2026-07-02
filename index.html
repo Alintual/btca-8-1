@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.191" />
+    <meta name="btca-cache-version" content="btca-web-8.1.192" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -864,6 +864,14 @@ body.btca-level2-mode .btca-l1-pick--consumed {
 .btca-l1-baza-table-row--cluster .btca-l1-baza-col--date span,
 .btca-l1-baza-table-row--cluster .btca-l1-baza-col--ex span {
   visibility: hidden;
+}
+
+.btca-l1-baza-table-row--cluster-first {
+  background: #d6e4e7;
+}
+
+.btca-l1-baza-table-row--head .btca-l1-baza-col span {
+  font-weight: 400;
 }
 
 body.btca-apple-comfort.btca-force-landscape-table {
@@ -3406,8 +3414,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.191:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.191:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.192:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.192:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3447,8 +3455,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.91";
-  var LEVEL2_MODULE_VERSION = "8.1.91";
+  var LEVEL1_MODULE_VERSION = "8.1.92";
+  var LEVEL2_MODULE_VERSION = "8.1.92";
 
   var CORE_REL_PATHS = [
     "",

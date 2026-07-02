@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.91";
+  var VERSION = "8.1.92";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -996,14 +996,23 @@
       '<span class="btca-l1-face__text">' + escapeHtml(label) + "</span></button>";
   }
 
-  function getBazaChartMeta(baza, exerciseFilterDisabled) {
-    var exercise = baza.exercise;
-    var showChart = !exerciseFilterDisabled && exercise !== "all" && String(exercise || "").trim() !== "";
+  function getBazaChartTitle(exercise, exerciseFilterDisabled) {
+    var showChart =
+      !exerciseFilterDisabled &&
+      exercise !== "all" &&
+      exercise !== "__foreign_data__" &&
+      String(exercise || "").trim() !== "";
     return {
-      text: buildBazaTableTitle(baza),
-      showChart: showChart,
+      text: showChart
+        ? "Успешные удары по упражнению за период"
+        : "Нет данных по упражнению",
       arrowDisabled: exerciseFilterDisabled,
+      showChart: showChart,
     };
+  }
+
+  function getBazaChartMeta(baza, exerciseFilterDisabled) {
+    return getBazaChartTitle(baza.exercise, exerciseFilterDisabled);
   }
 
   function buildBazaTableTitle(baza) {
@@ -1044,6 +1053,17 @@
     });
   }
 
+  function bazaTableColumnsHeadHtml() {
+    return '<div class="btca-l1-baza-table-head"><div class="btca-l1-baza-table-row btca-l1-baza-table-row--head">' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>Дата</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>Упражнение</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>Задачи</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>Требуется</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>Успех</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
+      "</div></div>";
+  }
+
   function renderBazaTableBodyHtml(rows) {
     return rows.map(function (row) {
       var exKey = row.exerciseKey || row.exercise;
@@ -1053,7 +1073,10 @@
         : (row.req == null ? "—" : String(row.req));
       if (!reqText && row.req != null) reqText = String(row.req);
       if (!reqText) reqText = "—";
-      return '<div class="btca-l1-baza-table-row' + (row.clusterFirst === false ? " btca-l1-baza-table-row--cluster" : "") + '">' +
+      var rowClass = "btca-l1-baza-table-row";
+      if (row.clusterFirst === true) rowClass += " btca-l1-baza-table-row--cluster-first";
+      if (row.clusterFirst === false) rowClass += " btca-l1-baza-table-row--cluster";
+      return '<div class="' + rowClass + '">' +
         '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' +
         escapeHtml(row.date ? formatIsoDateAsDdMmYyyy(row.date) : "") + "</span></div>" +
         '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(exLabel) + "</span></div>" +
@@ -2196,14 +2219,7 @@
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
       "<strong>" + escapeHtml(title) + "</strong></header>" +
       '<div class="btca-l1-baza-table-wrap">' +
-      '<div class="btca-l1-baza-table-head"><div class="btca-l1-baza-table-row">' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>Дата</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>Упр.</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>Задача</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>Треб.</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>Успех</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
-      "</div></div>" +
+      bazaTableColumnsHeadHtml() +
       '<div class="btca-l1-baza-table-scroll"><div class="btca-l1-baza-table-body"></div></div></div>';
     state.root.appendChild(overlay);
     var bodyEl = overlay.querySelector(".btca-l1-baza-table-body");

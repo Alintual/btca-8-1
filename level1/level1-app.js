@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.91";
+  var VERSION = "8.1.92";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -749,14 +749,23 @@
       '<span class="btca-l1-face__text">' + escapeHtml(label) + "</span></button>";
   }
 
-  function getBazaChartMeta(baza, exerciseFilterDisabled) {
-    var exercise = baza.exercise;
-    var showChart = !exerciseFilterDisabled && exercise !== "all" && String(exercise || "").trim() !== "";
+  function getBazaChartTitle(exercise, exerciseFilterDisabled) {
+    var showChart =
+      !exerciseFilterDisabled &&
+      exercise !== "all" &&
+      exercise !== "__foreign_data__" &&
+      String(exercise || "").trim() !== "";
     return {
-      text: buildBazaTableTitle(baza),
-      showChart: showChart,
+      text: showChart
+        ? "Успешные удары по упражнению за период"
+        : "Нет данных по упражнению",
       arrowDisabled: exerciseFilterDisabled,
+      showChart: showChart,
     };
+  }
+
+  function getBazaChartMeta(baza, exerciseFilterDisabled) {
+    return getBazaChartTitle(baza.exercise, exerciseFilterDisabled);
   }
 
   function buildBazaTableTitle(baza) {
@@ -839,16 +848,45 @@
     });
   }
 
+  function formatBazaReqCell(exerciseKey, task, okMerged, setsCount) {
+    var ex = String(exerciseKey || "").trim();
+    var t = Number(task || 0);
+    if (!ex || !Number.isFinite(t) || t < 1 || t > 12) return "";
+    var rules = exerciseRulesL1(b5FromSelectValue(ex));
+    var baseN = rules.requiredByTask[t - 1];
+    if (baseN == null) return "";
+    if (okMerged == null) return String(baseN);
+    var k = setsCount != null && setsCount > 0 ? setsCount : 1;
+    return baseN + " x " + k;
+  }
+
+  function bazaTableColumnsHeadHtml() {
+    return '<div class="btca-l1-baza-table-head"><div class="btca-l1-baza-table-row btca-l1-baza-table-row--head">' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>Дата</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>Упражнение</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>Задачи</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>Требуется</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>Успех</span></div>' +
+      '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
+      "</div></div>";
+  }
+
   function renderBazaTableBodyHtml(rows) {
     return rows.map(function (row) {
       var exKey = row.exerciseKey || row.exercise;
       var exLabel = row.exercise || labelForExerciseValue(exKey);
-      return '<div class="btca-l1-baza-table-row' + (row.clusterFirst === false ? " btca-l1-baza-table-row--cluster" : "") + '">' +
+      var reqText = formatBazaReqCell(exKey, row.task, row.ok, row.sets);
+      if (!reqText && row.req != null) reqText = String(row.req);
+      if (!reqText) reqText = "—";
+      var rowClass = "btca-l1-baza-table-row";
+      if (row.clusterFirst === true) rowClass += " btca-l1-baza-table-row--cluster-first";
+      if (row.clusterFirst === false) rowClass += " btca-l1-baza-table-row--cluster";
+      return '<div class="' + rowClass + '">' +
         '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>' +
         escapeHtml(row.date ? formatIsoDateAsDdMmYyyy(row.date) : "") + "</span></div>" +
         '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>' + escapeHtml(exLabel) + "</span></div>" +
         '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>' + row.task + "</span></div>" +
-        '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + (row.req == null ? "—" : row.req) + "</span></div>" +
+        '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>' + escapeHtml(reqText) + "</span></div>" +
         '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>' + (row.ok == null ? "—" : row.ok) + "</span></div>" +
         '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>' + (row.pct == null ? "—" : row.pct + "%") + "</span></div></div>";
     }).join("");
@@ -1869,14 +1907,7 @@
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
       "<strong>" + escapeHtml(title) + "</strong></header>" +
       '<div class="btca-l1-baza-table-wrap">' +
-      '<div class="btca-l1-baza-table-head"><div class="btca-l1-baza-table-row">' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--date"><span>Дата</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--ex"><span>Упр.</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--task"><span>Задача</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--req"><span>Треб.</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--ok"><span>Успех</span></div>' +
-      '<div class="btca-l1-baza-col btca-l1-baza-col--pct"><span>%</span></div>' +
-      "</div></div>" +
+      bazaTableColumnsHeadHtml() +
       '<div class="btca-l1-baza-table-scroll"><div class="btca-l1-baza-table-body"></div></div></div>';
     state.root.appendChild(overlay);
     var bodyEl = overlay.querySelector(".btca-l1-baza-table-body");
