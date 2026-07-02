@@ -10,21 +10,7 @@
   var BAZA_DIAGRAM_AXIS_FONT_SIZE = 17;
   var FORMA_TEXT = "#111827";
   var POINT_R = 3.5;
-
-  function resolveDiagramAxisFontSize(rootEl, explicitSize) {
-    if (explicitSize >= 10 && explicitSize <= 48) return explicitSize;
-    var host = rootEl && rootEl.closest(".btca-l1-baza");
-    var title = host && host.querySelector(".btca-l1-baza-chart-title");
-    if (title) {
-      var px = parseFloat(getComputedStyle(title).fontSize);
-      if (px >= 10 && px <= 48) return px;
-    }
-    return BAZA_DIAGRAM_AXIS_FONT_SIZE;
-  }
-
-  function diagramFontScale(axisFontSize) {
-    return axisFontSize / BAZA_DIAGRAM_AXIS_FONT_SIZE;
-  }
+  var DIAGRAM_RENDER_MAX_ATTEMPTS = 12;
 
   function bazaTaskColor(task) {
     return BAZA_TASK_COLORS[task] || FORMA_TEXT;
@@ -32,6 +18,35 @@
 
   function clampBazaPct(v) {
     return Math.min(100, Math.max(0, v));
+  }
+
+  function resolveDiagramAxisFontSize(rootEl, explicitSize) {
+    if (explicitSize >= 10 && explicitSize <= 48) return explicitSize;
+    var host = rootEl && rootEl.closest(".btca-level1-screen");
+    var titleHost = rootEl && rootEl.closest(".btca-l1-baza");
+    var title = titleHost && titleHost.querySelector(".btca-l1-baza-chart-title");
+    if (title) {
+      var px = parseFloat(getComputedStyle(title).fontSize);
+      if (px >= 10 && px <= 48) return px;
+    }
+    if (host) {
+      var probe = document.createElement("span");
+      probe.className = "btca-l1-baza-chart-title";
+      probe.textContent = "0";
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.position = "absolute";
+      probe.style.visibility = "hidden";
+      probe.style.pointerEvents = "none";
+      host.appendChild(probe);
+      var probePx = parseFloat(getComputedStyle(probe).fontSize);
+      host.removeChild(probe);
+      if (probePx >= 10 && probePx <= 48) return probePx;
+    }
+    return BAZA_DIAGRAM_AXIS_FONT_SIZE;
+  }
+
+  function diagramFontScale(axisFontSize) {
+    return axisFontSize / BAZA_DIAGRAM_AXIS_FONT_SIZE;
   }
 
   function formatIsoDateForDiagramAxis(iso) {
@@ -155,11 +170,12 @@
     var parts = [];
     parts.push(
       '<svg class="btca-baza-diagram" width="' + render.width + '" height="' + render.height + '" ' +
-      'viewBox="0 0 ' + render.width + " " + render.height + '" role="img" aria-label="Диаграмма успешности">'
+      'viewBox="0 0 ' + render.width + " " + render.height + '" preserveAspectRatio="xMidYMid meet" ' +
+      'role="img" aria-label="Диаграмма успешности">'
     );
     parts.push('<rect width="100%" height="100%" fill="#c5d9dc"/>');
 
-    render.gridLines.forEach(function (gl, idx) {
+    render.gridLines.forEach(function (gl) {
       parts.push(
         '<line x1="' + render.padL + '" y1="' + gl.y + '" x2="' + (render.padL + render.plotW) + '" y2="' + gl.y + '" ' +
         'stroke="' + (gl.major ? "rgba(17,24,39,0.26)" : "rgba(17,24,39,0.12)") + '" ' +
@@ -167,9 +183,9 @@
       );
       if (gl.label) {
         parts.push(
-          '<text x="' + (render.padL - Math.round(8 * scale)) + '" y="' + (gl.y + Math.round(5 * scale)) + '" fill="' + FORMA_TEXT + '" ' +
-          'font-size="' + axisFontSize + '" font-weight="400" text-anchor="end">' +
-          gl.label + "</text>"
+          '<text class="btca-baza-diagram__axis-label" font-size="' + axisFontSize + '" x="' +
+          (render.padL - Math.round(8 * scale)) + '" y="' + (gl.y + Math.round(5 * scale)) +
+          '" text-anchor="end">' + gl.label + "</text>"
         );
       }
     });
@@ -183,19 +199,17 @@
       'stroke="rgba(17,24,39,0.35)" stroke-width="1"/>'
     );
 
-    render.xTicks.forEach(function (xt, idx) {
+    render.xTicks.forEach(function (xt) {
       parts.push(
         '<line x1="' + xt.x + '" y1="' + render.axisY + '" x2="' + xt.x + '" y2="' + (render.axisY + Math.round(6 * scale)) + '" ' +
         'stroke="rgba(17,24,39,0.35)" stroke-width="1"/>'
       );
     });
 
-    render.xLabels.forEach(function (xl, idx) {
+    render.xLabels.forEach(function (xl) {
       parts.push(
-        '<text x="' + xl.x + '" y="' + xl.y + '" fill="' + FORMA_TEXT + '" ' +
-        'font-size="' + axisFontSize + '" font-weight="400" text-anchor="end" ' +
-        'transform="rotate(-45 ' + xl.x + " " + xl.y + ')">' +
-        xl.label + "</text>"
+        '<text class="btca-baza-diagram__axis-label" font-size="' + axisFontSize + '" x="' + xl.x + '" y="' + xl.y + '" text-anchor="end" ' +
+        'transform="rotate(-45 ' + xl.x + " " + xl.y + ')">' + xl.label + "</text>"
       );
     });
 
@@ -207,7 +221,7 @@
           'stroke-linejoin="round" stroke-linecap="round"/>'
         );
       }
-      s.points.forEach(function (p, pi) {
+      s.points.forEach(function (p) {
         parts.push(
           '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + POINT_R + '" fill="' + s.color + '" ' +
           'stroke="' + s.color + '" stroke-width="1"/>'
@@ -251,28 +265,38 @@
   }
 
   function measureDiagramSize(measureEl, fallbackWidth) {
-    var width = measureEl ? measureEl.clientWidth : 0;
-    var height = measureEl ? measureEl.clientHeight : 0;
-    var plot = measureEl && measureEl.parentElement;
-    if (height < 32 && plot) height = plot.clientHeight;
-    var root = measureEl && measureEl.closest(".btca-baza-diagram-root");
-    if (height < 32 && root) {
-      var legendHost = root.querySelector("[data-btca-baza-diagram-legend]");
-      var legendH = legendHost ? legendHost.offsetHeight : 0;
-      height = Math.max(0, root.clientHeight - legendH);
+    if (!measureEl) return null;
+    var rect = measureEl.getBoundingClientRect();
+    var width = Math.round(rect.width);
+    var height = Math.round(rect.height);
+    if (height < 32 && measureEl.parentElement) {
+      height = Math.round(measureEl.parentElement.getBoundingClientRect().height);
     }
-    if (width < 32) width = Math.max(280, fallbackWidth || 320);
-    if (height < 32) height = Math.max(220, Math.round(window.innerHeight * 0.38));
+    var root = measureEl.closest(".btca-baza-diagram-root");
+    if (height < 32 && root) {
+      var rootRect = root.getBoundingClientRect();
+      var legendHost = root.querySelector("[data-btca-baza-diagram-legend]");
+      var legendH = legendHost ? legendHost.getBoundingClientRect().height : 0;
+      height = Math.max(0, Math.round(rootRect.height - legendH));
+    }
+    if (width < 32) width = Math.max(280, Math.round(fallbackWidth || 320));
+    if (height < 32) return null;
     return { width: width, height: height };
   }
 
-  function mountBazaDiagram(rootEl, expanded, allowedTaskNums, activeTask, fallbackWidth) {
-    if (!rootEl) return;
+  function disconnectDiagramObserver(rootEl) {
+    if (!rootEl || !rootEl._btcaDiagramObs) return;
+    rootEl._btcaDiagramObs.disconnect();
+    delete rootEl._btcaDiagramObs;
+  }
+
+  function paintBazaDiagram(rootEl, expanded, allowedTaskNums, activeTask, fallbackWidth) {
     var measureEl = rootEl.querySelector("[data-btca-baza-diagram-measure]");
     var legendEl = rootEl.querySelector("[data-btca-baza-diagram-legend]");
-    if (!measureEl) return;
-    var axisFontSize = resolveDiagramAxisFontSize(rootEl);
+    if (!measureEl) return false;
     var size = measureDiagramSize(measureEl, fallbackWidth);
+    if (!size) return false;
+    var axisFontSize = resolveDiagramAxisFontSize(rootEl);
     var render = buildBazaDiagramRender(
       expanded,
       allowedTaskNums,
@@ -281,11 +305,52 @@
       size.height,
       axisFontSize
     );
+    if (!render) return false;
     measureEl.innerHTML = renderBazaDiagramSvg(render);
     if (legendEl) legendEl.innerHTML = renderBazaDiagramLegendHtml(render);
+    return true;
+  }
+
+  function mountBazaDiagram(rootEl, expanded, allowedTaskNums, activeTask, fallbackWidth) {
+    if (!rootEl) return;
+    disconnectDiagramObserver(rootEl);
+
+    var state = rootEl._btcaDiagramMount || { attempts: 0 };
+    rootEl._btcaDiagramMount = state;
+
+    var tryPaint = function () {
+      if (paintBazaDiagram(rootEl, expanded, allowedTaskNums, activeTask, fallbackWidth)) {
+        state.attempts = 0;
+        return true;
+      }
+      return false;
+    };
+
+    if (tryPaint()) return;
+
+    var schedule = function () {
+      state.attempts += 1;
+      if (tryPaint()) return;
+      if (state.attempts >= DIAGRAM_RENDER_MAX_ATTEMPTS) return;
+      requestAnimationFrame(schedule);
+    };
+    requestAnimationFrame(schedule);
+
+    if (typeof ResizeObserver === "function") {
+      var measureEl = rootEl.querySelector("[data-btca-baza-diagram-measure]");
+      if (measureEl) {
+        var obs = new ResizeObserver(function () {
+          paintBazaDiagram(rootEl, expanded, allowedTaskNums, activeTask, fallbackWidth);
+        });
+        obs.observe(measureEl);
+        if (rootEl.parentElement) obs.observe(rootEl.parentElement);
+        rootEl._btcaDiagramObs = obs;
+      }
+    }
   }
 
   window.BTCA_BAZA_DIAGRAM = {
+    REV: "3",
     buildBazaDiagramRender: buildBazaDiagramRender,
     renderBazaDiagramSvg: renderBazaDiagramSvg,
     renderBazaDiagramLegendHtml: renderBazaDiagramLegendHtml,
