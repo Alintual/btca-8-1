@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.196:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.196:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.197:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.197:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -527,6 +527,17 @@
     return Promise.all(tasks).catch(function () {});
   }
 
+  function purgeAllShellCachesExceptMedia() {
+    if (!("caches" in window)) return Promise.resolve();
+    return caches.keys().then(function (names) {
+      return Promise.all(names.filter(function (name) {
+        return name.indexOf("btca-web-") === 0 && !name.endsWith(":static-media");
+      }).map(function (name) {
+        return caches.delete(name);
+      }));
+    }).catch(function () {});
+  }
+
   function purgeAllInstallCaches() {
     if (!("caches" in window)) return Promise.resolve();
     return caches.keys().then(function (names) {
@@ -552,20 +563,17 @@
   }
 
   function reloadShellForRemoteVersion(remote) {
-    var attemptKey = shellRefreshAttemptKey(remote);
-    try {
-      if (sessionStorage.getItem(attemptKey) === "5") return Promise.resolve(true);
-      var attempts = parseInt(sessionStorage.getItem(attemptKey) || "0", 10) + 1;
-      sessionStorage.setItem(attemptKey, String(attempts));
-    } catch (_) {}
-
     discardStaleRuntimeModules();
-    return purgeAllInstallCaches()
+    return purgeAllShellCachesExceptMedia()
       .then(function () {
-        return purgeShellServiceWorkerCaches();
-      })
-      .then(function () {
-        return purgeObsoleteInstallCaches();
+        if (!("serviceWorker" in navigator)) return;
+        return navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
+          if (!registration) return;
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+          return registration.update().catch(function () {});
+        });
       })
       .then(function () {
         return flushClientDataBeforeReload();
@@ -573,6 +581,7 @@
       .then(function () {
         var url = new URL(window.location.href);
         url.searchParams.set("btca-shell", remote);
+        url.searchParams.set("btca-refresh", String(Date.now()));
         window.location.replace(url.toString());
         return true;
       });
@@ -682,6 +691,24 @@
         });
       });
     }).catch(function () {});
+  }
+
+  function ensureShellUpToDate() {
+    if (!shouldRunShellUpdateCheck()) return Promise.resolve(false);
+    var swPromise = Promise.resolve();
+    if ("serviceWorker" in navigator) {
+      swPromise = navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
+        if (!registration) return;
+        return registration.update().catch(function () {}).then(function () {
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+      });
+    }
+    return swPromise.then(function () {
+      return probeRemoteShellVersion();
+    });
   }
 
   function probeRemoteShellVersion() {
@@ -1928,10 +1955,6 @@
     cleanupOrphanHomePhraseMarkup();
     syncPortraitModeImmediate();
 
-    if (isStandalone()) {
-      renderInstalledHome();
-    }
-
     ensureMediaCacheReady()
       .then(function (mediaReady) {
         return purgeObsoleteInstallCaches().then(function () {
@@ -1940,6 +1963,15 @@
         });
       })
       .then(function (mediaReady) {
+        return ensureShellUpToDate().then(function (reloading) {
+          return { mediaReady: mediaReady, reloading: reloading };
+        });
+      })
+      .then(function (ctx) {
+        if (ctx.reloading) return;
+        if (isStandalone()) {
+          renderInstalledHome();
+        }
         ensureFreshShellAfterDeploy();
         if (!isStandalone()) {
           cleanupOrphanHomePhraseMarkup();
@@ -1962,15 +1994,12 @@
         if (isStandalone()) {
           document.addEventListener("visibilitychange", function () {
             if (document.visibilityState !== "visible") return;
-            probeRemoteShellVersion();
+            ensureShellUpToDate();
           });
         }
         if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
-            return probeRemoteShellVersion().then(function (reloading) {
-              if (reloading) return;
-              bootstrapStandaloneShell(mediaReady);
-            });
+            bootstrapStandaloneShell(ctx.mediaReady);
           });
         }
         if (isOfflinePreparationActive() && !isAppPreparedSync()) {

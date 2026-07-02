@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.196";
+const CACHE_VERSION = "btca-web-8.1.197";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
@@ -35,7 +35,8 @@ const CORE_ASSETS = [
 ];
 
 function networkFirst(request, cacheName) {
-  return fetch(request)
+  const liveRequest = new Request(request, { cache: "no-store" });
+  return fetch(liveRequest)
     .then((response) => {
       if (response && response.status === 200) {
         const copy = response.clone();
