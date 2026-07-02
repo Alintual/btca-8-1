@@ -11,6 +11,21 @@
   var FORMA_TEXT = "#111827";
   var POINT_R = 3.5;
 
+  function resolveDiagramAxisFontSize(rootEl, explicitSize) {
+    if (explicitSize >= 10 && explicitSize <= 48) return explicitSize;
+    var host = rootEl && rootEl.closest(".btca-l1-baza");
+    var title = host && host.querySelector(".btca-l1-baza-chart-title");
+    if (title) {
+      var px = parseFloat(getComputedStyle(title).fontSize);
+      if (px >= 10 && px <= 48) return px;
+    }
+    return BAZA_DIAGRAM_AXIS_FONT_SIZE;
+  }
+
+  function diagramFontScale(axisFontSize) {
+    return axisFontSize / BAZA_DIAGRAM_AXIS_FONT_SIZE;
+  }
+
   function bazaTaskColor(task) {
     return BAZA_TASK_COLORS[task] || FORMA_TEXT;
   }
@@ -28,8 +43,11 @@
     return String(Number(m[3])) + " " + mon3[monthNum - 1];
   }
 
-  function buildBazaDiagramRender(expanded, allowedTaskNums, activeTask, width, height) {
+  function buildBazaDiagramRender(expanded, allowedTaskNums, activeTask, width, height, axisFontSize) {
     if (width < 32 || height < 32) return null;
+
+    var fontSize = axisFontSize >= 10 && axisFontSize <= 48 ? axisFontSize : BAZA_DIAGRAM_AXIS_FONT_SIZE;
+    var scale = diagramFontScale(fontSize);
 
     var byDateTask = new Map();
     var curDate = "";
@@ -58,12 +76,12 @@
       }
     }
 
-    var padL = 52;
-    var padR = 10;
-    var padT = 20;
+    var padL = Math.round(52 * scale);
+    var padR = Math.round(10 * scale);
+    var padT = Math.round(20 * scale);
     var padB = dates.length > BAZA_DIAGRAM_MAX_FULL_DATE_LABELS
-      ? 52
-      : Math.max(52, 40 + Math.ceil(dates.length * 1.6));
+      ? Math.round(52 * scale)
+      : Math.max(Math.round(52 * scale), Math.round((40 + Math.ceil(dates.length * 1.6)) * scale));
     var plotW = Math.max(1, width - padL - padR);
     var plotH = Math.max(1, height - padT - padB);
     var axisY = padT + plotH;
@@ -83,8 +101,8 @@
       });
     }
 
-    var xTickDown = 6;
-    var xLabelGapBelowTick = 5;
+    var xTickDown = Math.round(6 * scale);
+    var xLabelGapBelowTick = Math.round(5 * scale);
     var labelY = axisY + xTickDown + xLabelGapBelowTick;
     var sparse = dates.length > BAZA_DIAGRAM_MAX_FULL_DATE_LABELS;
     var xTicks = [];
@@ -125,11 +143,15 @@
       xLabels: xLabels,
       series: series,
       legendTasks: legendTasks,
+      axisFontSize: fontSize,
+      fontScale: scale,
     };
   }
 
   function renderBazaDiagramSvg(render) {
     if (!render) return "";
+    var axisFontSize = render.axisFontSize || BAZA_DIAGRAM_AXIS_FONT_SIZE;
+    var scale = render.fontScale || diagramFontScale(axisFontSize);
     var parts = [];
     parts.push(
       '<svg class="btca-baza-diagram" width="' + render.width + '" height="' + render.height + '" ' +
@@ -145,8 +167,8 @@
       );
       if (gl.label) {
         parts.push(
-          '<text x="' + (render.padL - 8) + '" y="' + (gl.y + 5) + '" fill="' + FORMA_TEXT + '" ' +
-          'font-size="' + BAZA_DIAGRAM_AXIS_FONT_SIZE + '" font-weight="400" text-anchor="end">' +
+          '<text x="' + (render.padL - Math.round(8 * scale)) + '" y="' + (gl.y + Math.round(5 * scale)) + '" fill="' + FORMA_TEXT + '" ' +
+          'font-size="' + axisFontSize + '" font-weight="400" text-anchor="end">' +
           gl.label + "</text>"
         );
       }
@@ -163,7 +185,7 @@
 
     render.xTicks.forEach(function (xt, idx) {
       parts.push(
-        '<line x1="' + xt.x + '" y1="' + render.axisY + '" x2="' + xt.x + '" y2="' + (render.axisY + 6) + '" ' +
+        '<line x1="' + xt.x + '" y1="' + render.axisY + '" x2="' + xt.x + '" y2="' + (render.axisY + Math.round(6 * scale)) + '" ' +
         'stroke="rgba(17,24,39,0.35)" stroke-width="1"/>'
       );
     });
@@ -171,7 +193,7 @@
     render.xLabels.forEach(function (xl, idx) {
       parts.push(
         '<text x="' + xl.x + '" y="' + xl.y + '" fill="' + FORMA_TEXT + '" ' +
-        'font-size="' + BAZA_DIAGRAM_AXIS_FONT_SIZE + '" font-weight="400" text-anchor="end" ' +
+        'font-size="' + axisFontSize + '" font-weight="400" text-anchor="end" ' +
         'transform="rotate(-45 ' + xl.x + " " + xl.y + ')">' +
         xl.label + "</text>"
       );
@@ -231,6 +253,14 @@
   function measureDiagramSize(measureEl, fallbackWidth) {
     var width = measureEl ? measureEl.clientWidth : 0;
     var height = measureEl ? measureEl.clientHeight : 0;
+    var plot = measureEl && measureEl.parentElement;
+    if (height < 32 && plot) height = plot.clientHeight;
+    var root = measureEl && measureEl.closest(".btca-baza-diagram-root");
+    if (height < 32 && root) {
+      var legendHost = root.querySelector("[data-btca-baza-diagram-legend]");
+      var legendH = legendHost ? legendHost.offsetHeight : 0;
+      height = Math.max(0, root.clientHeight - legendH);
+    }
     if (width < 32) width = Math.max(280, fallbackWidth || 320);
     if (height < 32) height = Math.max(220, Math.round(window.innerHeight * 0.38));
     return { width: width, height: height };
@@ -241,8 +271,16 @@
     var measureEl = rootEl.querySelector("[data-btca-baza-diagram-measure]");
     var legendEl = rootEl.querySelector("[data-btca-baza-diagram-legend]");
     if (!measureEl) return;
+    var axisFontSize = resolveDiagramAxisFontSize(rootEl);
     var size = measureDiagramSize(measureEl, fallbackWidth);
-    var render = buildBazaDiagramRender(expanded, allowedTaskNums, activeTask, size.width, size.height);
+    var render = buildBazaDiagramRender(
+      expanded,
+      allowedTaskNums,
+      activeTask,
+      size.width,
+      size.height,
+      axisFontSize
+    );
     measureEl.innerHTML = renderBazaDiagramSvg(render);
     if (legendEl) legendEl.innerHTML = renderBazaDiagramLegendHtml(render);
   }
