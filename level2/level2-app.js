@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.95";
+  var VERSION = "8.1.96";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1706,19 +1706,26 @@
     });
   }
 
-  function renderBazaDiagramHtml() {
-    if (!BAZA || !state.bazaExpandedRows.length) return '<p class="btca-l1-empty">Нет данных за выбранный период</p>';
+  function mountBazaDiagramInTab(content) {
+    var DIAG = window.BTCA_BAZA_DIAGRAM;
+    if (!DIAG) return;
     var baza = state.ui.baza;
-    var panel = contentElForMeasure();
-    var width = panel ? Math.max(280, panel.clientWidth - 16) : 320;
-    var height = Math.max(220, Math.round(window.innerHeight * 0.38));
-    var allowed = taskNumbersForExercise(baza.exercise);
-    var render = BAZA.buildBazaDiagramRender(state.bazaExpandedRows, allowed, baza.task, width, height);
-    return '<div class="btca-l2-diagram-wrap" data-btca-baza-diagram-capture>' + BAZA.renderBazaDiagramSvg(render) + "</div>";
-  }
-
-  function contentElForMeasure() {
-    return state.root && state.root.querySelector("[data-btca-level2-content]");
+    var root = content.querySelector("[data-btca-baza-diagram-capture]");
+    if (!root || !state.bazaExpandedRows.length) return;
+    var panel = content.closest("[data-btca-level2-content]") || content;
+    var fallback = panel ? Math.max(280, panel.clientWidth - 24) : 320;
+    var mount = function () {
+      DIAG.mountBazaDiagram(
+        root,
+        state.bazaExpandedRows,
+        taskNumbersForExercise(baza.exercise),
+        baza.task,
+        fallback
+      );
+    };
+    requestAnimationFrame(function () {
+      requestAnimationFrame(mount);
+    });
   }
 
   function showBazaToast(message, color) {
@@ -2128,7 +2135,10 @@
     var taskLabel = taskFilterEmpty || baza.exercise === "all" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
     var taskDisabled = taskFilterEmpty || baza.exercise === "all";
     var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
-    var diagramHtml = chartMeta.showChart ? renderBazaDiagramHtml() : "";
+    var DIAG = window.BTCA_BAZA_DIAGRAM;
+    var diagramPanel = chartMeta.showChart
+      ? (DIAG ? DIAG.renderBazaDiagramPanelHtml(state.bazaExpandedRows.length) : "")
+      : "";
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-baza">' +
@@ -2160,9 +2170,7 @@
       }) +
       "</div></div></div>" +
       '<div class="btca-l1-tab-body btca-l1-baza-body">' +
-      (chartMeta.showChart
-        ? '<section class="btca-l1-chart-panel btca-l2-chart-panel" aria-label="Диаграмма">' + diagramHtml + "</section>"
-        : "") +
+      (chartMeta.showChart ? diagramPanel : "") +
       "</div></div>";
 
     if (!periodDisabled) {
@@ -2206,6 +2214,7 @@
     }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
     if (tableBtn && !chartMeta.arrowDisabled) tableBtn.addEventListener("click", function () { openBazaTable(); });
+    if (chartMeta.showChart) mountBazaDiagramInTab(content);
   }
 
   function openBazaTable() {

@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.197" />
+    <meta name="btca-cache-version" content="btca-web-8.1.198" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -662,10 +662,77 @@ body.btca-level2-mode .btca-l1-pick--consumed {
 
 .btca-l2-chart-panel {
   display: flex;
-  align-items: stretch;
-  justify-content: center;
-  padding: 8px;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px;
   overflow: hidden;
+}
+
+.btca-baza-diagram-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: #c5d9dc;
+}
+
+.btca-baza-diagram-plot {
+  display: flex;
+  flex: 1;
+  min-height: 80px;
+  overflow: hidden;
+  background: #c5d9dc;
+}
+
+.btca-baza-diagram-plot-area {
+  display: flex;
+  flex: 1;
+  min-height: 220px;
+  margin-top: 8px;
+  align-items: stretch;
+}
+
+.btca-baza-diagram-plot-area svg,
+.btca-baza-diagram {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.btca-baza-diagram-legend-host {
+  flex-shrink: 0;
+}
+
+.btca-baza-diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px 4px;
+}
+
+.btca-baza-diagram-legend__item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.btca-baza-diagram-legend__num {
+  color: #111827;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 400;
+}
+
+.btca-baza-diagram-legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .btca-l2-diagram-wrap {
@@ -1712,6 +1779,7 @@ body.btca-apple-comfort .btca-l1-chart-panel {
   margin-top: 0;
   border-radius: 16px;
   background: #c5d9dc;
+  padding: 10px 12px;
 }
 
 .btca-l1-period-col {
@@ -3417,8 +3485,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.197:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.197:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.198:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.198:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3458,8 +3526,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.95";
-  var LEVEL2_MODULE_VERSION = "8.1.95";
+  var LEVEL1_MODULE_VERSION = "8.1.96";
+  var LEVEL2_MODULE_VERSION = "8.1.96";
 
   var CORE_REL_PATHS = [
     "",
@@ -3472,6 +3540,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "offline/app-shell.json",
     "offline/media/manifest.json",
     "vendor/zip.min.js",
+    "btca-baza-diagram.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/data/forma_exercise_list.json",
@@ -3563,6 +3632,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
 
     if (!level1ModuleReady()) {
       steps.push(
+        { run: function () { return loadBazaDiagramScript(); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v1)); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v1)); } },
         { run: function () {
@@ -3573,6 +3643,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     }
     if (!level2ModuleReady()) {
       steps.push(
+        { run: function () { return loadBazaDiagramScript(); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v2)); } },
@@ -3683,7 +3754,15 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     return Boolean(state && state.preparedAt);
   }
 
+  function clearInjectedBazaDiagramScript() {
+    document.querySelectorAll("script[data-btca-baza-diagram-src]").forEach(function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+    delete window.BTCA_BAZA_DIAGRAM;
+  }
+
   function clearInjectedLevel1Scripts() {
+    clearInjectedBazaDiagramScript();
     document.querySelectorAll("script[data-btca-level1-src]").forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
     });
@@ -3692,6 +3771,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   }
 
   function clearInjectedLevel2Scripts() {
+    clearInjectedBazaDiagramScript();
     document.querySelectorAll("script[data-btca-level2-src]").forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
     });
@@ -4601,6 +4681,37 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
+  function loadBazaDiagramScript() {
+    return new Promise(function (resolve, reject) {
+      var src = assetPath("btca-baza-diagram.js?v=" + LEVEL1_MODULE_VERSION);
+      if (window.BTCA_BAZA_DIAGRAM && document.querySelector('script[data-btca-baza-diagram-src="' + src + '"]')) {
+        resolve();
+        return;
+      }
+      delete window.BTCA_BAZA_DIAGRAM;
+      fetch(src, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Не удалось загрузить " + src + ": " + response.status);
+          return response.text();
+        })
+        .then(function (code) {
+          if (!/\(function\s*\(\)/.test(code)) {
+            throw new Error("Неверный ответ для " + src);
+          }
+          removeInjectedScript("data-btca-baza-diagram-src", src);
+          var script = document.createElement("script");
+          script.setAttribute("data-btca-baza-diagram-src", src);
+          script.textContent = code;
+          document.head.appendChild(script);
+          if (!window.BTCA_BAZA_DIAGRAM) {
+            throw new Error("btca-baza-diagram.js выполнен, но BTCA_BAZA_DIAGRAM не найден");
+          }
+          resolve();
+        })
+        .catch(reject);
+    });
+  }
+
   function loadLevel1Script(src) {
     return new Promise(function (resolve, reject) {
       var isDb = src.indexOf("level1-db") >= 0;
@@ -4651,7 +4762,9 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       clearInjectedLevel1Scripts();
     }
     var v = LEVEL1_MODULE_VERSION;
-    return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v)).then(function () {
+    return loadBazaDiagramScript().then(function () {
+      return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v));
+    }).then(function () {
       return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v));
     }).then(function () {
       if (!level1ModuleReady()) {
@@ -4746,7 +4859,9 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       clearInjectedLevel2Scripts();
     }
     var v = LEVEL2_MODULE_VERSION;
-    return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v)).then(function () {
+    return loadBazaDiagramScript().then(function () {
+      return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v));
+    }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v));
     }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v));

@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.95";
+  var VERSION = "8.1.96";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1588,14 +1588,35 @@
     return { ok: true, value: trimmed };
   }
 
+  function mountBazaDiagramInTab(content) {
+    var DIAG = window.BTCA_BAZA_DIAGRAM;
+    if (!DIAG) return;
+    var baza = state.ui.baza;
+    var root = content.querySelector("[data-btca-baza-diagram-capture]");
+    if (!root || !state.bazaExpandedRows.length) return;
+    var panel = content.closest("[data-btca-level1-content]") || content;
+    var fallback = panel ? Math.max(280, panel.clientWidth - 24) : 320;
+    var mount = function () {
+      DIAG.mountBazaDiagram(
+        root,
+        state.bazaExpandedRows,
+        taskNumbersForExercise(baza.exercise),
+        baza.task,
+        fallback
+      );
+    };
+    requestAnimationFrame(function () {
+      requestAnimationFrame(mount);
+    });
+  }
+
   function bazaMenuCapabilities() {
     var baza = state.ui.baza;
     var exerciseDisabled = bazaFiltersDisabled() || state.bazaNoExercisesInPeriod;
     var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
-    var chartRows = chartMeta.showChart ? bazaChartDisplayRows(baza) : [];
     return {
       canDeleteOwn: !state.bazaStats.empty,
-      canScreenshot: chartMeta.showChart && chartRows.length > 0,
+      canScreenshot: chartMeta.showChart && state.bazaExpandedRows.length > 0,
     };
   }
 
@@ -1676,9 +1697,8 @@
   }
 
   function runBazaScreenshot(userId) {
-    var baza = state.ui.baza;
-    var chartRows = bazaChartDisplayRows(baza);
-    if (!chartRows.length) {
+    var svgWrap = state.root && state.root.querySelector("[data-btca-baza-diagram-capture] svg");
+    if (!svgWrap) {
       showBazaToast("Нет диаграммы для сохранения.", "#E53935");
       return;
     }
@@ -1689,42 +1709,40 @@
       return Promise.resolve();
     };
     saveId().then(function () {
-      var width = 640;
-      var height = 360;
+      var svgData = new XMLSerializer().serializeToString(svgWrap);
       var canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
       var ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#c5d9dc";
-      ctx.fillRect(0, 0, width, height);
-      var rowH = Math.max(28, Math.floor((height - 40) / chartRows.length));
-      chartRows.forEach(function (row, idx) {
-        var y = 20 + idx * rowH;
-        var pct = row.pct == null ? 0 : Math.max(0, Math.min(100, Number(row.pct)));
-        ctx.fillStyle = "#111827";
-        ctx.font = "14px sans-serif";
-        ctx.fillText("З" + row.task, 16, y + 18);
-        ctx.fillStyle = "rgba(255,255,255,0.55)";
-        ctx.fillRect(56, y + 4, width - 120, 18);
-        ctx.fillStyle = "#0ab10a";
-        ctx.fillRect(56, y + 4, Math.round((width - 120) * pct / 100), 18);
-        ctx.fillStyle = "#111827";
-        ctx.fillText(row.pct == null ? "—" : row.pct + "%", width - 52, y + 18);
-      });
-      canvas.toBlob(function (pngBlob) {
-        if (!pngBlob) {
-          showBazaToast("Не удалось сохранить скриншот.", "#E53935");
-          return;
-        }
-        var id = userId || state.bazaUserFileId || "screenshot";
-        var a = document.createElement("a");
-        a.href = URL.createObjectURL(pngBlob);
-        a.download = "BTCA_L1_" + id + "_" + baza.exercise + "_" + baza.periodFrom + ".png";
-        a.click();
-        state.bazaMenuOpen = false;
-        renderBazaMenuLayer();
-        showBazaToast("Успех!");
-      }, "image/png");
+      var img = new Image();
+      var blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      img.onload = function () {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = "#c5d9dc";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(function (pngBlob) {
+          URL.revokeObjectURL(url);
+          if (!pngBlob) {
+            showBazaToast("Не удалось сохранить скриншот.", "#E53935");
+            return;
+          }
+          var id = userId || state.bazaUserFileId || "screenshot";
+          var baza = state.ui.baza;
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(pngBlob);
+          a.download = "BTCA_L1_" + id + "_" + baza.exercise + "_" + baza.periodFrom + ".png";
+          a.click();
+          state.bazaMenuOpen = false;
+          renderBazaMenuLayer();
+          showBazaToast("Успех!");
+        }, "image/png");
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        showBazaToast("Не удалось сохранить скриншот.", "#E53935");
+      };
+      img.src = url;
     });
   }
 
@@ -1808,7 +1826,10 @@
     var taskLabel = taskFilterEmpty || baza.exercise === "all" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
     var taskDisabled = taskFilterEmpty || baza.exercise === "all";
     var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
-    var chartRows = chartMeta.showChart ? bazaChartDisplayRows(baza) : [];
+    var DIAG = window.BTCA_BAZA_DIAGRAM;
+    var diagramPanel = chartMeta.showChart
+      ? (DIAG ? DIAG.renderBazaDiagramPanelHtml(state.bazaExpandedRows.length) : "")
+      : "";
 
     content.innerHTML =
       '<div class="btca-l1-tab btca-l1-baza">' +
@@ -1840,18 +1861,7 @@
       }) +
       "</div></div></div>" +
       '<div class="btca-l1-tab-body btca-l1-baza-body">' +
-      (chartMeta.showChart
-        ? '<section class="btca-l1-chart-panel" aria-label="Диаграмма">' +
-          '<div class="btca-l1-chart-bars">' +
-          chartRows.map(function (row) {
-            var pct = row.pct == null ? 0 : Math.max(0, Math.min(100, Number(row.pct)));
-            return '<div class="btca-l1-chart-row"><span>З' + row.task + "</span>" +
-              '<div class="btca-l1-chart-bar"><div style="width:' + pct + '%"></div></div>' +
-              "<span>" + (row.pct == null ? "—" : row.pct + "%") + "</span></div>";
-          }).join("") +
-          (chartRows.length ? "" : '<p class="btca-l1-empty">Нет данных за выбранный период</p>') +
-          "</div></section>"
-        : "") +
+      (chartMeta.showChart ? diagramPanel : "") +
       "</div></div>";
 
     if (!periodDisabled) {
@@ -1894,6 +1904,7 @@
     }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
     if (tableBtn && !chartMeta.arrowDisabled) tableBtn.addEventListener("click", function () { openBazaTable(); });
+    if (chartMeta.showChart) mountBazaDiagramInTab(content);
   }
 
   function openBazaTable() {
