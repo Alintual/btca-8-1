@@ -10,6 +10,7 @@
   var BAZA_DIAGRAM_AXIS_FONT_SIZE = 17;
   var FORMA_TEXT = "#111827";
   var POINT_R = 3.5;
+  var SERIES_STROKE_WIDTH = 2.5;
   var DIAGRAM_RENDER_MAX_ATTEMPTS = 12;
 
   function bazaTaskColor(task) {
@@ -217,7 +218,7 @@
       if (s.points.length >= 2) {
         var d = "M" + s.points.map(function (p) { return p.x + " " + p.y; }).join(" L");
         parts.push(
-          '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2" ' +
+          '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="' + SERIES_STROKE_WIDTH + '" ' +
           'stroke-linejoin="round" stroke-linecap="round"/>'
         );
       }
