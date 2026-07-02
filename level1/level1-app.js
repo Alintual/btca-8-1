@@ -2206,19 +2206,30 @@
     }
   }
 
+  function polezDescriptionHeaderHtml() {
+    return (
+      '<header class="btca-screen-header">' +
+      '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
+      "<strong>Описание</strong>" +
+      '<span aria-hidden="true"></span></header>'
+    );
+  }
+
   function openPolezDescription(catalogKey) {
     var desc = state.data.polezDescriptions[catalogKey];
     if (!desc) return;
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--about";
     overlay.innerHTML =
-      '<header class="btca-l1-overlay__header">' +
-      '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
-      "<strong>Описание</strong><span></span></header>" +
+      polezDescriptionHeaderHtml() +
       '<section class="btca-about-content"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
       '<p>' + formatPolezBody(desc.body || "") + "</p></section>";
     state.root.appendChild(overlay);
-    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", function () { overlay.remove(); });
+    function closeOverlay() {
+      overlay.remove();
+    }
+    overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
+    bindHorizontalSwipe(overlay, { onSwipeLeft: closeOverlay });
   }
 
   function openPolezImageLandscape(catalogKey) {
