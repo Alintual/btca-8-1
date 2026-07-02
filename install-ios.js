@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.194:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.194:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.196:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.196:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -43,8 +43,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.94";
-  var LEVEL2_MODULE_VERSION = "8.1.94";
+  var LEVEL1_MODULE_VERSION = "8.1.95";
+  var LEVEL2_MODULE_VERSION = "8.1.95";
 
   var CORE_REL_PATHS = [
     "",
@@ -527,6 +527,17 @@
     return Promise.all(tasks).catch(function () {});
   }
 
+  function purgeAllInstallCaches() {
+    if (!("caches" in window)) return Promise.resolve();
+    return caches.keys().then(function (names) {
+      return Promise.all(names.filter(function (name) {
+        return name.indexOf("btca-web-") === 0 && name.endsWith(":static-install");
+      }).map(function (name) {
+        return caches.delete(name);
+      }));
+    }).catch(function () {});
+  }
+
   function purgeShellServiceWorkerCaches() {
     if (!("caches" in window)) return Promise.resolve();
     var generation = getCacheGeneration();
@@ -543,13 +554,13 @@
   function reloadShellForRemoteVersion(remote) {
     var attemptKey = shellRefreshAttemptKey(remote);
     try {
-      if (sessionStorage.getItem(attemptKey) === "2") return Promise.resolve();
+      if (sessionStorage.getItem(attemptKey) === "5") return Promise.resolve(true);
       var attempts = parseInt(sessionStorage.getItem(attemptKey) || "0", 10) + 1;
       sessionStorage.setItem(attemptKey, String(attempts));
     } catch (_) {}
 
     discardStaleRuntimeModules();
-    return purgeShellInstallCache()
+    return purgeAllInstallCaches()
       .then(function () {
         return purgeShellServiceWorkerCaches();
       })
@@ -563,6 +574,7 @@
         var url = new URL(window.location.href);
         url.searchParams.set("btca-shell", remote);
         window.location.replace(url.toString());
+        return true;
       });
   }
 
@@ -673,26 +685,39 @@
   }
 
   function probeRemoteShellVersion() {
-    if (!shouldRunShellUpdateCheck()) return Promise.resolve();
+    if (!shouldRunShellUpdateCheck()) return Promise.resolve(false);
     var currentMeta = readMetaCacheVersion();
-    if (!currentMeta) return Promise.resolve();
+    if (!currentMeta) return Promise.resolve(false);
     return fetch(assetPath("offline/app-shell.json"), { cache: "no-store" })
       .then(function (response) {
         if (!response || !response.ok) return null;
         return response.json();
       })
       .then(function (payload) {
-        if (!payload) return;
+        if (!payload) return false;
         var remote = String(payload.cacheVersion || "").trim();
-        if (!remote || remote === currentMeta) {
+        var remoteL1 = String(payload.level1ModuleVersion || "").trim();
+        var remoteL2 = String(payload.level2ModuleVersion || "").trim();
+        var shellStale = remote && remote !== currentMeta;
+        var remoteModuleStale =
+          (remoteL1 && remoteL1 !== LEVEL1_MODULE_VERSION) ||
+          (remoteL2 && remoteL2 !== LEVEL2_MODULE_VERSION);
+        var runtimeModuleStale =
+          (level1ModuleReady() && !level1ModuleFresh()) ||
+          (level2ModuleReady() && !level2ModuleFresh());
+        if (!shellStale && !remoteModuleStale) {
+          if (runtimeModuleStale) discardStaleRuntimeModules();
           try {
-            sessionStorage.removeItem(shellRefreshAttemptKey(remote));
+            if (remote) sessionStorage.removeItem(shellRefreshAttemptKey(remote));
           } catch (_) {}
-          return;
+          return false;
         }
-        return reloadShellForRemoteVersion(remote);
+        var target = remote || currentMeta;
+        return reloadShellForRemoteVersion(target);
       })
-      .catch(function () {});
+      .catch(function () {
+        return false;
+      });
   }
 
   function activateRegisteredServiceWorker() {
@@ -1916,7 +1941,6 @@
       })
       .then(function (mediaReady) {
         ensureFreshShellAfterDeploy();
-        probeRemoteShellVersion();
         if (!isStandalone()) {
           cleanupOrphanHomePhraseMarkup();
           syncPortraitModeImmediate();
@@ -1936,8 +1960,17 @@
           els.button.addEventListener("click", prepareOffline);
         }
         if (isStandalone()) {
+          document.addEventListener("visibilitychange", function () {
+            if (document.visibilityState !== "visible") return;
+            probeRemoteShellVersion();
+          });
+        }
+        if (isStandalone()) {
           return wipeTrainingDatabasesOnReinstall().then(function () {
-            bootstrapStandaloneShell(mediaReady);
+            return probeRemoteShellVersion().then(function (reloading) {
+              if (reloading) return;
+              bootstrapStandaloneShell(mediaReady);
+            });
           });
         }
         if (isOfflinePreparationActive() && !isAppPreparedSync()) {
