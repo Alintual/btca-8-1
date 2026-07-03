@@ -14,11 +14,16 @@
   function openHost(layer) {
     var host = layer && layer.querySelector(".btca-level1-slide-menu-host");
     if (!host) return;
+    var panel = host.querySelector(".btca-level1-slide-menu-panel");
     host.classList.remove("btca-level1-slide-menu-host--open");
+    if (panel) {
+      panel.style.transform = "translate3d(100%, 0, 0)";
+    }
     void host.offsetWidth;
-    requestAnimationFrame(function () {
+    global.setTimeout(function () {
+      if (panel) panel.style.transform = "";
       host.classList.add("btca-level1-slide-menu-host--open");
-    });
+    }, 20);
   }
 
   function closeLayer(layer, done) {

@@ -2,14 +2,15 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.206:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.206:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.207:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.207:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
   var INSTALL_SESSION_KEY = "btca-web:install-session";
   var OFFLINE_PREP_SESSION_KEY = "btca-web:offline-prep-active";
   var META_RELOAD_SESSION_KEY = "btca-web:meta-reload";
+  var APPLIED_SHELL_KEY = "btca-web:applied-shell";
   var offlinePreparationActive = false;
   var IOS_TYPO_BASE_PX = 17;
   var IOS_TYPO_PHONE_BODY_PX = 17;
@@ -43,8 +44,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.103";
-  var LEVEL2_MODULE_VERSION = "8.1.103";
+  var LEVEL1_MODULE_VERSION = "8.1.104";
+  var LEVEL2_MODULE_VERSION = "8.1.104";
 
   var CORE_REL_PATHS = [
     "",
@@ -140,7 +141,7 @@
       return Promise.resolve();
     }
     discardStaleRuntimeModules();
-    if (level1ModuleFresh() && level2ModuleFresh()) {
+    if (level1ModuleFresh() && level2ModuleFresh() && slideMenuReady()) {
       hideHomeSplashIndicator();
       return Promise.resolve();
     }
@@ -148,6 +149,10 @@
     var v1 = LEVEL1_MODULE_VERSION;
     var v2 = LEVEL2_MODULE_VERSION;
     var steps = [];
+
+    if (!slideMenuReady()) {
+      steps.push({ run: function () { return loadSlideMenuScript(); } });
+    }
 
     if (!level1ModuleReady()) {
       steps.push(
@@ -242,6 +247,24 @@
     return meta ? String(meta.getAttribute("content") || "").trim() : "";
   }
 
+  function readAppliedShellVersion() {
+    try {
+      return String(localStorage.getItem(APPLIED_SHELL_KEY) || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function writeAppliedShellVersion(version) {
+    try {
+      if (version) localStorage.setItem(APPLIED_SHELL_KEY, String(version));
+    } catch (_) {}
+  }
+
+  function slideMenuReady() {
+    return Boolean(window.BTCA_SLIDE_MENU && window.BTCA_SLIDE_MENU.hostHtml);
+  }
+
   function isOfflinePreparationActive() {
     if (offlinePreparationActive) return true;
     try {
@@ -291,9 +314,17 @@
     delete window.BTCA_BAZA_DIAGRAM;
   }
 
+  function clearInjectedSlideMenuScript() {
+    document.querySelectorAll("script[data-btca-slide-menu-src]").forEach(function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+    delete window.BTCA_SLIDE_MENU;
+  }
+
   function clearInjectedLevel1Scripts() {
     clearInjectedDataGuardScript();
     clearInjectedBazaDiagramScript();
+    clearInjectedSlideMenuScript();
     document.querySelectorAll("script[data-btca-level1-src]").forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
     });
@@ -304,6 +335,7 @@
   function clearInjectedLevel2Scripts() {
     clearInjectedDataGuardScript();
     clearInjectedBazaDiagramScript();
+    clearInjectedSlideMenuScript();
     document.querySelectorAll("script[data-btca-level2-src]").forEach(function (node) {
       if (node.parentNode) node.parentNode.removeChild(node);
     });
@@ -318,6 +350,9 @@
     }
     if (level2ModuleReady() && !level2ModuleFresh()) {
       clearInjectedLevel2Scripts();
+    }
+    if (!slideMenuReady()) {
+      clearInjectedSlideMenuScript();
     }
   }
 
@@ -611,8 +646,13 @@
       var shellParam = new URLSearchParams(window.location.search).get("btca-shell");
       if (shellParam && shellParam === metaGen) {
         sessionStorage.removeItem(shellRefreshAttemptKey(shellParam));
+        writeAppliedShellVersion(shellParam);
       }
     } catch (_) {}
+
+    if (metaGen && !readAppliedShellVersion()) {
+      writeAppliedShellVersion(metaGen);
+    }
 
     try {
       migratePreparedClientMarkers();
@@ -718,40 +758,52 @@
     });
   }
 
-  function probeRemoteShellVersion() {
-    if (!shouldRunShellUpdateCheck()) return Promise.resolve(false);
-    var currentMeta = readMetaCacheVersion();
-    if (!currentMeta) return Promise.resolve(false);
-    return fetch(assetPath("offline/app-shell.json"), { cache: "no-store" })
+  function fetchRemoteAppShellPayload() {
+    return fetch(assetPath("offline/app-shell.json?t=" + Date.now()), { cache: "no-store" })
       .then(function (response) {
         if (!response || !response.ok) return null;
         return response.json();
       })
-      .then(function (payload) {
-        if (!payload) return false;
-        var remote = String(payload.cacheVersion || "").trim();
-        var remoteL1 = String(payload.level1ModuleVersion || "").trim();
-        var remoteL2 = String(payload.level2ModuleVersion || "").trim();
-        var shellStale = remote && remote !== currentMeta;
-        var remoteModuleStale =
-          (remoteL1 && remoteL1 !== LEVEL1_MODULE_VERSION) ||
-          (remoteL2 && remoteL2 !== LEVEL2_MODULE_VERSION);
-        var runtimeModuleStale =
-          (level1ModuleReady() && !level1ModuleFresh()) ||
-          (level2ModuleReady() && !level2ModuleFresh());
-        if (!shellStale && !remoteModuleStale) {
-          if (runtimeModuleStale) discardStaleRuntimeModules();
-          try {
-            if (remote) sessionStorage.removeItem(shellRefreshAttemptKey(remote));
-          } catch (_) {}
-          return false;
-        }
-        var target = remote || currentMeta;
-        return reloadShellForRemoteVersion(target);
-      })
       .catch(function () {
-        return false;
+        return null;
       });
+  }
+
+  function probeRemoteShellVersion() {
+    if (!shouldRunShellUpdateCheck()) return Promise.resolve(false);
+    var currentMeta = readMetaCacheVersion();
+    if (!currentMeta) return Promise.resolve(false);
+    return fetchRemoteAppShellPayload().then(function (payload) {
+      if (!payload) return false;
+      var remote = String(payload.cacheVersion || "").trim();
+      var remoteL1 = String(payload.level1ModuleVersion || "").trim();
+      var remoteL2 = String(payload.level2ModuleVersion || "").trim();
+      var applied = readAppliedShellVersion();
+      var shellStale = remote && (remote !== currentMeta || (applied && remote !== applied));
+      var remoteModuleStale =
+        (remoteL1 && remoteL1 !== LEVEL1_MODULE_VERSION) ||
+        (remoteL2 && remoteL2 !== LEVEL2_MODULE_VERSION);
+      var runtimeModuleStale =
+        (level1ModuleReady() && !level1ModuleFresh()) ||
+        (level2ModuleReady() && !level2ModuleFresh());
+      if (!shellStale && !remoteModuleStale) {
+        if (runtimeModuleStale) discardStaleRuntimeModules();
+        if (!slideMenuReady()) {
+          return loadSlideMenuScript().then(function () {
+            return false;
+          });
+        }
+        try {
+          if (remote) sessionStorage.removeItem(shellRefreshAttemptKey(remote));
+        } catch (_) {}
+        if (remote) writeAppliedShellVersion(remote);
+        return false;
+      }
+      var target = remote || currentMeta;
+      return reloadShellForRemoteVersion(target);
+    }).catch(function () {
+      return false;
+    });
   }
 
   function activateRegisteredServiceWorker() {
@@ -1331,7 +1383,10 @@
   }
 
   function ensureLevel1Module() {
-    if (level1ModuleFresh()) return Promise.resolve();
+    if (level1ModuleFresh() && slideMenuReady()) return Promise.resolve();
+    if (level1ModuleFresh() && !slideMenuReady()) {
+      return loadSlideMenuScript();
+    }
     if (level1ModuleReady() && !level1ModuleFresh()) {
       clearInjectedLevel1Scripts();
     }
@@ -1432,7 +1487,10 @@
   }
 
   function ensureLevel2Module() {
-    if (level2ModuleFresh()) return Promise.resolve();
+    if (level2ModuleFresh() && slideMenuReady()) return Promise.resolve();
+    if (level2ModuleFresh() && !slideMenuReady()) {
+      return loadSlideMenuScript();
+    }
     if (level2ModuleReady() && !level2ModuleFresh()) {
       clearInjectedLevel2Scripts();
     }
