@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.108";
+  var VERSION = "8.1.109";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1829,15 +1829,20 @@
   }
 
   function showBazaToast(message, color) {
-    state.bazaToast = { message: message, color: color || "#15A60E" };
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    state.bazaToast = {
+      message: message,
+      color: color || (DLG ? DLG.TOAST_SUCCESS : "#111111"),
+    };
     renderBazaToast();
     window.setTimeout(function () {
       state.bazaToast = null;
       renderBazaToast();
-    }, 2800);
+    }, DLG ? DLG.TOAST_MS : 3000);
   }
 
   function renderBazaToast() {
+    var DLG = window.BTCA_BAZA_DIALOGS;
     var host = state.root && state.root.querySelector("[data-btca-level2-baza-toast]");
     if (!host) return;
     if (!state.bazaToast) {
@@ -1846,8 +1851,25 @@
       return;
     }
     host.removeAttribute("hidden");
-    host.innerHTML = '<div class="btca-l2-baza-toast" style="background:' + escapeHtml(state.bazaToast.color) + '">' +
-      escapeHtml(state.bazaToast.message) + "</div>";
+    host.innerHTML = DLG
+      ? DLG.buildToastHtml(state.bazaToast.message, state.bazaToast.color)
+      : '<div class="btca-baza-toast-layer"><div class="btca-baza-toast-card">' +
+        escapeHtml(state.bazaToast.message) + "</div></div>";
+  }
+
+  function wireBazaIdentifierInput(layer) {
+    var input = layer.querySelector(".btca-baza-dialog-input");
+    if (!input) return;
+    input.addEventListener("input", function () {
+      state.bazaIdentifierDraft = input.value;
+      state.bazaIdentifierError = "";
+      var confirmBtn = layer.querySelector("[data-btca-baza-id-confirm]");
+      var ok = String(input.value || "").trim().length > 0;
+      if (confirmBtn) {
+        confirmBtn.disabled = !ok;
+        confirmBtn.classList.toggle("btca-baza-dialog-icon-btn--disabled", !ok);
+      }
+    });
   }
 
   function validateBazaIdentifierInput(raw) {
@@ -1947,44 +1969,51 @@
   }
 
   function renderBazaIdentifierDialog() {
+    var DLG = window.BTCA_BAZA_DIALOGS;
     var layer = state.root && state.root.querySelector("[data-btca-level2-baza-id-layer]");
-    if (!layer) return;
+    if (!layer || !DLG) return;
     if (!state.bazaIdentifierMode) {
       layer.setAttribute("hidden", "hidden");
       layer.innerHTML = "";
       return;
     }
-    var title = state.bazaIdentifierMode === "export" ? "Экспорт базы" :
-      state.bazaIdentifierMode === "import" ? "Импорт базы" : "Скриншот диаграммы";
+    var mode = state.bazaIdentifierMode;
+    var hasId = !!state.bazaUserFileId;
+    var isImport = mode === "import";
+    var showInput = !hasId && !isImport;
+    var canConfirm = isImport || hasId || String(state.bazaIdentifierDraft || "").trim().length > 0;
     layer.removeAttribute("hidden");
-    layer.innerHTML =
-      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-id-close aria-label="Закрыть"></button>' +
-      '<div class="btca-l2-baza-id-dialog" role="dialog">' +
-      "<h3>" + escapeHtml(title) + "</h3>" +
-      (state.bazaIdentifierMode === "import"
-        ? '<p class="btca-l2-baza-id-hint">Выберите файл резервной копии BTCA (JSON).</p>'
-        : '<label class="btca-l2-baza-id-label">Идентификатор<input class="btca-l2-baza-id-input" type="text" value="' +
-        escapeHtml(state.bazaIdentifierDraft) + '" placeholder="Идентификатор анг..." maxlength="32"></label>') +
-      (state.bazaIdentifierError
-        ? '<p class="btca-l2-baza-id-error">' + escapeHtml(state.bazaIdentifierError) + "</p>" : "") +
-      '<div class="btca-l2-baza-id-actions">' +
-      '<button type="button" class="btca-l2-baza-id-btn" data-btca-baza-id-cancel>Отмена</button>' +
-      '<button type="button" class="btca-l2-baza-id-btn btca-l2-baza-id-btn--primary" data-btca-baza-id-confirm>' +
-      (state.bazaIdentifierMode === "import" ? "Выбрать файл" : "Продолжить") + "</button></div></div>";
+    layer.innerHTML = DLG.buildLayerWithPanel(
+      'data-btca-baza-id-close',
+      DLG.buildPanel({
+        bodyText: DLG.identifierBodyText(mode, hasId),
+        showInput: showInput,
+        inputValue: state.bazaIdentifierDraft,
+        inputError: state.bazaIdentifierError,
+        confirmIcon: "gal",
+        canConfirm: canConfirm,
+        closeAttr: 'data-btca-baza-id-close',
+        confirmAttr: 'data-btca-baza-id-confirm',
+      })
+    );
+    wireBazaIdentifierInput(layer);
     layer.onclick = function (event) {
-      if (event.target.closest("[data-btca-baza-id-close]") || event.target.closest("[data-btca-baza-id-cancel]")) {
+      if (event.target.closest("[data-btca-baza-id-close]")) {
         state.bazaIdentifierMode = null;
+        state.bazaIdentifierError = "";
         renderBazaIdentifierDialog();
         return;
       }
       if (!event.target.closest("[data-btca-baza-id-confirm]")) return;
-      if (state.bazaIdentifierMode === "import") {
+      var confirmBtn = layer.querySelector("[data-btca-baza-id-confirm]");
+      if (confirmBtn && confirmBtn.disabled) return;
+      if (mode === "import") {
         state.bazaIdentifierMode = null;
         renderBazaIdentifierDialog();
         runBazaImportPick();
         return;
       }
-      var input = layer.querySelector(".btca-l2-baza-id-input");
+      var input = layer.querySelector(".btca-baza-dialog-input");
       var id = state.bazaUserFileId;
       if (!id && input) {
         var validation = validateBazaIdentifierInput(input.value);
@@ -1995,18 +2024,19 @@
         }
         id = validation.value;
       }
-      var mode = state.bazaIdentifierMode;
+      var nextMode = state.bazaIdentifierMode;
       state.bazaIdentifierMode = null;
+      state.bazaIdentifierError = "";
       renderBazaIdentifierDialog();
-      if (mode === "export") runBazaExport(id);
-      else if (mode === "screenshot") runBazaScreenshot(id);
+      if (nextMode === "export") runBazaExport(id);
+      else if (nextMode === "screenshot") runBazaScreenshot(id);
     };
   }
 
   function runBazaExport(userId) {
     DB.exportBazaBackup(userId).then(function (result) {
       if (!result.ok) {
-        showBazaToast("Не удалось экспортировать.", "#E53935");
+        showBazaToast("Сбой экспорта. Повторите позже.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
         return;
       }
       if (userId && !state.bazaUserFileId) {
@@ -2029,7 +2059,7 @@
       renderBazaMenuLayer();
       showBazaToast("Успех!");
     }).catch(function () {
-      showBazaToast("Не удалось экспортировать.", "#E53935");
+      showBazaToast("Сбой экспорта. Повторите позже.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
     });
   }
 
@@ -2049,7 +2079,7 @@
           var payload = JSON.parse(String(reader.result || ""));
           DB.importBazaBackupObject(payload).then(function (res) {
             if (!res.ok) {
-              showBazaToast("Неверный формат файла.", "#E53935");
+              showBazaToast("Ошибка импорта", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
               return;
             }
             state.bazaMenuOpen = false;
@@ -2060,10 +2090,10 @@
             renderTitleBar();
             showBazaToast("Успех!");
           }).catch(function () {
-            showBazaToast("Не удалось импортировать.", "#E53935");
+            showBazaToast("Ошибка импорта", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
           });
         } catch (_) {
-          showBazaToast("Неверный формат файла.", "#E53935");
+          showBazaToast("Ошибка импорта", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
         }
       };
       reader.readAsText(file, "utf-8");
@@ -2074,7 +2104,7 @@
   function runBazaScreenshot(userId) {
     var svgWrap = state.root && state.root.querySelector("[data-btca-baza-diagram-capture] svg");
     if (!svgWrap) {
-      showBazaToast("Нет диаграммы для сохранения.", "#E53935");
+      showBazaToast("Не удалось сохранить скриншот.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
       return;
     }
     var saveId = function () {
@@ -2101,7 +2131,7 @@
         canvas.toBlob(function (pngBlob) {
           URL.revokeObjectURL(url);
           if (!pngBlob) {
-            showBazaToast("Не удалось сохранить скриншот.", "#E53935");
+            showBazaToast("Не удалось сохранить скриншот.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
             return;
           }
           var id = userId || state.bazaUserFileId || "screenshot";
@@ -2117,7 +2147,7 @@
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
-        showBazaToast("Не удалось сохранить скриншот.", "#E53935");
+        showBazaToast("Не удалось сохранить скриншот.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
       };
       img.src = url;
     });
@@ -2129,8 +2159,9 @@
   }
 
   function renderBazaDeleteConfirm() {
+    var DLG = window.BTCA_BAZA_DIALOGS;
     var layer = state.root && state.root.querySelector("[data-btca-level2-baza-delete-layer]");
-    if (!layer) return;
+    if (!layer || !DLG) return;
     if (!state.bazaDeleteConfirm) {
       layer.setAttribute("hidden", "hidden");
       layer.innerHTML = "";
@@ -2138,16 +2169,18 @@
     }
     var own = state.bazaDeleteConfirm === "own";
     layer.removeAttribute("hidden");
-    layer.innerHTML =
-      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-del-close aria-label="Закрыть"></button>' +
-      '<div class="btca-l2-baza-id-dialog" role="dialog">' +
-      "<h3>Удалить данные?</h3>" +
-      "<p>" + (own ? "Будут удалены текущие записи по выбранным фильтрам." : "Будет удалена импортированная база целиком.") + "</p>" +
-      '<div class="btca-l2-baza-id-actions">' +
-      '<button type="button" class="btca-l2-baza-id-btn" data-btca-baza-del-cancel>Отмена</button>' +
-      '<button type="button" class="btca-l2-baza-id-btn btca-l2-baza-id-btn--danger" data-btca-baza-del-confirm>Удалить</button></div></div>';
+    layer.innerHTML = DLG.buildLayerWithPanel(
+      'data-btca-baza-del-close',
+      DLG.buildPanel({
+        bodyText: own ? DLG.DELETE_OWN_MSG : DLG.DELETE_FOREIGN_MSG,
+        confirmIcon: "del",
+        canConfirm: true,
+        closeAttr: 'data-btca-baza-del-close',
+        confirmAttr: 'data-btca-baza-del-confirm',
+      })
+    );
     layer.onclick = function (event) {
-      if (event.target.closest("[data-btca-baza-del-close]") || event.target.closest("[data-btca-baza-del-cancel]")) {
+      if (event.target.closest("[data-btca-baza-del-close]")) {
         state.bazaDeleteConfirm = null;
         renderBazaDeleteConfirm();
         return;
@@ -2184,7 +2217,7 @@
       renderTitleBar();
       showBazaToast("Успех!");
     }).catch(function () {
-      showBazaToast("Не удалось удалить данные.", "#E53935");
+      showBazaToast("Не удалось удалить данные.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
     });
   }
 
