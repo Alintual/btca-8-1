@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.214:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.214:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.215:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.215:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -1272,6 +1272,14 @@
     if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
+  /** Проверка, что fetch вернул JS-модуль, а не HTML-страницу (404 и т.п.). */
+  function isInjectableModuleSource(code) {
+    var text = String(code || "").trim();
+    if (!text) return false;
+    if (/^<!DOCTYPE/i.test(text) || /^<html/i.test(text)) return false;
+    return /\(function\s*\(/.test(text);
+  }
+
   function loadDataGuardScript() {
     return new Promise(function (resolve, reject) {
       var src = assetPath("btca-data-guard.js?v=" + LEVEL1_MODULE_VERSION);
@@ -1286,7 +1294,7 @@
           return response.text();
         })
         .then(function (code) {
-          if (!/\(function\s*\(\)/.test(code)) {
+          if (!isInjectableModuleSource(code)) {
             throw new Error("Неверный ответ для " + src);
           }
           removeInjectedScript("data-btca-data-guard-src", src);
@@ -1317,7 +1325,7 @@
           return response.text();
         })
         .then(function (code) {
-          if (!/\(function\s*\(\)/.test(code)) {
+          if (!isInjectableModuleSource(code)) {
             throw new Error("Неверный ответ для " + src);
           }
           removeInjectedScript("data-btca-baza-diagram-src", src);
@@ -1348,7 +1356,7 @@
           return response.text();
         })
         .then(function (code) {
-          if (!/\(function\s*\(\)/.test(code)) {
+          if (!isInjectableModuleSource(code)) {
             throw new Error("Неверный ответ для " + src);
           }
           removeInjectedScript("data-btca-baza-dialogs-src", src);
@@ -1380,7 +1388,7 @@
           return response.text();
         })
         .then(function (code) {
-          if (!/\(function\s*\(/.test(code)) {
+          if (!isInjectableModuleSource(code)) {
             throw new Error("Неверный ответ для " + src);
           }
           removeInjectedScript("data-btca-slide-menu-src", src);
@@ -1421,7 +1429,7 @@
           return response.text();
         })
         .then(function (code) {
-          if (!/\(function\s*\(\)/.test(code)) {
+          if (!isInjectableModuleSource(code)) {
             throw new Error("Неверный ответ для " + src);
           }
           removeInjectedScript("data-btca-level1-src", src);
@@ -1524,7 +1532,7 @@
           return response.text();
         })
         .then(function (code) {
-          if (!/\(function\s*\(\)/.test(code)) {
+          if (!isInjectableModuleSource(code)) {
             throw new Error("Неверный ответ для " + src);
           }
           removeInjectedScript("data-btca-level2-src", src);
