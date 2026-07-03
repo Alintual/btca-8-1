@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.109";
+  var VERSION = "8.1.110";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -91,6 +91,7 @@
     bazaIdentifierError: "",
     bazaUserFileId: "",
     bazaToast: null,
+    bazaToastTimer: null,
     pickTimer: null,
     mounted: false,
   };
@@ -1830,15 +1831,30 @@
 
   function showBazaToast(message, color) {
     var DLG = window.BTCA_BAZA_DIALOGS;
+    if (state.bazaToastTimer) {
+      window.clearTimeout(state.bazaToastTimer);
+      state.bazaToastTimer = null;
+    }
     state.bazaToast = {
       message: message,
       color: color || (DLG ? DLG.TOAST_SUCCESS : "#111111"),
     };
     renderBazaToast();
-    window.setTimeout(function () {
+    state.bazaToastTimer = window.setTimeout(function () {
       state.bazaToast = null;
+      state.bazaToastTimer = null;
       renderBazaToast();
     }, DLG ? DLG.TOAST_MS : 3000);
+  }
+
+  function showBazaSuccessToast() {
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    showBazaToast(DLG ? DLG.TOAST_MSG_SUCCESS : "Успех!", DLG && DLG.TOAST_SUCCESS);
+  }
+
+  function showBazaErrorToast(message) {
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    showBazaToast(message || (DLG && DLG.TOAST_MSG_IMPORT_ERROR) || "Ошибка импорта", DLG && DLG.TOAST_ERROR);
   }
 
   function renderBazaToast() {
@@ -1853,8 +1869,16 @@
     host.removeAttribute("hidden");
     host.innerHTML = DLG
       ? DLG.buildToastHtml(state.bazaToast.message, state.bazaToast.color)
-      : '<div class="btca-baza-toast-layer"><div class="btca-baza-toast-card">' +
+      : '<div class="btca-baza-toast-layer btca-baza-toast-layer--show" role="status"><div class="btca-baza-toast-card btca-baza-toast-card--success">' +
         escapeHtml(state.bazaToast.message) + "</div></div>";
+    var layer = host.querySelector(".btca-baza-toast-layer");
+    if (layer) {
+      layer.classList.remove("btca-baza-toast-layer--show");
+      void layer.offsetWidth;
+      requestAnimationFrame(function () {
+        layer.classList.add("btca-baza-toast-layer--show");
+      });
+    }
   }
 
   function wireBazaIdentifierInput(layer) {
@@ -2036,7 +2060,7 @@
   function runBazaExport(userId) {
     DB.exportBazaBackup(userId).then(function (result) {
       if (!result.ok) {
-        showBazaToast("Сбой экспорта. Повторите позже.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+        showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_EXPORT_ERROR);
         return;
       }
       if (userId && !state.bazaUserFileId) {
@@ -2057,9 +2081,9 @@
       URL.revokeObjectURL(url);
       state.bazaMenuOpen = false;
       renderBazaMenuLayer();
-      showBazaToast("Успех!");
+      showBazaSuccessToast();
     }).catch(function () {
-      showBazaToast("Сбой экспорта. Повторите позже.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+      showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_EXPORT_ERROR);
     });
   }
 
@@ -2079,7 +2103,7 @@
           var payload = JSON.parse(String(reader.result || ""));
           DB.importBazaBackupObject(payload).then(function (res) {
             if (!res.ok) {
-              showBazaToast("Ошибка импорта", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+              showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
               return;
             }
             state.bazaMenuOpen = false;
@@ -2088,12 +2112,12 @@
           }).then(function () {
             renderActiveTab();
             renderTitleBar();
-            showBazaToast("Успех!");
+            showBazaSuccessToast();
           }).catch(function () {
-            showBazaToast("Ошибка импорта", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+            showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
           });
         } catch (_) {
-          showBazaToast("Ошибка импорта", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+          showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
         }
       };
       reader.readAsText(file, "utf-8");
@@ -2104,7 +2128,7 @@
   function runBazaScreenshot(userId) {
     var svgWrap = state.root && state.root.querySelector("[data-btca-baza-diagram-capture] svg");
     if (!svgWrap) {
-      showBazaToast("Не удалось сохранить скриншот.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+      showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
       return;
     }
     var saveId = function () {
@@ -2131,7 +2155,7 @@
         canvas.toBlob(function (pngBlob) {
           URL.revokeObjectURL(url);
           if (!pngBlob) {
-            showBazaToast("Не удалось сохранить скриншот.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+            showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
             return;
           }
           var id = userId || state.bazaUserFileId || "screenshot";
@@ -2142,12 +2166,12 @@
           a.click();
           state.bazaMenuOpen = false;
           renderBazaMenuLayer();
-          showBazaToast("Успех!");
+          showBazaSuccessToast();
         }, "image/png");
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
-        showBazaToast("Не удалось сохранить скриншот.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+        showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
       };
       img.src = url;
     });
@@ -2215,9 +2239,9 @@
     }).then(function () {
       renderActiveTab();
       renderTitleBar();
-      showBazaToast("Успех!");
+      showBazaSuccessToast();
     }).catch(function () {
-      showBazaToast("Не удалось удалить данные.", window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_ERROR);
+      /* как на Android: при сбое удаления тост не показываем */
     });
   }
 

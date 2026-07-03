@@ -3,6 +3,11 @@
   var TOAST_ERROR = "#7C021C";
   var TOAST_MS = 3000;
 
+  var TOAST_MSG_SUCCESS = "Успех!";
+  var TOAST_MSG_EXPORT_ERROR = "Сбой экспорта. Повторите позже.";
+  var TOAST_MSG_IMPORT_ERROR = "Ошибка импорта";
+  var TOAST_MSG_SCREENSHOT_ERROR = "Не удалось сохранить скриншот.";
+
   var TEXT_SCREENSHOT_FIRST =
     "Придумайте свой персональный идентификатор для файлов и далее Подтвердите запись скриншота в Галерею";
   var TEXT_SCREENSHOT_CONFIRM = "Подтвердите запись скриншота в Галерею";
@@ -95,10 +100,12 @@
   }
 
   function buildToastHtml(message, color) {
+    var isError = color === TOAST_ERROR;
+    var kind = isError ? "error" : "success";
     return (
-      '<div class="btca-baza-toast-layer">' +
-      '<div class="btca-baza-toast-card" style="color:' +
-      escapeHtml(color) +
+      '<div class="btca-baza-toast-layer" role="status" aria-live="polite">' +
+      '<div class="btca-baza-toast-card btca-baza-toast-card--' +
+      kind +
       '">' +
       escapeHtml(message) +
       "</div></div>"
@@ -109,6 +116,10 @@
     TOAST_SUCCESS: TOAST_SUCCESS,
     TOAST_ERROR: TOAST_ERROR,
     TOAST_MS: TOAST_MS,
+    TOAST_MSG_SUCCESS: TOAST_MSG_SUCCESS,
+    TOAST_MSG_EXPORT_ERROR: TOAST_MSG_EXPORT_ERROR,
+    TOAST_MSG_IMPORT_ERROR: TOAST_MSG_IMPORT_ERROR,
+    TOAST_MSG_SCREENSHOT_ERROR: TOAST_MSG_SCREENSHOT_ERROR,
     DELETE_OWN_MSG: DELETE_OWN_MSG,
     DELETE_FOREIGN_MSG: DELETE_FOREIGN_MSG,
     identifierBodyText: identifierBodyText,
