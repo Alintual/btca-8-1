@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.101";
+  var VERSION = "8.1.103";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1019,6 +1019,23 @@
     return { top: top, left: left, width: panelW, height: panelH };
   }
 
+  /** Меню «База» — якорь под кнопкой «⋯» (top задаёт BTCA_SLIDE_MENU.positionHostBelow). */
+  function positionBazaSheetMenuBelowTrigger(layer) {
+    var SL = window.BTCA_SLIDE_MENU;
+    if (!SL || !state.root) return;
+    SL.positionHostBelow(state.root, "[data-btca-baza-menu]", layer);
+  }
+
+  function closeSlideMenuLayer(layer, done) {
+    var SL = window.BTCA_SLIDE_MENU;
+    if (SL) SL.closeLayer(layer, done);
+    else {
+      layer.setAttribute("hidden", "hidden");
+      layer.innerHTML = "";
+      if (done) done();
+    }
+  }
+
   function computeCenteredDateSheetLayout() {
     var gutterL = safeGutter();
     var gutterR = safeGutter();
@@ -1624,20 +1641,26 @@
     var layer = state.root && state.root.querySelector("[data-btca-level1-baza-menu-layer]");
     if (!layer) return;
     if (!state.bazaMenuOpen) {
-      layer.setAttribute("hidden", "hidden");
-      layer.innerHTML = "";
+      closeSlideMenuLayer(layer);
       return;
     }
     var caps = bazaMenuCapabilities();
-    layer.removeAttribute("hidden");
-    layer.innerHTML =
-      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-menu-close aria-label="Закрыть меню"></button>' +
-      '<nav class="btca-l1-baza-sheet-menu" aria-label="Меню базы">' +
+    var SL = window.BTCA_SLIDE_MENU;
+    var items =
       '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canDeleteOwn ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="deleteOwn"><span class="btca-l2-baza-menu__icon" aria-hidden="true">🔴</span><span>Удалить данные</span></button>' +
       '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canScreenshot ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
-      '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>' +
-      "</nav>";
+      '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>';
+    layer.removeAttribute("hidden");
+    layer.innerHTML =
+      '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-menu-close aria-label="Закрыть меню"></button>' +
+      (SL
+        ? SL.hostHtml("", "btca-l1-baza-sheet-menu", ' role="navigation" aria-label="Меню базы"', items)
+        : '<nav class="btca-l1-baza-sheet-menu" aria-label="Меню базы">' + items + "</nav>");
+    requestAnimationFrame(function () {
+      positionBazaSheetMenuBelowTrigger(layer);
+      if (SL) SL.openLayer(layer);
+    });
     layer.onclick = function (event) {
       if (event.target.closest("[data-btca-baza-menu-close]")) {
         state.bazaMenuOpen = false;
@@ -2316,16 +2339,23 @@
   function renderSheetMenu(open) {
     var layer = state.root.querySelector("[data-btca-level1-menu-layer]");
     if (!layer) return;
-    if (!open) { layer.setAttribute("hidden", "hidden"); return; }
+    if (!open) {
+      closeSlideMenuLayer(layer);
+      return;
+    }
+    var SL = window.BTCA_SLIDE_MENU;
+    var items = SHEETS.map(function (sheet) {
+      var active = sheet.key === state.ui.tab;
+      return '<button class="btca-level1-sheet-menu__item' + (active ? " btca-level1-sheet-menu__item--active" : "") +
+        '" type="button" data-btca-level1-sheet="' + sheet.key + '">' + escapeHtml(sheet.label) + "</button>";
+    }).join("");
     layer.removeAttribute("hidden");
     layer.innerHTML =
       '<button class="btca-level1-menu-backdrop" type="button" data-btca-level1-menu-close aria-label="Закрыть меню"></button>' +
-      '<nav class="btca-level1-sheet-menu" aria-label="Меню листов">' +
-      SHEETS.map(function (sheet) {
-        var active = sheet.key === state.ui.tab;
-        return '<button class="btca-level1-sheet-menu__item' + (active ? " btca-level1-sheet-menu__item--active" : "") +
-          '" type="button" data-btca-level1-sheet="' + sheet.key + '">' + escapeHtml(sheet.label) + "</button>";
-      }).join("") + "</nav>";
+      (SL
+        ? SL.hostHtml("btca-level1-slide-menu-host--sheet-nav", "btca-level1-sheet-menu", ' role="navigation" aria-label="Меню листов"', items)
+        : '<nav class="btca-level1-sheet-menu" aria-label="Меню листов">' + items + "</nav>");
+    if (SL) requestAnimationFrame(function () { SL.openLayer(layer); });
   }
 
   function setSheet(key) {
@@ -2419,7 +2449,20 @@
       renderActiveTab();
       var menuBtn = rootEl.querySelector("[data-btca-level1-menu]");
       var menuLayer = rootEl.querySelector("[data-btca-level1-menu-layer]");
-      if (menuBtn) menuBtn.addEventListener("click", function () { renderSheetMenu(true); });
+      if (menuBtn) {
+        menuBtn.addEventListener("click", function () {
+          if (state.bazaMenuOpen) {
+            state.bazaMenuOpen = false;
+            var bazaLayer = rootEl.querySelector("[data-btca-level1-baza-menu-layer]");
+            if (bazaLayer) {
+              closeSlideMenuLayer(bazaLayer, function () { renderSheetMenu(true); });
+              return;
+            }
+            renderBazaMenuLayer();
+          }
+          renderSheetMenu(true);
+        });
+      }
       if (menuLayer) {
         menuLayer.addEventListener("click", function (event) {
           if (event.target.closest("[data-btca-level1-menu-close]")) { renderSheetMenu(false); return; }
@@ -2429,6 +2472,14 @@
       }
       rootEl.addEventListener("click", function (event) {
         if (event.target.closest("[data-btca-baza-menu]")) {
+          var sheetLayer = rootEl.querySelector("[data-btca-level1-menu-layer]");
+          if (sheetLayer && !sheetLayer.hasAttribute("hidden")) {
+            closeSlideMenuLayer(sheetLayer, function () {
+              state.bazaMenuOpen = true;
+              renderBazaMenuLayer();
+            });
+            return;
+          }
           state.bazaMenuOpen = true;
           renderBazaMenuLayer();
         }

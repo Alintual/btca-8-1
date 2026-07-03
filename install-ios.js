@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.204:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.204:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.206:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.206:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -43,8 +43,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.101";
-  var LEVEL2_MODULE_VERSION = "8.1.101";
+  var LEVEL1_MODULE_VERSION = "8.1.103";
+  var LEVEL2_MODULE_VERSION = "8.1.103";
 
   var CORE_REL_PATHS = [
     "",
@@ -59,6 +59,7 @@
     "vendor/zip.min.js",
     "btca-data-guard.js?v=" + LEVEL1_MODULE_VERSION,
     "btca-baza-diagram.js?v=" + LEVEL1_MODULE_VERSION,
+    "btca-slide-menu.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/data/forma_exercise_list.json",
@@ -152,6 +153,7 @@
       steps.push(
         { run: function () { return loadDataGuardScript(); } },
         { run: function () { return loadBazaDiagramScript(); } },
+        { run: function () { return loadSlideMenuScript(); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v1)); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v1)); } },
         { run: function () {
@@ -164,6 +166,7 @@
       steps.push(
         { run: function () { return loadDataGuardScript(); } },
         { run: function () { return loadBazaDiagramScript(); } },
+        { run: function () { return loadSlideMenuScript(); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v2)); } },
@@ -1252,6 +1255,37 @@
     });
   }
 
+  function loadSlideMenuScript() {
+    return new Promise(function (resolve, reject) {
+      var src = assetPath("btca-slide-menu.js?v=" + LEVEL1_MODULE_VERSION);
+      if (window.BTCA_SLIDE_MENU && document.querySelector('script[data-btca-slide-menu-src="' + src + '"]')) {
+        resolve();
+        return;
+      }
+      delete window.BTCA_SLIDE_MENU;
+      fetch(src, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Не удалось загрузить " + src + ": " + response.status);
+          return response.text();
+        })
+        .then(function (code) {
+          if (!/\(function\s*\(/.test(code)) {
+            throw new Error("Неверный ответ для " + src);
+          }
+          removeInjectedScript("data-btca-slide-menu-src", src);
+          var script = document.createElement("script");
+          script.setAttribute("data-btca-slide-menu-src", src);
+          script.textContent = code;
+          document.head.appendChild(script);
+          if (!window.BTCA_SLIDE_MENU) {
+            throw new Error("btca-slide-menu.js выполнен, но BTCA_SLIDE_MENU не найден");
+          }
+          resolve();
+        })
+        .catch(reject);
+    });
+  }
+
   function loadLevel1Script(src) {
     return new Promise(function (resolve, reject) {
       var isDb = src.indexOf("level1-db") >= 0;
@@ -1304,6 +1338,8 @@
     var v = LEVEL1_MODULE_VERSION;
     return loadDataGuardScript().then(function () {
       return loadBazaDiagramScript();
+    }).then(function () {
+      return loadSlideMenuScript();
     }).then(function () {
       return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v));
     }).then(function () {
@@ -1403,6 +1439,8 @@
     var v = LEVEL2_MODULE_VERSION;
     return loadDataGuardScript().then(function () {
       return loadBazaDiagramScript();
+    }).then(function () {
+      return loadSlideMenuScript();
     }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v));
     }).then(function () {

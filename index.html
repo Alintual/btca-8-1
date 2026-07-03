@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.204" />
+    <meta name="btca-cache-version" content="btca-web-8.1.206" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -757,12 +757,9 @@ body.btca-level2-mode .btca-l1-pick--consumed {
 
 .btca-l2-baza-menu,
 .btca-l1-baza-sheet-menu {
-  position: absolute;
-  top: calc(max(4px, env(safe-area-inset-top)) + 54px);
-  right: max(4px, env(safe-area-inset-right));
   display: grid;
   gap: 6px;
-  width: min(288px, calc(100vw - 8px));
+  width: 100%;
   padding: 10px 4px;
   border: 2px solid #ffffff;
   border-radius: 12px;
@@ -3176,15 +3173,43 @@ body.btca-level2-mode .btca-date-picker-day--selected {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.btca-level1-menu-layer:not([hidden]) > .btca-level1-menu-backdrop {
+  opacity: 1;
+}
+
+/** Якорь выпадающего меню (справа); панель выезжает из-за края экрана. */
+.btca-level1-slide-menu-host {
+  position: absolute;
+  right: max(4px, env(safe-area-inset-right));
+  z-index: 1;
+  width: min(288px, calc(100vw - 8px));
+  overflow: visible;
+  pointer-events: none;
+}
+
+.btca-level1-slide-menu-host--sheet-nav {
+  top: calc(max(4px, env(safe-area-inset-top)) + 54px);
+}
+
+.btca-level1-slide-menu-panel {
+  pointer-events: auto;
+  transform: translate3d(100%, 0, 0);
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.btca-level1-slide-menu-host--open .btca-level1-slide-menu-panel {
+  transform: translate3d(0, 0, 0);
 }
 
 .btca-level1-sheet-menu {
-  position: absolute;
-  top: calc(max(4px, env(safe-area-inset-top)) + 54px);
-  right: max(4px, env(safe-area-inset-right));
   display: grid;
   gap: 6px;
-  width: min(288px, calc(100vw - 8px));
+  width: 100%;
   padding: 8px 4px;
   border: 2px solid #ffffff;
   border-radius: 12px;
@@ -3494,8 +3519,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.204:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.204:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.206:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.206:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3535,8 +3560,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.101";
-  var LEVEL2_MODULE_VERSION = "8.1.101";
+  var LEVEL1_MODULE_VERSION = "8.1.103";
+  var LEVEL2_MODULE_VERSION = "8.1.103";
 
   var CORE_REL_PATHS = [
     "",
@@ -3551,6 +3576,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "vendor/zip.min.js",
     "btca-data-guard.js?v=" + LEVEL1_MODULE_VERSION,
     "btca-baza-diagram.js?v=" + LEVEL1_MODULE_VERSION,
+    "btca-slide-menu.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-db.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/level1-app.js?v=" + LEVEL1_MODULE_VERSION,
     "level1/data/forma_exercise_list.json",
@@ -3644,6 +3670,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       steps.push(
         { run: function () { return loadDataGuardScript(); } },
         { run: function () { return loadBazaDiagramScript(); } },
+        { run: function () { return loadSlideMenuScript(); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v1)); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v1)); } },
         { run: function () {
@@ -3656,6 +3683,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       steps.push(
         { run: function () { return loadDataGuardScript(); } },
         { run: function () { return loadBazaDiagramScript(); } },
+        { run: function () { return loadSlideMenuScript(); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v2)); } },
@@ -4744,6 +4772,37 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     });
   }
 
+  function loadSlideMenuScript() {
+    return new Promise(function (resolve, reject) {
+      var src = assetPath("btca-slide-menu.js?v=" + LEVEL1_MODULE_VERSION);
+      if (window.BTCA_SLIDE_MENU && document.querySelector('script[data-btca-slide-menu-src="' + src + '"]')) {
+        resolve();
+        return;
+      }
+      delete window.BTCA_SLIDE_MENU;
+      fetch(src, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("Не удалось загрузить " + src + ": " + response.status);
+          return response.text();
+        })
+        .then(function (code) {
+          if (!/\(function\s*\(/.test(code)) {
+            throw new Error("Неверный ответ для " + src);
+          }
+          removeInjectedScript("data-btca-slide-menu-src", src);
+          var script = document.createElement("script");
+          script.setAttribute("data-btca-slide-menu-src", src);
+          script.textContent = code;
+          document.head.appendChild(script);
+          if (!window.BTCA_SLIDE_MENU) {
+            throw new Error("btca-slide-menu.js выполнен, но BTCA_SLIDE_MENU не найден");
+          }
+          resolve();
+        })
+        .catch(reject);
+    });
+  }
+
   function loadLevel1Script(src) {
     return new Promise(function (resolve, reject) {
       var isDb = src.indexOf("level1-db") >= 0;
@@ -4796,6 +4855,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     var v = LEVEL1_MODULE_VERSION;
     return loadDataGuardScript().then(function () {
       return loadBazaDiagramScript();
+    }).then(function () {
+      return loadSlideMenuScript();
     }).then(function () {
       return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v));
     }).then(function () {
@@ -4895,6 +4956,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     var v = LEVEL2_MODULE_VERSION;
     return loadDataGuardScript().then(function () {
       return loadBazaDiagramScript();
+    }).then(function () {
+      return loadSlideMenuScript();
     }).then(function () {
       return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v));
     }).then(function () {
