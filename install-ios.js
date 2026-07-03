@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.211:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.211:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.212:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.212:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -45,7 +45,7 @@
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
   var LEVEL1_MODULE_VERSION = "8.1.105";
-  var LEVEL2_MODULE_VERSION = "8.1.107";
+  var LEVEL2_MODULE_VERSION = "8.1.108";
 
   var CORE_REL_PATHS = [
     "",

@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.107";
+  var VERSION = "8.1.108";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1131,13 +1131,18 @@
     );
   }
 
-  function buildBazaSlideMenuHost(menuItemsHtml, subPanelHtml) {
-    var subOpen = state.bazaDeleteSubmenuOpen;
+  function buildBazaSlideMenuHost(menuItemsHtml) {
     return (
       '<div class="btca-level1-slide-menu-host btca-level1-slide-menu-host--baza">' +
       '<div class="btca-level1-slide-menu-panel btca-l1-baza-sheet-menu" role="navigation" aria-label="Меню базы">' +
       menuItemsHtml +
-      "</div>" +
+      "</div></div>"
+    );
+  }
+
+  function buildBazaDeleteSubmenuAnchor(subPanelHtml) {
+    var subOpen = state.bazaDeleteSubmenuOpen;
+    return (
       '<div class="btca-l2-baza-menu__sub-anchor' +
       (subOpen ? " is-open" : "") +
       '" data-btca-baza-delete-sub' +
@@ -1145,7 +1150,7 @@
       ">" +
       '<div class="btca-l2-baza-menu__sub-panel" role="group" aria-label="Удалить данные">' +
       subPanelHtml +
-      "</div></div></div>"
+      "</div></div>"
     );
   }
 
@@ -1154,17 +1159,22 @@
     var toggle = layer && layer.querySelector("[data-btca-baza-delete-toggle]");
     var anchor = layer && layer.querySelector("[data-btca-baza-delete-sub]");
     var panel = layer && layer.querySelector(".btca-l2-baza-menu__sub-panel");
-    if (!host || !toggle || !anchor || !panel) return;
-    var hostRect = host.getBoundingClientRect();
+    if (!layer || !toggle || !anchor || !panel) return;
+    var layerRect = layer.getBoundingClientRect();
     var toggleRect = toggle.getBoundingClientRect();
-    panel.style.width = bazaDeleteSubmenuPanelWidth(Math.round(hostRect.width)) + "px";
-    anchor.style.top = Math.round(toggleRect.bottom - hostRect.top + 4) + "px";
+    var hostRect = host ? host.getBoundingClientRect() : toggleRect;
+    var menuW = Math.round(hostRect.width);
+    panel.style.width = bazaDeleteSubmenuPanelWidth(menuW) + "px";
+    anchor.style.top = Math.round(toggleRect.bottom - layerRect.top + 4) + "px";
+    anchor.style.left = Math.round(hostRect.left - layerRect.left) + "px";
+    anchor.style.width = menuW + "px";
   }
 
   function updateBazaDeleteSubmenu(layer) {
     var anchor = layer && layer.querySelector("[data-btca-baza-delete-sub]");
     var toggle = layer && layer.querySelector("[data-btca-baza-delete-toggle]");
-    if (!anchor || !toggle) return;
+    if (!anchor || !toggle || !layer) return;
+    layer.classList.toggle("btca-level1-menu-layer--delete-sub-open", !!state.bazaDeleteSubmenuOpen);
     if (state.bazaDeleteSubmenuOpen) {
       anchor.removeAttribute("hidden");
       toggle.setAttribute("aria-expanded", "true");
@@ -1178,6 +1188,7 @@
       toggle.setAttribute("aria-expanded", "false");
       toggle.classList.remove("btca-l2-baza-menu__delete-toggle--open");
       anchor.setAttribute("hidden", "hidden");
+      layer.classList.remove("btca-level1-menu-layer--delete-sub-open");
     }
   }
 
@@ -1883,20 +1894,19 @@
       '" data-btca-baza-action="export"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--export" aria-hidden="true">↑</span><span>Экспорт</span></button>' +
       '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canImport ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="import"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--import" aria-hidden="true">↓</span><span>Импорт</span></button>' +
-      '<div class="btca-l2-baza-menu__delete-branch">' +
       '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__delete-toggle' +
       (state.bazaDeleteSubmenuOpen ? " btca-l2-baza-menu__delete-toggle--open" : "") +
       (canOpenDeleteSub ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-delete-toggle aria-expanded="' + (state.bazaDeleteSubmenuOpen ? "true" : "false") +
       '" aria-haspopup="true"><span class="btca-l2-baza-menu__icon" aria-hidden="true">🔴</span><span>Удалить данные</span><span class="btca-l2-baza-menu__chevron" aria-hidden="true"></span></button>' +
-      "</div>" +
       '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canScreenshot ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>';
     layer.removeAttribute("hidden");
+    layer.classList.toggle("btca-level1-menu-layer--delete-sub-open", !!state.bazaDeleteSubmenuOpen);
     layer.innerHTML =
       '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-menu-close aria-label="Закрыть меню"></button>' +
       (SL
-        ? buildBazaSlideMenuHost(items, subPanelHtml)
+        ? buildBazaSlideMenuHost(items) + buildBazaDeleteSubmenuAnchor(subPanelHtml)
         : '<nav class="btca-l1-baza-sheet-menu" aria-label="Меню базы">' + items + "</nav>");
     requestAnimationFrame(function () {
       positionBazaSheetMenuBelowTrigger(layer);
