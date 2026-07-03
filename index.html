@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.210" />
+    <meta name="btca-cache-version" content="btca-web-8.1.211" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -809,32 +809,64 @@ body.btca-level2-mode .btca-l1-pick--consumed {
 
 .btca-l2-baza-menu__chevron {
   margin-left: auto;
+  flex-shrink: 0;
   width: 0;
   height: 0;
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
   border-left: 8px solid #ffffff;
+  transition: transform 200ms ease;
+}
+
+.btca-l2-baza-menu__delete-toggle--open .btca-l2-baza-menu__chevron {
+  transform: rotate(90deg);
+}
+
+.btca-l2-baza-menu__delete-toggle--open:not(.btca-l1-baza-sheet-menu__item--disabled) {
+  border-color: rgba(164, 196, 201, 0.88);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .btca-l2-baza-menu__delete-branch {
+  width: 100%;
+}
+
+.btca-l2-baza-menu__sub-anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
-
-.btca-l2-baza-menu__delete-branch > [data-btca-baza-delete-toggle] {
-  align-self: stretch;
-  width: 100%;
+  justify-content: center;
+  padding-left: 10px;
   box-sizing: border-box;
+  pointer-events: none;
 }
 
-.btca-l2-baza-menu__sub {
+.btca-l2-baza-menu__sub-anchor[hidden] {
+  display: none;
+}
+
+.btca-l2-baza-menu__sub-panel {
   display: grid;
   gap: 6px;
-  margin-top: 4px;
-  padding: 0;
+  padding: 8px 10px;
+  border: 2px solid #ffffff;
+  border-radius: 12px;
+  background: #263444;
+  box-shadow: 0 2px 8px rgba(26, 79, 92, 0.35);
   box-sizing: border-box;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(-12px);
+  transition:
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 320ms ease;
+}
+
+.btca-l2-baza-menu__sub-anchor.is-open .btca-l2-baza-menu__sub-panel {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .btca-l2-baza-menu__sub-item {
@@ -842,8 +874,24 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   box-sizing: border-box;
 }
 
-.btca-l2-baza-menu__sub[hidden] {
-  display: none;
+.btca-level1-slide-menu-host--baza {
+  overflow: visible;
+}
+
+.btca-level1-slide-menu-host--baza .btca-level1-slide-menu-panel {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btca-l2-baza-menu__sub-panel {
+    transition: none;
+  }
+
+  .btca-l2-baza-menu__sub-anchor.is-open .btca-l2-baza-menu__sub-panel {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .btca-l2-baza-menu__dot {
@@ -3543,8 +3591,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.210:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.210:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.211:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.211:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3586,7 +3634,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
   var LEVEL1_MODULE_VERSION = "8.1.105";
-  var LEVEL2_MODULE_VERSION = "8.1.106";
+  var LEVEL2_MODULE_VERSION = "8.1.107";
 
   var CORE_REL_PATHS = [
     "",
