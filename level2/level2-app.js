@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.105";
+  var VERSION = "8.1.106";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1113,6 +1113,15 @@
     SL.positionHostBelow(state.root, "[data-btca-baza-menu]", layer);
   }
 
+  /** Подменю удаления — та же ширина, что у кнопки «Удалить данные». */
+  function syncBazaDeleteSubmenuWidth(layer) {
+    var toggle = layer && layer.querySelector("[data-btca-baza-delete-toggle]");
+    var sub = layer && layer.querySelector("[data-btca-baza-delete-sub]");
+    if (!toggle || !sub) return;
+    var w = Math.round(toggle.getBoundingClientRect().width);
+    if (w > 0) sub.style.width = w + "px";
+  }
+
   function closeSlideMenuLayer(layer, done) {
     var SL = window.BTCA_SLIDE_MENU;
     if (SL) SL.closeLayer(layer, done);
@@ -1828,6 +1837,7 @@
         : '<nav class="btca-l1-baza-sheet-menu" aria-label="Меню базы">' + items + "</nav>");
     requestAnimationFrame(function () {
       positionBazaSheetMenuBelowTrigger(layer);
+      syncBazaDeleteSubmenuWidth(layer);
       if (SL) SL.openLayer(layer);
     });
     layer.onclick = function (event) {
@@ -1838,7 +1848,10 @@
       }
       if (event.target.closest("[data-btca-baza-delete-toggle]")) {
         var sub = layer.querySelector("[data-btca-baza-delete-sub]");
-        if (sub) sub.toggleAttribute("hidden");
+        if (sub) {
+          sub.toggleAttribute("hidden");
+          syncBazaDeleteSubmenuWidth(layer);
+        }
         return;
       }
       var btn = event.target.closest("[data-btca-baza-action]");
