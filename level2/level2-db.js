@@ -428,8 +428,10 @@
     return countResults().then(function (ownRows) {
       return countForeignResults().then(function (foreignRows) {
         var filledRows = ownRows + foreignRows;
+        var dbSlots = (ownRows > 0 ? 1 : 0) + (foreignRows > 0 ? 1 : 0);
+        var maxRows = Math.max(dbSlots, 1) * DB_MAX_ROWS;
         return {
-          maxRows: DB_MAX_ROWS,
+          maxRows: maxRows,
           totalRows: filledRows,
           filledRows: filledRows,
           empty: filledRows <= 0,
