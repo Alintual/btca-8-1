@@ -2,6 +2,7 @@
   var OUT_WIDTH_PX = 800;
   var ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
   var HEAD_BG = "#1f4f5c";
+  var CHART_PANEL_BG = "#c5d9dc";
   var ARROW_GREEN_FILTER =
     "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2000%) hue-rotate(86deg) brightness(84%) contrast(96%)";
   var ARROW_PURPLE_FILTER =
@@ -290,7 +291,7 @@
           reject(new Error("missing_capture"));
           return;
         }
-        ctx.fillStyle = fallbackBg || "#c5d9dc";
+        ctx.fillStyle = fallbackBg || CHART_PANEL_BG;
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0);
         resolve(canvas);
@@ -302,7 +303,7 @@
     });
   }
 
-  function stitchCanvasesToWidth(canvases, targetW, gapPx) {
+  function stitchCanvasesToWidth(canvases, targetW, gapPx, bgColor) {
     var gap = gapPx || 0;
     var scaled = canvases.map(function (c) {
       var scale = targetW / Math.max(1, c.width);
@@ -321,6 +322,8 @@
     out.height = Math.max(1, totalH);
     var ctx = out.getContext("2d");
     if (!ctx) throw new Error("missing_capture");
+    ctx.fillStyle = bgColor || HEAD_BG;
+    ctx.fillRect(0, 0, out.width, out.height);
     var y = 0;
     scaled.forEach(function (s, idx) {
       if (idx) y += gap;
@@ -455,12 +458,25 @@
     return drawArrowOnHeadCanvas(drawHeadFallbackCanvas(head, targetW), head);
   }
 
+  /** Всегда canvas-отрисовка: тёмно-зелёный фон и up.png (CSS filter в foreignObject ненадёжен). */
   function captureHeadPanel(head) {
-    function viaFallback() {
-      return drawHeadFallbackCanvasAsync(head, OUT_WIDTH_PX);
-    }
-    if (isAppleMobile()) return viaFallback();
-    return domToCanvas(head, HEAD_BG).catch(viaFallback);
+    return drawHeadFallbackCanvasAsync(head, OUT_WIDTH_PX);
+  }
+
+  function wrapChartPanelCanvas(contentCanvas, targetW) {
+    var padX = 12;
+    var padY = 10;
+    var innerW = Math.max(1, targetW - padX * 2);
+    var scaledH = Math.max(1, Math.round(contentCanvas.height * (innerW / Math.max(1, contentCanvas.width))));
+    var totalH = padY * 2 + scaledH;
+    var out = document.createElement("canvas");
+    out.width = targetW;
+    out.height = totalH;
+    var ctx = out.getContext("2d");
+    if (!ctx) throw new Error("missing_capture");
+    drawRoundedRect(ctx, 0, 0, targetW, totalH, 16, CHART_PANEL_BG, null);
+    ctx.drawImage(contentCanvas, padX, padY, innerW, scaledH);
+    return out;
   }
 
   function canvasToPngBlob(canvas) {
@@ -498,12 +514,12 @@
   }
 
   function captureChartPanel(panel) {
-    return domToCanvas(panel, "#c5d9dc").catch(function () {
+    return domToCanvas(panel, CHART_PANEL_BG).catch(function () {
       var svg = panel.querySelector(".btca-baza-diagram-plot-area svg");
       var legend = panel.querySelector("[data-btca-baza-diagram-legend]");
       var parts = [];
-      if (svg) parts.push(svgToCanvas(svg, "#c5d9dc"));
-      if (legend && legend.innerHTML) parts.push(domToCanvas(legend, "#c5d9dc"));
+      if (svg) parts.push(svgToCanvas(svg, CHART_PANEL_BG));
+      if (legend && legend.innerHTML) parts.push(domToCanvas(legend, CHART_PANEL_BG));
       if (!parts.length) return Promise.reject(new Error("missing_capture"));
       return Promise.all(parts).then(function (canvases) {
         var w = Math.max.apply(
@@ -512,7 +528,9 @@
             return c.width;
           })
         );
-        return stitchCanvasesToWidth(canvases, w, 4);
+        return stitchCanvasesToWidth(canvases, w, 4, CHART_PANEL_BG);
+      }).then(function (canvas) {
+        return wrapChartPanelCanvas(canvas, OUT_WIDTH_PX);
       });
     });
   }
@@ -533,7 +551,7 @@
         return Promise.all([captureHeadPanel(head), captureChartPanel(chartPanel)]);
       })
       .then(function (canvases) {
-        return stitchCanvasesToWidth(canvases, OUT_WIDTH_PX, 0);
+        return stitchCanvasesToWidth(canvases, OUT_WIDTH_PX, 0, HEAD_BG);
       })
       .then(canvasToPngBlob);
   }
