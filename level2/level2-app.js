@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.125";
+  var VERSION = "8.1.126";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -368,7 +368,7 @@
     if (foreignAvailable) {
       out.push({
         value: GROUP_FOREIGN,
-        label: importId ? "--- ИМПОРТ ---\n" + importId : "--- ИМПОРТ ---",
+        label: importId ? "--- ИМПОРТ-" + importId + " ---" : "--- ИМПОРТ ---",
         groupHeader: true,
         source: "foreign",
       });
