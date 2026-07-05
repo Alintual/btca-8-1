@@ -300,8 +300,67 @@
       });
   }
 
+  /** Сохранить PNG без открытия превью файла в браузере (как на Android: запись → «Успех!»). */
+  function saveBazaScreenshotBlob(fileName, pngBlob) {
+    if (!pngBlob) return Promise.reject(new Error("missing_capture"));
+    var name = String(fileName || "screenshot.png").replace(/[\\/:*?"<>|]+/g, "_");
+    if (!/\.png$/i.test(name)) name += ".png";
+
+    if (typeof global.showSaveFilePicker === "function") {
+      return global
+        .showSaveFilePicker({
+          suggestedName: name,
+          types: [{ description: "PNG", accept: { "image/png": [".png"] } }],
+        })
+        .then(function (handle) {
+          return handle.createWritable().then(function (writable) {
+            return writable.write(pngBlob).then(function () {
+              return writable.close();
+            });
+          });
+        })
+        .catch(function (err) {
+          if (err && err.name === "AbortError") throw new Error("cancelled");
+          throw err;
+        });
+    }
+
+    return new Promise(function (resolve, reject) {
+      var downloadBlob = new Blob([pngBlob], { type: "application/octet-stream" });
+      var url = URL.createObjectURL(downloadBlob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.rel = "noopener";
+      a.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
+      document.body.appendChild(a);
+      try {
+        a.click();
+      } catch (err) {
+        try {
+          document.body.removeChild(a);
+        } catch (_) {
+          /* ignore */
+        }
+        URL.revokeObjectURL(url);
+        reject(err);
+        return;
+      }
+      window.setTimeout(function () {
+        try {
+          document.body.removeChild(a);
+        } catch (_) {
+          /* ignore */
+        }
+        URL.revokeObjectURL(url);
+        resolve();
+      }, 400);
+    });
+  }
+
   global.BTCA_BAZA_SCREENSHOT = {
     buildBazaScreenshotFileName: buildBazaScreenshotFileName,
     captureBazaScreenshotPng: captureBazaScreenshotPng,
+    saveBazaScreenshotBlob: saveBazaScreenshotBlob,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

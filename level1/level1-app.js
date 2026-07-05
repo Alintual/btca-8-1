@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.108";
+  var VERSION = "8.1.109";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1808,15 +1808,13 @@
         baza.periodTo,
         1
       );
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(pngBlob);
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(a.href);
       state.bazaMenuOpen = false;
       renderBazaMenuLayer();
+      return SHOT.saveBazaScreenshotBlob(fileName, pngBlob);
+    }).then(function () {
       showBazaSuccessToast();
-    }).catch(function () {
+    }).catch(function (err) {
+      if (err && String(err.message || err) === "cancelled") return;
       showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
     });
   }
