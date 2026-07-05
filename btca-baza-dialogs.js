@@ -19,6 +19,14 @@
   var DELETE_OWN_MSG = "Удалить текущие данные по выбранным фильтрам?";
   var DELETE_FOREIGN_MSG = "Удалить все импортированные данные?";
 
+  var IDENTIFIER_MAX_LEN = 32;
+  var IDENTIFIER_PLACEHOLDER = "Идентификатор анг...";
+  var IDENTIFIER_ERROR_EMPTY = "Введите идентификатор.";
+  var IDENTIFIER_ERROR_MAX_LEN = "Не более " + IDENTIFIER_MAX_LEN + " символов.";
+  var IDENTIFIER_ERROR_ALLOWED =
+    "Разрешены только латинские буквы A–Z, цифры 0–9, дефис (-) и подчёркивание (_).";
+  var IDENTIFIER_ALLOWED_RE = /^[A-Za-z0-9_-]+$/;
+
   function assetUrl(file) {
     var base = global.__BTCA_BASE__ || "/btca-8-1/";
     if (!/\/$/.test(base)) base += "/";
@@ -31,6 +39,14 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function validateBazaIdentifierInput(raw) {
+    var trimmed = String(raw ?? "").trim();
+    if (!trimmed) return { ok: false, error: IDENTIFIER_ERROR_EMPTY };
+    if (trimmed.length > IDENTIFIER_MAX_LEN) return { ok: false, error: IDENTIFIER_ERROR_MAX_LEN };
+    if (!IDENTIFIER_ALLOWED_RE.test(trimmed)) return { ok: false, error: IDENTIFIER_ERROR_ALLOWED };
+    return { ok: true, value: trimmed };
   }
 
   function identifierBodyText(mode, hasIdentifier) {
@@ -51,7 +67,11 @@
     var inputBlock = "";
     if (opts.showInput) {
       inputBlock =
-        '<input class="btca-baza-dialog-input" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="32" placeholder="Идентификатор анг..." value="' +
+        '<input class="btca-baza-dialog-input" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="' +
+        IDENTIFIER_MAX_LEN +
+        '" placeholder="' +
+        escapeHtml(IDENTIFIER_PLACEHOLDER) +
+        '" value="' +
         escapeHtml(opts.inputValue || "") +
         '">';
       if (opts.inputError) {
@@ -95,8 +115,68 @@
       '<button class="btca-level1-menu-backdrop" type="button" ' +
       backdropCloseAttr +
       ' aria-label="Закрыть"></button>' +
-      panelHtml
+      '<div class="btca-baza-dialog-layer">' +
+      panelHtml +
+      "</div>"
     );
+  }
+
+  function syncBazaDialogKeyboardOffset(layer) {
+    if (!(layer instanceof Element)) return;
+    var shell = layer.querySelector(".btca-baza-dialog-layer");
+    var input = layer.querySelector(".btca-baza-dialog-input");
+    if (!shell) return;
+    var vv = global.visualViewport;
+    if (!input || global.document.activeElement !== input || !vv) {
+      shell.classList.remove("btca-baza-dialog-layer--keyboard");
+      shell.style.removeProperty("padding-bottom");
+      return;
+    }
+    var overlap = Math.max(0, global.innerHeight - vv.height - vv.offsetTop);
+    if (overlap > 40) {
+      shell.classList.add("btca-baza-dialog-layer--keyboard");
+      shell.style.paddingBottom = Math.ceil(overlap + 12) + "px";
+    } else {
+      shell.classList.remove("btca-baza-dialog-layer--keyboard");
+      shell.style.removeProperty("padding-bottom");
+    }
+  }
+
+  function attachBazaDialogKeyboardAvoidance(layer) {
+    if (!(layer instanceof Element)) return;
+    var input = layer.querySelector(".btca-baza-dialog-input");
+    if (!input) return;
+    var onSync = function () {
+      syncBazaDialogKeyboardOffset(layer);
+    };
+    input.addEventListener("focus", function () {
+      onSync();
+      requestAnimationFrame(onSync);
+    });
+    input.addEventListener("blur", function () {
+      window.setTimeout(onSync, 120);
+    });
+    if (global.visualViewport) {
+      global.visualViewport.addEventListener("resize", onSync);
+      global.visualViewport.addEventListener("scroll", onSync);
+    }
+  }
+
+  function wireBazaIdentifierInput(layer, onDraftChange) {
+    if (!(layer instanceof Element)) return;
+    var input = layer.querySelector(".btca-baza-dialog-input");
+    if (!input) return;
+    attachBazaDialogKeyboardAvoidance(layer);
+    input.addEventListener("input", function () {
+      if (typeof onDraftChange === "function") onDraftChange(input.value, layer);
+    });
+    requestAnimationFrame(function () {
+      try {
+        input.focus({ preventScroll: true });
+      } catch (_) {
+        input.focus();
+      }
+    });
   }
 
   function buildToastHtml(message, color) {
@@ -122,6 +202,11 @@
     TOAST_MSG_SCREENSHOT_ERROR: TOAST_MSG_SCREENSHOT_ERROR,
     DELETE_OWN_MSG: DELETE_OWN_MSG,
     DELETE_FOREIGN_MSG: DELETE_FOREIGN_MSG,
+    IDENTIFIER_MAX_LEN: IDENTIFIER_MAX_LEN,
+    IDENTIFIER_PLACEHOLDER: IDENTIFIER_PLACEHOLDER,
+    validateBazaIdentifierInput: validateBazaIdentifierInput,
+    wireBazaIdentifierInput: wireBazaIdentifierInput,
+    attachBazaDialogKeyboardAvoidance: attachBazaDialogKeyboardAvoidance,
     identifierBodyText: identifierBodyText,
     buildPanel: buildPanel,
     buildLayerWithPanel: buildLayerWithPanel,

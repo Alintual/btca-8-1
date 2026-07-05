@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.217" />
+    <meta name="btca-cache-version" content="btca-web-8.1.218" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -904,21 +904,46 @@ body.btca-level2-mode .btca-l1-pick--consumed {
 }
 
 .btca-baza-dialog-panel {
-  position: fixed;
-  top: 50%;
-  left: 50%;
+  position: relative;
   z-index: 2;
   display: grid;
   gap: 12px;
   width: min(288px, calc(100vw - 8px));
+  max-height: calc(100vh - 16px);
   padding: 14px 16px;
   border: 2px solid #ffffff;
   border-radius: 12px;
   background: #c5d9dc;
   color: #111111;
   box-shadow: 0 2px 8px rgba(26, 79, 92, 0.35);
-  transform: translate(-50%, -50%);
   box-sizing: border-box;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.btca-baza-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding:
+    max(8px, env(safe-area-inset-top))
+    max(8px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  transition: padding-bottom 180ms ease;
+}
+
+.btca-baza-dialog-layer--keyboard {
+  align-items: flex-end;
+}
+
+.btca-baza-dialog-layer > .btca-baza-dialog-panel {
+  pointer-events: auto;
 }
 
 .btca-baza-dialog-body {
@@ -3657,8 +3682,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.217:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.217:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.218:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.218:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3699,8 +3724,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.109";
-  var LEVEL2_MODULE_VERSION = "8.1.112";
+  var LEVEL1_MODULE_VERSION = "8.1.110";
+  var LEVEL2_MODULE_VERSION = "8.1.113";
 
   var CORE_REL_PATHS = [
     "",

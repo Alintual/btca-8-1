@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.109";
+  var VERSION = "8.1.110";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1629,13 +1629,13 @@
   }
 
   function wireBazaIdentifierInput(layer) {
-    var input = layer.querySelector(".btca-baza-dialog-input");
-    if (!input) return;
-    input.addEventListener("input", function () {
-      state.bazaIdentifierDraft = input.value;
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    if (!DLG || !DLG.wireBazaIdentifierInput) return;
+    DLG.wireBazaIdentifierInput(layer, function (value, host) {
+      state.bazaIdentifierDraft = value;
       state.bazaIdentifierError = "";
-      var confirmBtn = layer.querySelector("[data-btca-baza-id-confirm]");
-      var ok = String(input.value || "").trim().length > 0;
+      var confirmBtn = host && host.querySelector("[data-btca-baza-id-confirm]");
+      var ok = String(value || "").trim().length > 0;
       if (confirmBtn) {
         confirmBtn.disabled = !ok;
         confirmBtn.classList.toggle("btca-baza-dialog-icon-btn--disabled", !ok);
@@ -1644,12 +1644,10 @@
   }
 
   function validateBazaIdentifierInput(raw) {
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    if (DLG && DLG.validateBazaIdentifierInput) return DLG.validateBazaIdentifierInput(raw);
     var trimmed = String(raw || "").trim();
     if (!trimmed) return { ok: false, error: "Введите идентификатор." };
-    if (trimmed.length > 32) return { ok: false, error: "Не более 32 символов." };
-    if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
-      return { ok: false, error: "Разрешены только латинские буквы A–Z, цифры 0–9, дефис (-) и подчёркивание (_)." };
-    }
     return { ok: true, value: trimmed };
   }
 

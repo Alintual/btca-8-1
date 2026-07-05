@@ -143,6 +143,7 @@
       wrapper.style.overflow = "hidden";
 
       var clone = el.cloneNode(true);
+      clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
       copyComputedStyles(el, clone);
       wrapper.appendChild(clone);
 
@@ -159,25 +160,23 @@
         "</foreignObject></svg>";
 
       var img = new Image();
-      var url = URL.createObjectURL(new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" }));
+      var url =
+        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgMarkup);
       img.onload = function () {
         var canvas = document.createElement("canvas");
         canvas.width = w;
         canvas.height = h;
         var ctx = canvas.getContext("2d");
         if (!ctx) {
-          URL.revokeObjectURL(url);
           reject(new Error("missing_capture"));
           return;
         }
         ctx.fillStyle = elementBackground(el, fallbackBg || "#0b1220");
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
         resolve(canvas);
       };
       img.onerror = function () {
-        URL.revokeObjectURL(url);
         reject(new Error("missing_capture"));
       };
       img.src = url;
@@ -192,8 +191,7 @@
       }
       var svgData = new XMLSerializer().serializeToString(svgEl);
       var img = new Image();
-      var blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      var url = URL.createObjectURL(blob);
+      var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
       img.onload = function () {
         var w = Math.max(1, img.width || svgEl.clientWidth || 320);
         var h = Math.max(1, img.height || svgEl.clientHeight || 200);
@@ -202,18 +200,15 @@
         canvas.height = h;
         var ctx = canvas.getContext("2d");
         if (!ctx) {
-          URL.revokeObjectURL(url);
           reject(new Error("missing_capture"));
           return;
         }
         ctx.fillStyle = fallbackBg || "#c5d9dc";
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
         resolve(canvas);
       };
       img.onerror = function () {
-        URL.revokeObjectURL(url);
         reject(new Error("missing_capture"));
       };
       img.src = url;
@@ -246,6 +241,130 @@
       y += s.h;
     });
     return out;
+  }
+
+  function nodeText(el, selector) {
+    if (!(el instanceof Element)) return "";
+    var node = selector ? el.querySelector(selector) : el;
+    return node ? String(node.textContent || "").trim() : "";
+  }
+
+  function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke) {
+    var radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  function drawHeadFallbackCanvas(head, targetW) {
+    var pad = 16;
+    var gap = 8;
+    var labelH = 18;
+    var rowH = 40;
+    var titleH = 28;
+    var h = pad + labelH + rowH + gap + labelH + rowH + gap + titleH + pad;
+    var canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = h;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("missing_capture");
+
+    ctx.fillStyle = "#c5d9dc";
+    ctx.fillRect(0, 0, targetW, h);
+
+    var fromLabel = nodeText(head, "[data-btca-baza-from]");
+    var toLabel = nodeText(head, "[data-btca-baza-to]");
+    var exerciseLabel = nodeText(head, "[data-btca-baza-exercise]");
+    var taskLabel = nodeText(head, "[data-btca-baza-task]");
+    var chartTitle = nodeText(head, ".btca-l1-baza-chart-title");
+
+    var y = pad;
+    var faceGap = 8;
+    var faceW = (targetW - pad * 2 - faceGap) / 2;
+
+    ctx.fillStyle = "#111111";
+    ctx.font = "600 14px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Период", targetW / 2, y + labelH / 2);
+    y += labelH;
+
+    drawRoundedRect(ctx, pad, y, faceW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
+    drawRoundedRect(ctx, pad + faceW + faceGap, y, faceW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
+    ctx.font = "600 16px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillText(fromLabel || "—", pad + faceW / 2, y + rowH / 2);
+    ctx.fillText(toLabel || "—", pad + faceW + faceGap + faceW / 2, y + rowH / 2);
+    y += rowH + gap;
+
+    var taskW = Math.max(72, Math.round((targetW - pad * 2 - faceGap) * 0.28));
+    var exW = targetW - pad * 2 - faceGap - taskW;
+    ctx.font = "600 14px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillText("Упражнение", pad + exW / 2, y + labelH / 2);
+    ctx.fillText("Задача", pad + exW + faceGap + taskW / 2, y + labelH / 2);
+    y += labelH;
+    drawRoundedRect(ctx, pad, y, exW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
+    drawRoundedRect(ctx, pad + exW + faceGap, y, taskW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
+    ctx.font = "600 16px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillText(exerciseLabel || "—", pad + exW / 2, y + rowH / 2);
+    ctx.fillText(taskLabel || "—", pad + exW + faceGap + taskW / 2, y + rowH / 2);
+    y += rowH + gap;
+
+    ctx.font = "600 17px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillText(chartTitle || "", targetW / 2, y + titleH / 2);
+    return canvas;
+  }
+
+  function captureHeadPanel(head) {
+    return domToCanvas(head, "#c5d9dc").catch(function () {
+      return drawHeadFallbackCanvas(head, OUT_WIDTH_PX);
+    });
+  }
+
+  function canvasToPngBlob(canvas) {
+    return new Promise(function (resolve, reject) {
+      if (!canvas) {
+        reject(new Error("missing_capture"));
+        return;
+      }
+      function fromDataUrl() {
+        try {
+          var dataUrl = canvas.toDataURL("image/png");
+          var comma = dataUrl.indexOf(",");
+          if (comma < 0) throw new Error("missing_capture");
+          var bin = atob(dataUrl.slice(comma + 1));
+          var arr = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          resolve(new Blob([arr], { type: "image/png" }));
+        } catch (_) {
+          reject(new Error("missing_capture"));
+        }
+      }
+      if (typeof canvas.toBlob === "function") {
+        canvas.toBlob(
+          function (blob) {
+            if (blob) resolve(blob);
+            else fromDataUrl();
+          },
+          "image/png",
+          1
+        );
+      } else {
+        fromDataUrl();
+      }
+    });
   }
 
   function captureChartPanel(panel) {
@@ -281,23 +400,12 @@
       });
     })
       .then(function () {
-        return Promise.all([domToCanvas(head, "#0b1220"), captureChartPanel(chartPanel)]);
+        return Promise.all([captureHeadPanel(head), captureChartPanel(chartPanel)]);
       })
       .then(function (canvases) {
         return stitchCanvasesToWidth(canvases, OUT_WIDTH_PX, 0);
       })
-      .then(function (canvas) {
-        return new Promise(function (resolve, reject) {
-          canvas.toBlob(
-            function (blob) {
-              if (!blob) reject(new Error("missing_capture"));
-              else resolve(blob);
-            },
-            "image/png",
-            1
-          );
-        });
-      });
+      .then(canvasToPngBlob);
   }
 
   /** Сохранить PNG без открытия превью файла в браузере (как на Android: запись → «Успех!»). */
