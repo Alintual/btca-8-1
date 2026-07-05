@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.130";
+  var VERSION = "8.1.131";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -86,6 +86,7 @@
     bazaRuleTasks: [],
     bazaMenuOpen: false,
     bazaDeleteSubmenuOpen: false,
+    bazaImportSubmenuOpen: false,
     bazaDeleteConfirm: null,
     bazaIdentifierMode: null,
     bazaIdentifierDraft: "",
@@ -1129,6 +1130,73 @@
     return Math.min(menuW, Math.max(200, half));
   }
 
+  function buildBazaImportSubmenuItems(caps) {
+    return (
+      '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__sub-item' +
+      (caps.canImportView ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
+      '" data-btca-baza-action="importView"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--import-view" aria-hidden="true">↓</span><span>Просмотр</span></button>' +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__sub-item' +
+      (caps.canImportOverwrite ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
+      '" data-btca-baza-action="importOverwrite"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--import-overwrite" aria-hidden="true">↓</span><span>Перезапись</span></button>'
+    );
+  }
+
+  function buildBazaImportSubmenuAnchor(subPanelHtml) {
+    var subOpen = state.bazaImportSubmenuOpen;
+    return (
+      '<div class="btca-l2-baza-menu__sub-anchor btca-l2-baza-menu__sub-anchor--import' +
+      (subOpen ? " is-open" : "") +
+      '" data-btca-baza-import-sub' +
+      (subOpen ? "" : " hidden") +
+      ">" +
+      '<div class="btca-l2-baza-menu__sub-panel" role="group" aria-label="Импорт">' +
+      subPanelHtml +
+      "</div></div>"
+    );
+  }
+
+  function positionBazaImportSubmenu(layer) {
+    var host = layer && layer.querySelector(".btca-level1-slide-menu-host--baza");
+    var toggle = layer && layer.querySelector("[data-btca-baza-import-toggle]");
+    var anchor = layer && layer.querySelector("[data-btca-baza-import-sub]");
+    var panel = anchor && anchor.querySelector(".btca-l2-baza-menu__sub-panel");
+    if (!layer || !toggle || !anchor || !panel) return;
+    var layerRect = layer.getBoundingClientRect();
+    var toggleRect = toggle.getBoundingClientRect();
+    var hostRect = host ? host.getBoundingClientRect() : toggleRect;
+    var menuW = Math.round(hostRect.width);
+    panel.style.width = bazaDeleteSubmenuPanelWidth(menuW) + "px";
+    anchor.style.top = Math.round(toggleRect.bottom - layerRect.top + 4) + "px";
+    anchor.style.left = Math.round(hostRect.left - layerRect.left) + "px";
+    anchor.style.width = menuW + "px";
+  }
+
+  function updateBazaImportSubmenu(layer) {
+    var anchor = layer && layer.querySelector("[data-btca-baza-import-sub]");
+    var toggle = layer && layer.querySelector("[data-btca-baza-import-toggle]");
+    if (!anchor || !toggle || !layer) return;
+    layer.classList.toggle("btca-level1-menu-layer--import-sub-open", !!state.bazaImportSubmenuOpen);
+    if (state.bazaImportSubmenuOpen) {
+      anchor.removeAttribute("hidden");
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.classList.add("btca-l2-baza-menu__delete-toggle--open");
+      positionBazaImportSubmenu(layer);
+      anchor.classList.remove("is-open");
+      void anchor.offsetWidth;
+      anchor.classList.add("is-open");
+    } else {
+      anchor.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.classList.remove("btca-l2-baza-menu__delete-toggle--open");
+      anchor.setAttribute("hidden", "hidden");
+      layer.classList.remove("btca-level1-menu-layer--import-sub-open");
+    }
+  }
+
+  function closeBazaImportSubmenu() {
+    state.bazaImportSubmenuOpen = false;
+  }
+
   function buildBazaDeleteSubmenuItems(caps) {
     return (
       '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__sub-item' +
@@ -1203,6 +1271,11 @@
 
   function closeBazaDeleteSubmenu() {
     state.bazaDeleteSubmenuOpen = false;
+  }
+
+  function closeBazaSubmenus() {
+    closeBazaDeleteSubmenu();
+    closeBazaImportSubmenu();
   }
 
   function closeSlideMenuLayer(layer, done) {
@@ -1979,7 +2052,8 @@
     var chartMeta = getBazaChartMeta(state.ui.baza, bazaFiltersDisabled());
     return {
       canExport: !state.bazaStats.empty,
-      canImport: !state.bazaStats.hasForeign && !state.bazaForeignAvailable,
+      canImportView: !state.bazaStats.hasForeign && !state.bazaForeignAvailable,
+      canImportOverwrite: true,
       canDeleteOwn: state.bazaStats.hasOwn,
       canDeleteForeign: state.bazaStats.hasForeign,
       canScreenshot: chartMeta.showChart && state.bazaExpandedRows.length > 0,
@@ -1994,19 +2068,22 @@
     var layer = state.root && state.root.querySelector("[data-btca-level2-baza-menu-layer]");
     if (!layer) return;
     if (!state.bazaMenuOpen) {
-      closeBazaDeleteSubmenu();
+      closeBazaSubmenus();
       closeSlideMenuLayer(layer);
       return;
     }
     var caps = bazaMenuCapabilities();
     var SL = window.BTCA_SLIDE_MENU;
     var canOpenDeleteSub = caps.canDeleteOwn || caps.canDeleteForeign;
-    var subPanelHtml = buildBazaDeleteSubmenuItems(caps);
+    var deleteSubPanelHtml = buildBazaDeleteSubmenuItems(caps);
+    var importSubPanelHtml = buildBazaImportSubmenuItems(caps);
     var items =
       '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canExport ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
       '" data-btca-baza-action="export"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--export" aria-hidden="true">↑</span><span>Экспорт</span></button>' +
-      '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canImport ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
-      '" data-btca-baza-action="import"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--import" aria-hidden="true">↓</span><span>Импорт</span></button>' +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__import-toggle' +
+      (state.bazaImportSubmenuOpen ? " btca-l2-baza-menu__delete-toggle--open" : "") +
+      '" data-btca-baza-import-toggle aria-expanded="' + (state.bazaImportSubmenuOpen ? "true" : "false") +
+      '" aria-haspopup="true"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--import" aria-hidden="true">↓</span><span>Импорт</span><span class="btca-l2-baza-menu__chevron" aria-hidden="true"></span></button>' +
       '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__delete-toggle' +
       (state.bazaDeleteSubmenuOpen ? " btca-l2-baza-menu__delete-toggle--open" : "") +
       (canOpenDeleteSub ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
@@ -2016,17 +2093,23 @@
       '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>';
     layer.removeAttribute("hidden");
     layer.classList.toggle("btca-level1-menu-layer--delete-sub-open", !!state.bazaDeleteSubmenuOpen);
+    layer.classList.toggle("btca-level1-menu-layer--import-sub-open", !!state.bazaImportSubmenuOpen);
     layer.innerHTML =
       '<button class="btca-level1-menu-backdrop" type="button" data-btca-baza-menu-close aria-label="Закрыть меню"></button>' +
       (SL
-        ? buildBazaSlideMenuHost(items) + buildBazaDeleteSubmenuAnchor(subPanelHtml)
+        ? buildBazaSlideMenuHost(items) + buildBazaDeleteSubmenuAnchor(deleteSubPanelHtml) + buildBazaImportSubmenuAnchor(importSubPanelHtml)
         : '<nav class="btca-l1-baza-sheet-menu" aria-label="Меню базы">' + items + "</nav>");
     requestAnimationFrame(function () {
       positionBazaSheetMenuBelowTrigger(layer);
       if (state.bazaDeleteSubmenuOpen) {
         positionBazaDeleteSubmenu(layer);
-        var anchor = layer.querySelector("[data-btca-baza-delete-sub]");
-        if (anchor) anchor.classList.add("is-open");
+        var delAnchor = layer.querySelector("[data-btca-baza-delete-sub]");
+        if (delAnchor) delAnchor.classList.add("is-open");
+      }
+      if (state.bazaImportSubmenuOpen) {
+        positionBazaImportSubmenu(layer);
+        var impAnchor = layer.querySelector("[data-btca-baza-import-sub]");
+        if (impAnchor) impAnchor.classList.add("is-open");
       }
       if (SL) SL.openLayer(layer);
     });
@@ -2034,14 +2117,24 @@
       if (event.target.closest("[data-btca-baza-delete-sub]")) {
         event.stopPropagation();
       }
+      if (event.target.closest("[data-btca-baza-import-sub]")) {
+        event.stopPropagation();
+      }
       if (event.target.closest("[data-btca-baza-menu-close]")) {
         state.bazaMenuOpen = false;
-        closeBazaDeleteSubmenu();
+        closeBazaSubmenus();
         renderBazaMenuLayer();
+        return;
+      }
+      if (event.target.closest("[data-btca-baza-import-toggle]")) {
+        closeBazaDeleteSubmenu();
+        state.bazaImportSubmenuOpen = !state.bazaImportSubmenuOpen;
+        updateBazaImportSubmenu(layer);
         return;
       }
       if (event.target.closest("[data-btca-baza-delete-toggle]")) {
         if (!canOpenDeleteSub) return;
+        closeBazaImportSubmenu();
         state.bazaDeleteSubmenuOpen = !state.bazaDeleteSubmenuOpen;
         updateBazaDeleteSubmenu(layer);
         return;
@@ -2071,13 +2164,16 @@
     var mode = state.bazaIdentifierMode;
     var hasId = !!state.bazaUserFileId;
     var isImport = mode === "import";
-    var showInput = !hasId && !isImport;
-    var canConfirm = isImport || hasId || String(state.bazaIdentifierDraft || "").trim().length > 0;
+    var isOverwrite = mode === "overwrite";
+    var showInput = !hasId && !isImport && !isOverwrite;
+    var canConfirm = isImport || isOverwrite || hasId || String(state.bazaIdentifierDraft || "").trim().length > 0;
     layer.removeAttribute("hidden");
     layer.innerHTML = DLG.buildLayerWithPanel(
       'data-btca-baza-id-close',
       DLG.buildPanel({
-        bodyText: DLG.identifierBodyText(mode, hasId),
+        bodyText: isOverwrite
+          ? DLG.TEXT_OVERWRITE_CONFIRM
+          : DLG.identifierBodyText(mode, hasId),
         showInput: showInput,
         inputValue: state.bazaIdentifierDraft,
         inputError: state.bazaIdentifierError,
@@ -2102,6 +2198,12 @@
         state.bazaIdentifierMode = null;
         renderBazaIdentifierDialog();
         runBazaImportPick();
+        return;
+      }
+      if (mode === "overwrite") {
+        state.bazaIdentifierMode = null;
+        renderBazaIdentifierDialog();
+        runBazaOverwritePick();
         return;
       }
       var input = layer.querySelector(".btca-baza-dialog-input");
@@ -2194,6 +2296,78 @@
           }
           state.bazaMenuOpen = false;
           renderBazaMenuLayer();
+          return refreshBazaContext().then(function () {
+            renderActiveTab();
+            renderTitleBar();
+            showBazaSuccessToast();
+          });
+        }).catch(function () {
+          showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+        });
+      };
+      readerBin.onerror = function () {
+        showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+      };
+      readerBin.readAsArrayBuffer(file);
+    });
+    input.click();
+  }
+
+  function runBazaOverwritePick() {
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    var SQLITE = window.BTCA_BAZA_SQLITE;
+    var input = document.createElement("input");
+    input.type = "file";
+    if (!isAppleTouchDevice()) {
+      input.accept = ".sqlite,application/vnd.sqlite3,application/x-sqlite3,application/octet-stream";
+    }
+    input.style.display = "none";
+    document.body.appendChild(input);
+    input.addEventListener("change", function () {
+      var file = input.files && input.files[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      var name = String(file.name || "");
+      if (!/\.sqlite$/i.test(name)) {
+        showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+        return;
+      }
+      if (SQLITE && typeof SQLITE.validateL2BackupFileName === "function") {
+        var nameCheck = SQLITE.validateL2BackupFileName(name);
+        if (!nameCheck.ok) {
+          showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+          return;
+        }
+      }
+      var readerBin = new FileReader();
+      readerBin.onload = function () {
+        DB.overwriteOwnBazaBackupSqlite(readerBin.result, file.name).then(function (res) {
+          if (!res.ok) {
+            if (res.error === "not_own_backup") {
+              showBazaErrorToast("Файл не является вашей резервной копией");
+              return;
+            }
+            showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+            return;
+          }
+          state.bazaMenuOpen = false;
+          closeBazaSubmenus();
+          renderBazaMenuLayer();
+          var today = DB.formatYmd(new Date());
+          state.ui.baza.dataSource = "own";
+          state.ui.baza.exercise = "all";
+          state.ui.baza.task = "all";
+          state.ui.baza.periodFrom = today;
+          state.ui.baza.periodTo = today;
+          applyUiPatch({
+            baza: {
+              dataSource: "own",
+              exercise: "all",
+              task: "all",
+              periodFrom: today,
+              periodTo: today,
+            },
+          });
           return refreshBazaContext().then(function () {
             renderActiveTab();
             renderTitleBar();
@@ -2321,14 +2495,30 @@
   function handleBazaMenuAction(action) {
     var caps = bazaMenuCapabilities();
     if (action === "export" && caps.canExport) {
+      closeBazaSubmenus();
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
       openBazaIdentifierDialog("export");
       return;
     }
-    if (action === "import" && caps.canImport) {
+    if (action === "importView" && caps.canImportView) {
+      closeBazaSubmenus();
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
       openBazaIdentifierDialog("import");
       return;
     }
+    if (action === "importOverwrite" && caps.canImportOverwrite) {
+      closeBazaSubmenus();
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      openBazaIdentifierDialog("overwrite");
+      return;
+    }
     if (action === "screenshot" && caps.canScreenshot) {
+      closeBazaSubmenus();
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
       openBazaIdentifierDialog("screenshot");
       return;
     }

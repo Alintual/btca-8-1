@@ -542,6 +542,48 @@
     });
   }
 
+  function overwriteOwnBazaBackupSqlite(bytes, fileName) {
+    var SQLITE = typeof window !== "undefined" ? window.BTCA_BAZA_SQLITE : null;
+    if (!SQLITE || typeof SQLITE.validateBackupForImport !== "function") {
+      return Promise.resolve({ ok: false, error: "sqlite_unavailable" });
+    }
+    return SQLITE.validateBackupForImport(bytes, fileName, 2)
+      .then(function (validated) {
+        if (!validated.ok) return validated;
+        return loadUserFileIdentifier().then(function (ownId) {
+          var own = String(ownId || "").trim();
+          var backupId = String(validated.importId || "").trim();
+          if (!own || !backupId || own !== backupId) {
+            return { ok: false, error: "not_own_backup" };
+          }
+          var rows = validated.rows || [];
+          return runTx(["results"], "readwrite", function (transaction, finish, fail) {
+            var store = transaction.objectStore("results");
+            var clearReq = store.clear();
+            clearReq.onerror = function () { fail(clearReq.error); };
+            clearReq.onsuccess = function () {
+              rows.forEach(function (row) {
+                if (!row || !row.date || !row.exercise || row.task == null) return;
+                store.put({
+                  date: String(row.date),
+                  exercise: String(row.exercise),
+                  task: Number(row.task),
+                  req: row.req == null ? null : Number(row.req),
+                  ok: row.ok == null ? null : Number(row.ok),
+                  pct: row.pct == null ? null : Number(row.pct),
+                  sets: row.sets == null ? null : Number(row.sets),
+                });
+              });
+              finish({ ok: true });
+            };
+          });
+        });
+      })
+      .catch(function () {
+        return { ok: false, error: "import_failed" };
+      });
+  }
+
   function importBazaBackupSqlite(bytes, fileName) {
     var SQLITE = typeof window !== "undefined" ? window.BTCA_BAZA_SQLITE : null;
     if (!SQLITE || typeof SQLITE.validateBackupForImport !== "function") {
@@ -725,6 +767,7 @@
     bazaDeleteCurrentByFilters: bazaDeleteCurrentByFilters,
     exportBazaBackup: exportBazaBackup,
     importBazaBackupSqlite: importBazaBackupSqlite,
+    overwriteOwnBazaBackupSqlite: overwriteOwnBazaBackupSqlite,
     importBazaBackupObject: importBazaBackupObject,
     foreignDbDateRange: foreignDbDateRange,
     bazaFillStatusText: bazaFillStatusText,

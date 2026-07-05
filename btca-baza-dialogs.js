@@ -18,6 +18,8 @@
     "Подтвердите экспорт копии Базы данных и далее выберите Поделиться или Сохранить в Файлах";
   var TEXT_IMPORT_CONFIRM =
     "Подтвердите импорт копии Базы данных и далее выберите файл в Файлах";
+  var TEXT_OVERWRITE_CONFIRM =
+    "Подтвердите загрузку резервной копии Вашей Базы данных. Все текущие данные будут удалены!\nДалее, выберите файл в Файлах";
 
   var DELETE_OWN_MSG = "Удалить текущие данные по выбранным фильтрам?";
   var DELETE_FOREIGN_MSG = "Удалить все импортированные данные?";
@@ -203,6 +205,7 @@
     TOAST_MSG_EXPORT_ERROR: TOAST_MSG_EXPORT_ERROR,
     TOAST_MSG_IMPORT_ERROR: TOAST_MSG_IMPORT_ERROR,
     TOAST_MSG_SCREENSHOT_ERROR: TOAST_MSG_SCREENSHOT_ERROR,
+    TEXT_OVERWRITE_CONFIRM: TEXT_OVERWRITE_CONFIRM,
     DELETE_OWN_MSG: DELETE_OWN_MSG,
     DELETE_FOREIGN_MSG: DELETE_FOREIGN_MSG,
     IDENTIFIER_MAX_LEN: IDENTIFIER_MAX_LEN,
