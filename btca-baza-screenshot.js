@@ -408,37 +408,98 @@
       .then(canvasToPngBlob);
   }
 
-  /** Сохранить PNG без открытия превью файла в браузере (как на Android: запись → «Успех!»). */
-  function saveBazaScreenshotBlob(fileName, pngBlob) {
-    if (!pngBlob) return Promise.reject(new Error("missing_capture"));
-    var name = String(fileName || "screenshot.png").replace(/[\\/:*?"<>|]+/g, "_");
-    if (!/\.png$/i.test(name)) name += ".png";
+  /** Сохранить PNG без открытия «Просмотр» / Quick Look (iPad: через service worker + attachment). */
+  function getBasePath() {
+    var base = global.__BTCA_BASE__ || "/btca-8-1/";
+    if (!/\/$/.test(base)) base += "/";
+    return base;
+  }
 
-    if (typeof global.showSaveFilePicker === "function") {
-      return global
-        .showSaveFilePicker({
-          suggestedName: name,
-          types: [{ description: "PNG", accept: { "image/png": [".png"] } }],
-        })
-        .then(function (handle) {
-          return handle.createWritable().then(function (writable) {
-            return writable.write(pngBlob).then(function () {
-              return writable.close();
-            });
-          });
-        })
-        .catch(function (err) {
-          if (err && err.name === "AbortError") throw new Error("cancelled");
-          throw err;
+  function isAppleMobile() {
+    var nav = global.navigator;
+    if (!nav) return false;
+    var ua = String(nav.userAgent || "");
+    var iPadDesktop = nav.platform === "MacIntel" && nav.maxTouchPoints > 1;
+    return /iPhone|iPad|iPod/.test(ua) || iPadDesktop;
+  }
+
+  function triggerHiddenDownload(url) {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish() {
+        if (done) return;
+        done = true;
+        resolve();
+      }
+      var iframe = document.createElement("iframe");
+      iframe.setAttribute("aria-hidden", "true");
+      iframe.style.cssText =
+        "position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none;left:-9999px;top:-9999px;";
+      iframe.onload = function () {
+        window.setTimeout(finish, 500);
+      };
+      document.body.appendChild(iframe);
+      iframe.src = url;
+      window.setTimeout(finish, 2500);
+    });
+  }
+
+  function saveViaServiceWorker(fileName, pngBlob) {
+    var nav = global.navigator;
+    if (!nav || !nav.serviceWorker) return Promise.reject(new Error("no_sw"));
+    return nav.serviceWorker.ready.then(function (reg) {
+      var sw = reg.active || nav.serviceWorker.controller;
+      if (!sw) return Promise.reject(new Error("no_sw"));
+      return pngBlob.arrayBuffer().then(function (buffer) {
+        var id =
+          "d" +
+          Date.now().toString(36) +
+          Math.random().toString(36).replace(/[^a-z0-9]/g, "").slice(0, 10);
+        var url = getBasePath() + "baza-download/" + encodeURIComponent(id);
+        return new Promise(function (resolve, reject) {
+          var channel = new MessageChannel();
+          var settled = false;
+          function finish(err) {
+            if (settled) return;
+            settled = true;
+            if (err) reject(err);
+            else triggerHiddenDownload(url).then(resolve).catch(reject);
+          }
+          channel.port1.onmessage = function () {
+            finish(null);
+          };
+          channel.port1.onmessageerror = function () {
+            finish(new Error("download_failed"));
+          };
+          window.setTimeout(function () {
+            finish(new Error("download_failed"));
+          }, 3000);
+          try {
+            sw.postMessage(
+              {
+                type: "BAZA_STORE_DOWNLOAD",
+                id: id,
+                name: fileName,
+                mime: "application/octet-stream",
+                buffer: buffer,
+              },
+              [channel.port2]
+            );
+          } catch (err) {
+            finish(err || new Error("download_failed"));
+          }
         });
-    }
+      });
+    });
+  }
 
+  function saveViaAnchorBlob(fileName, pngBlob) {
     return new Promise(function (resolve, reject) {
       var downloadBlob = new Blob([pngBlob], { type: "application/octet-stream" });
       var url = URL.createObjectURL(downloadBlob);
       var a = document.createElement("a");
       a.href = url;
-      a.download = name;
+      a.download = fileName;
       a.rel = "noopener";
       a.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
       document.body.appendChild(a);
@@ -464,6 +525,41 @@
         resolve();
       }, 400);
     });
+  }
+
+  function saveBazaScreenshotBlob(fileName, pngBlob) {
+    if (!pngBlob) return Promise.reject(new Error("missing_capture"));
+    var name = String(fileName || "screenshot.png").replace(/[\\/:*?"<>|]+/g, "_");
+    if (!/\.png$/i.test(name)) name += ".png";
+
+    if (typeof global.showSaveFilePicker === "function" && !isAppleMobile()) {
+      return global
+        .showSaveFilePicker({
+          suggestedName: name,
+          types: [{ description: "PNG", accept: { "image/png": [".png"] } }],
+        })
+        .then(function (handle) {
+          return handle.createWritable().then(function (writable) {
+            return writable.write(pngBlob).then(function () {
+              return writable.close();
+            });
+          });
+        })
+        .catch(function (err) {
+          if (err && err.name === "AbortError") throw new Error("cancelled");
+          throw err;
+        });
+    }
+
+    if (global.navigator && global.navigator.serviceWorker) {
+      return saveViaServiceWorker(name, pngBlob).catch(function () {
+        if (isAppleMobile()) return Promise.reject(new Error("download_failed"));
+        return saveViaAnchorBlob(name, pngBlob);
+      });
+    }
+
+    if (isAppleMobile()) return Promise.reject(new Error("download_failed"));
+    return saveViaAnchorBlob(name, pngBlob);
   }
 
   global.BTCA_BAZA_SCREENSHOT = {
