@@ -757,6 +757,8 @@
         pickerTypes = [{ description: "PNG", accept: { "image/png": [".png"] } }];
       } else if (type === "application/json") {
         pickerTypes = [{ description: "JSON", accept: { "application/json": [".json"] } }];
+      } else if (type === "application/vnd.sqlite3" || type === "application/x-sqlite3") {
+        pickerTypes = [{ description: "SQLite", accept: { "application/vnd.sqlite3": [".sqlite"] } }];
       } else {
         pickerTypes = [{ description: "File", accept: { [type]: [] } }];
       }

@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.118";
+  var VERSION = "8.1.119";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2074,11 +2074,11 @@
       }
       return result;
     }).then(function (result) {
-      var blob = new Blob([JSON.stringify(result.payload, null, 2)], { type: "application/json" });
-      var fileName = result.fileName || "BTCA_L2_backup.json";
+      if (!result || !result.ok || !result.blob) return Promise.reject(new Error("export_failed"));
+      var fileName = result.fileName || "backup.sqlite";
       state.bazaMenuOpen = false;
       renderBazaMenuLayer();
-      return SAVE.saveBazaFileBlob(fileName, blob, "application/json");
+      return SAVE.saveBazaFileBlob(fileName, result.blob, "application/vnd.sqlite3");
     }).then(function () {
       showBazaSuccessToast();
     }).catch(function (err) {
@@ -2091,13 +2091,37 @@
   function runBazaImportPick() {
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json,application/json";
+    input.accept = ".sqlite,.json,application/vnd.sqlite3,application/json";
     input.style.display = "none";
     document.body.appendChild(input);
     input.addEventListener("change", function () {
       var file = input.files && input.files[0];
       document.body.removeChild(input);
       if (!file) return;
+      var name = String(file.name || "").toLowerCase();
+      var isSqlite = name.endsWith(".sqlite") || file.type === "application/vnd.sqlite3";
+      if (isSqlite) {
+        var readerBin = new FileReader();
+        readerBin.onload = function () {
+          DB.importBazaBackupSqlite(readerBin.result, file.name).then(function (res) {
+            if (!res.ok) {
+              showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
+              return;
+            }
+            state.bazaMenuOpen = false;
+            renderBazaMenuLayer();
+            return refreshBazaContext();
+          }).then(function () {
+            renderActiveTab();
+            renderTitleBar();
+            showBazaSuccessToast();
+          }).catch(function () {
+            showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
+          });
+        };
+        readerBin.readAsArrayBuffer(file);
+        return;
+      }
       var reader = new FileReader();
       reader.onload = function () {
         try {

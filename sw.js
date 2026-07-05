@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.227";
+const CACHE_VERSION = "btca-web-8.1.228";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
@@ -23,6 +23,9 @@ const CORE_ASSETS = [
   "/btca-8-1/btca-baza-diagram.js",
   "/btca-8-1/btca-baza-dialogs.js",
   "/btca-8-1/btca-baza-screenshot.js",
+  "/btca-8-1/btca-baza-sqlite.js",
+  "/btca-8-1/vendor/sql-wasm.js",
+  "/btca-8-1/vendor/sql-wasm.wasm",
   "/btca-8-1/btca-slide-menu.js",
   "/btca-8-1/level1/level1-db.js",
   "/btca-8-1/level1/level1-app.js",

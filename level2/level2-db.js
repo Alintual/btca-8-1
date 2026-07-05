@@ -520,19 +520,61 @@
   }
 
   function exportBazaBackup(userId) {
+    var SQLITE = typeof window !== "undefined" ? window.BTCA_BAZA_SQLITE : null;
+    if (!SQLITE || typeof SQLITE.exportOwnResultsBackup !== "function") {
+      return Promise.resolve({ ok: false, error: "sqlite_unavailable" });
+    }
     return Promise.all([readAllRows("results"), loadUserFileIdentifier()]).then(function (parts) {
       var rows = parts[0];
       var id = String(userId || parts[1] || "").trim();
-      var payload = {
-        version: 1,
-        level: 2,
-        levelMarker: BACKUP_LEVEL_MARKER,
-        userId: id,
-        exportedAt: new Date().toISOString(),
-        rows: rows,
-      };
-      return { ok: true, payload: payload, fileName: "BTCA_L2_" + (id || "backup") + "_" + BACKUP_LEVEL_MARKER + ".json" };
+      var today = formatYmd(new Date());
+      return SQLITE.exportOwnResultsBackup(rows, id, 2).then(function (bytes) {
+        return {
+          ok: true,
+          blob: new Blob([bytes], { type: "application/vnd.sqlite3" }),
+          fileName: SQLITE.buildBazaBackupFileNameL2(id, today),
+        };
+      });
+    }).catch(function () {
+      return { ok: false, error: "export_failed" };
     });
+  }
+
+  function importBazaBackupSqlite(bytes, fileName) {
+    var SQLITE = typeof window !== "undefined" ? window.BTCA_BAZA_SQLITE : null;
+    if (!SQLITE || typeof SQLITE.parseBackupSqlite !== "function") {
+      return Promise.resolve({ ok: false, error: "sqlite_unavailable" });
+    }
+    return SQLITE.parseBackupSqlite(bytes, fileName, 2)
+      .then(function (parsed) {
+        var rows = parsed.rows || [];
+        return clearForeignDatabase().then(function () {
+          return runTx(["foreign_results"], "readwrite", function (transaction, finish, fail) {
+            transaction.oncomplete = function () { finish({ ok: true }); };
+            var store = transaction.objectStore("foreign_results");
+            rows.forEach(function (row) {
+              if (!row || !row.date || !row.exercise || row.task == null) return;
+              store.put({
+                date: String(row.date),
+                exercise: String(row.exercise),
+                task: Number(row.task),
+                req: row.req == null ? null : Number(row.req),
+                ok: row.ok == null ? null : Number(row.ok),
+                pct: row.pct == null ? null : Number(row.pct),
+                sets: row.sets == null ? null : Number(row.sets),
+              });
+            });
+          });
+        }).then(function () {
+          var importId = String(parsed.importId || "import").trim();
+          return saveImportFileIdentifier(importId).then(function () {
+            return { ok: true, importId: importId };
+          });
+        });
+      })
+      .catch(function () {
+        return { ok: false, error: "import_failed" };
+      });
   }
 
   function importBazaBackupObject(payload) {
@@ -679,6 +721,7 @@
     clearForeignDatabase: clearForeignDatabase,
     bazaDeleteCurrentByFilters: bazaDeleteCurrentByFilters,
     exportBazaBackup: exportBazaBackup,
+    importBazaBackupSqlite: importBazaBackupSqlite,
     importBazaBackupObject: importBazaBackupObject,
     foreignDbDateRange: foreignDbDateRange,
     bazaFillStatusText: bazaFillStatusText,
