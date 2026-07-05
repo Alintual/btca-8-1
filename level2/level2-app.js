@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.129";
+  var VERSION = "8.1.128";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1004,10 +1004,10 @@
       '<span class="btca-l1-face__text">' + escapeHtml(label) + "</span></button>";
   }
 
-  function getBazaChartTitle(exercise, exerciseFieldDisabled) {
+  function getBazaChartTitle(exercise, exerciseFieldDisabled, hasDiagramData) {
     var isAll =
       exercise === "all" || exercise === "__foreign_data__" || !String(exercise || "").trim();
-    var showChart = !exerciseFieldDisabled && !isAll;
+    var showChart = !exerciseFieldDisabled && !isAll && hasDiagramData !== false;
     return {
       text: showChart
         ? "Успешные удары по упражнению за период"
@@ -1018,7 +1018,11 @@
   }
 
   function getBazaChartMeta(baza, exerciseFilterDisabled) {
-    return getBazaChartTitle(baza.exercise, exerciseFilterDisabled);
+    var hasDiagramData =
+      baza.exercise === "all" || baza.exercise === "__foreign_data__"
+        ? false
+        : state.bazaExpandedRows.length > 0;
+    return getBazaChartTitle(baza.exercise, exerciseFilterDisabled, hasDiagramData);
   }
 
   function buildBazaTableTitle(baza) {
@@ -1819,8 +1823,14 @@
           state.bazaRuleTasks = [];
         }
 
-        return refreshBazaRows();
+        return refreshBazaRowsWithReconcile();
       });
+    });
+  }
+
+  function refreshBazaRowsWithReconcile() {
+    return refreshBazaRows().then(function () {
+      if (reconcileBazaExerciseChartState()) return refreshBazaRows();
     });
   }
 
@@ -1832,7 +1842,7 @@
       from: baza.periodFrom,
       to: baza.periodTo,
       exercise: queryEx,
-      task: baza.task === "all" ? "all" : baza.task,
+      task: "all",
     }).then(function (result) {
       state.bazaRows = result.rows || [];
       if (!BAZA || queryEx === "all") {
@@ -1849,12 +1859,31 @@
     });
   }
 
+  function reconcileBazaExerciseChartState() {
+    var baza = state.ui.baza;
+    var ex = baza.exercise;
+    if (!ex || ex === "all") return false;
+    var src = baza.dataSource === "foreign" ? "foreign" : "own";
+    if (state.bazaNoExercisesInPeriod) return false;
+    if (!isBazaExerciseSelectionValid(ex, src)) {
+      state.ui.baza.exercise = "all";
+      state.ui.baza.task = "all";
+      applyUiPatch({ baza: { exercise: "all", task: "all" } });
+      return true;
+    }
+    if (state.bazaExpandedRows.length > 0) return false;
+    state.ui.baza.exercise = "all";
+    state.ui.baza.task = "all";
+    applyUiPatch({ baza: { exercise: "all", task: "all" } });
+    return true;
+  }
+
   function mountBazaDiagramInTab(content) {
     var DIAG = window.BTCA_BAZA_DIAGRAM;
     if (!DIAG) return;
     var baza = state.ui.baza;
     var root = content.querySelector("[data-btca-baza-diagram-capture]");
-    if (!root) return;
+    if (!root || !state.bazaExpandedRows.length) return;
     var panel = content.closest("[data-btca-level2-content]") || content;
     var fallback = panel ? Math.max(280, panel.clientWidth - 24) : 320;
     var mount = function () {
@@ -2336,7 +2365,7 @@
     state.ui.baza.exercise = item.value;
     state.ui.baza.task = "all";
     applyUiPatch({ baza: { dataSource: nextSource, exercise: item.value, task: "all" } });
-    return refreshBazaRows().then(function () {
+    return refreshBazaRowsWithReconcile().then(function () {
       renderActiveTab();
       renderTitleBar();
     });
@@ -2355,7 +2384,7 @@
     var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
     var DIAG = window.BTCA_BAZA_DIAGRAM;
     var diagramPanel = chartMeta.showChart
-      ? (DIAG ? DIAG.renderBazaDiagramPanelHtml() : "")
+      ? (DIAG ? DIAG.renderBazaDiagramPanelHtml(true) : "")
       : "";
 
     content.innerHTML =
@@ -2428,7 +2457,7 @@
       openPicker("Задача", options, baza.task, function (value) {
         state.ui.baza.task = value;
           applyUiPatch({ baza: { task: value } });
-        refreshBazaRows().then(function () { renderBazaTab(content); });
+        refreshBazaRowsWithReconcile().then(function () { renderBazaTab(content); });
       }, event.currentTarget);
     });
     }
