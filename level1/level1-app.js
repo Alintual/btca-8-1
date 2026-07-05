@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.128";
+  var VERSION = "8.1.129";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1656,7 +1656,7 @@
     if (!DIAG) return;
     var baza = state.ui.baza;
     var root = content.querySelector("[data-btca-baza-diagram-capture]");
-    if (!root || !state.bazaExpandedRows.length) return;
+    if (!root) return;
     var panel = content.closest("[data-btca-level1-content]") || content;
     var fallback = panel ? Math.max(280, panel.clientWidth - 24) : 320;
     var mount = function () {
@@ -1902,7 +1902,7 @@
     var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
     var DIAG = window.BTCA_BAZA_DIAGRAM;
     var diagramPanel = chartMeta.showChart
-      ? (DIAG ? DIAG.renderBazaDiagramPanelHtml(state.bazaExpandedRows.length) : "")
+      ? (DIAG ? DIAG.renderBazaDiagramPanelHtml() : "")
       : "";
 
     content.innerHTML =

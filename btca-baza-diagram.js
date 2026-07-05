@@ -250,10 +250,7 @@
     );
   }
 
-  function renderBazaDiagramPanelHtml(hasRows) {
-    if (!hasRows) {
-      return '<p class="btca-l1-empty">Нет данных за выбранный период</p>';
-    }
+  function renderBazaDiagramPanelHtml() {
     return (
       '<section class="btca-l1-chart-panel btca-l2-chart-panel" aria-label="Диаграмма">' +
       '<div class="btca-baza-diagram-root" data-btca-baza-diagram-capture>' +
