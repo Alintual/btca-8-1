@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.120";
+  var VERSION = "8.1.121";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2093,7 +2093,11 @@
     var SQLITE = window.BTCA_BAZA_SQLITE;
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = ".sqlite,application/vnd.sqlite3,application/x-sqlite3";
+    // iOS не знает UTType для .sqlite: при accept с этим расширением все файлы в «Файлах» серые.
+    // Фильтр только на десктопе; на iPad/iPhone проверяем имя и содержимое после выбора.
+    if (!isAppleTouchDevice()) {
+      input.accept = ".sqlite,application/vnd.sqlite3,application/x-sqlite3,application/octet-stream";
+    }
     input.style.display = "none";
     document.body.appendChild(input);
     input.addEventListener("change", function () {
