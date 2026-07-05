@@ -1,4 +1,5 @@
 (function (global) {
+  var BTCA_SCREENSHOT_BUILD = "8.1.224";
   var OUT_WIDTH_PX = 800;
   var ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
   var HEAD_BG = "#1f4f5c";
@@ -570,8 +571,11 @@
     return drawArrowOnHeadCanvasMeasured(head, drawHeadMeasuredCanvas(head, targetW), targetW);
   }
 
-  /** DOM-захват с масштабированием до 800px; стрелка up.png — поверх по измеренным координатам. */
+  /** iPad/iPhone: DOM-отрисовка по измеренным координатам (foreignObject ненадёжен). */
   function captureHeadPanel(head) {
+    if (isAppleMobile()) {
+      return drawHeadMeasuredCanvasAsync(head, OUT_WIDTH_PX);
+    }
     return domToCanvas(head, HEAD_BG, { hideSelectors: [".btca-l1-green-arrow", ".btca-l1-green-arrow__img"] })
       .then(function (canvas) {
         return scaleCanvasToWidth(canvas, OUT_WIDTH_PX, HEAD_BG);
