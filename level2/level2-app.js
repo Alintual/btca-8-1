@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.126";
+  var VERSION = "8.1.127";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -12,6 +12,7 @@
     var PICK_DELAY_MS = 1500;
   var PICKER_ROW_SIMPLE = 40;
   var PICKER_ROW_GROUP = 40;
+  var PICKER_ROW_IMPORT = 64;
   var PICKER_LIST_PAD = 4;
   var SCREEN_EDGE_GUTTER = 4;
   var SWIPE_DISTANCE_PX = 56;
@@ -368,8 +369,9 @@
     if (foreignAvailable) {
       out.push({
         value: GROUP_FOREIGN,
-        label: importId ? "--- ИМПОРТ-" + importId + " ---" : "--- ИМПОРТ ---",
+        label: BAZA.buildBazaImportGroupLabel(importId),
         groupHeader: true,
+        importHeader: !!String(importId || "").trim(),
         source: "foreign",
       });
       out.push({ value: BAZA_ALL, label: "Все", source: "foreign" });
@@ -1238,6 +1240,7 @@
   }
 
   function pickerOptionRowHeight(opt, rowHeight) {
+    if (opt && opt.importHeader) return PICKER_ROW_IMPORT;
     if (opt && opt.groupHeader) return PICKER_ROW_GROUP;
     return rowHeight || PICKER_ROW_SIMPLE;
   }
@@ -1442,6 +1445,7 @@
         if (opt.groupHeader) {
           var groupClass = "btca-level1-picker__group";
           if (opt.sectionHeader) groupClass += " btca-level1-picker__group--section";
+          if (opt.importHeader) groupClass += " btca-level1-picker__group--import";
           if (opt.disabledHeader) groupClass += " btca-level1-picker__group--disabled";
           return '<div class="' + groupClass + '">' + escapeHtml(opt.label) + "</div>";
         }

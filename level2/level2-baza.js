@@ -96,6 +96,12 @@
     return String(raw || "").trim().replace(/[^\w\u0400-\u04FF.-]/g, "").slice(0, 32);
   }
 
+  function buildBazaImportGroupLabel(importLabelId) {
+    var importId = String(importLabelId || "").trim();
+    if (!importId) return "--- ИМПОРТ ---";
+    return "--- ИМПОРТ ---\n          " + importId;
+  }
+
   window.BTCA_LEVEL2_BAZA = {
     expandBazaRows: expandBazaRows,
     buildBazaDiagramRender: function () {
@@ -112,6 +118,7 @@
       return api ? api.bazaTaskColor(task) : "#111827";
     },
     sanitizeBazaFileIdentifier: sanitizeBazaFileIdentifier,
+    buildBazaImportGroupLabel: buildBazaImportGroupLabel,
     BAZA_EXERCISE_ALL: "all",
     BAZA_GROUP_OWN: "__group_own__",
     BAZA_GROUP_FOREIGN: "__group_foreign__",
