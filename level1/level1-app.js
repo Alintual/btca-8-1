@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.107";
+  var VERSION = "8.1.108";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1784,8 +1784,9 @@
   }
 
   function runBazaScreenshot(userId) {
-    var svgWrap = state.root && state.root.querySelector("[data-btca-baza-diagram-capture] svg");
-    if (!svgWrap) {
+    var SHOT = window.BTCA_BAZA_SCREENSHOT;
+    var tab = state.root && state.root.querySelector(".btca-l1-baza");
+    if (!SHOT || !tab) {
       showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
       return;
     }
@@ -1796,40 +1797,27 @@
       return Promise.resolve();
     };
     saveId().then(function () {
-      var svgData = new XMLSerializer().serializeToString(svgWrap);
-      var canvas = document.createElement("canvas");
-      var ctx = canvas.getContext("2d");
-      var img = new Image();
-      var blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      var url = URL.createObjectURL(blob);
-      img.onload = function () {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.fillStyle = "#c5d9dc";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-        canvas.toBlob(function (pngBlob) {
-          URL.revokeObjectURL(url);
-          if (!pngBlob) {
-            showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
-            return;
-          }
-          var id = userId || state.bazaUserFileId || "screenshot";
-          var baza = state.ui.baza;
-          var a = document.createElement("a");
-          a.href = URL.createObjectURL(pngBlob);
-          a.download = "BTCA_L1_" + id + "_" + baza.exercise + "_" + baza.periodFrom + ".png";
-          a.click();
-          state.bazaMenuOpen = false;
-          renderBazaMenuLayer();
-          showBazaSuccessToast();
-        }, "image/png");
-      };
-      img.onerror = function () {
-        URL.revokeObjectURL(url);
-        showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
-      };
-      img.src = url;
+      return SHOT.captureBazaScreenshotPng(tab);
+    }).then(function (pngBlob) {
+      var baza = state.ui.baza;
+      var id = userId || state.bazaUserFileId || "user";
+      var fileName = SHOT.buildBazaScreenshotFileName(
+        id,
+        baza.exercise,
+        baza.periodFrom,
+        baza.periodTo,
+        1
+      );
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(pngBlob);
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      showBazaSuccessToast();
+    }).catch(function () {
+      showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_SCREENSHOT_ERROR);
     });
   }
 
