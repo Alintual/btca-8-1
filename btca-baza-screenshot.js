@@ -1,6 +1,15 @@
 (function (global) {
   var OUT_WIDTH_PX = 800;
   var ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+  var HEAD_BG = "#1f4f5c";
+  var ARROW_GREEN_FILTER =
+    "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2000%) hue-rotate(86deg) brightness(84%) contrast(96%)";
+  var ARROW_PURPLE_FILTER =
+    "brightness(0) saturate(100%) invert(33%) sepia(85%) saturate(4000%) hue-rotate(272deg) brightness(84%) contrast(96%)";
+  var ARROW_DISABLED_FILTER =
+    "brightness(0) saturate(100%) invert(15%) sepia(5%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(90%)";
+  var ARROW_SIZE_PX = 32;
+  var ARROW_SLOT_W_PX = 112;
 
   var STYLE_PROPS = [
     "color",
@@ -45,7 +54,66 @@
     "left",
     "grid",
     "grid-template-columns",
+    "filter",
+    "transform",
+    "object-fit",
   ];
+
+  function brandingUrl(file) {
+    var base = global.__BTCA_BASE__ || "/btca-8-1/";
+    if (!/\/$/.test(base)) base += "/";
+    return base + "branding/" + file;
+  }
+
+  function loadImageUrl(src) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function () {
+        resolve(img);
+      };
+      img.onerror = function () {
+        reject(new Error("image_load"));
+      };
+      img.src = src;
+    });
+  }
+
+  function inlineImagesInTree(root) {
+    if (!(root instanceof Element)) return Promise.resolve();
+    var imgs = root.querySelectorAll("img");
+    var tasks = [];
+    for (var i = 0; i < imgs.length; i++) {
+      (function (img) {
+        var src = img.getAttribute("src") || "";
+        if (!src || src.indexOf("data:") === 0) return;
+        tasks.push(
+          fetch(src)
+            .then(function (res) {
+              if (!res.ok) throw new Error("image_fetch");
+              return res.blob();
+            })
+            .then(function (blob) {
+              return new Promise(function (resolve) {
+                var reader = new FileReader();
+                reader.onload = function () {
+                  if (reader.result) img.setAttribute("src", String(reader.result));
+                  resolve();
+                };
+                reader.onerror = function () {
+                  resolve();
+                };
+                reader.readAsDataURL(blob);
+              });
+            })
+            .catch(function () {
+              /* keep original src */
+            })
+        );
+      })(imgs[i]);
+    }
+    return Promise.all(tasks);
+  }
 
   function buildSystemFileIdentifier(userIdentifier, level) {
     var user = String(userIdentifier ?? "").trim();
@@ -121,6 +189,16 @@
     return fallback;
   }
 
+  function resolveElementBackground(el, fallback) {
+    var node = el;
+    while (node instanceof Element) {
+      var bg = elementBackground(node, null);
+      if (bg) return bg;
+      node = node.parentElement;
+    }
+    return fallback || HEAD_BG;
+  }
+
   function domToCanvas(el, fallbackBg) {
     return new Promise(function (resolve, reject) {
       if (!(el instanceof Element)) {
@@ -135,51 +213,60 @@
         return;
       }
 
+      var bg = resolveElementBackground(el, fallbackBg || HEAD_BG);
+
       var wrapper = document.createElement("div");
       wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
       wrapper.style.width = w + "px";
       wrapper.style.height = h + "px";
       wrapper.style.boxSizing = "border-box";
       wrapper.style.overflow = "hidden";
+      wrapper.style.backgroundColor = bg;
 
       var clone = el.cloneNode(true);
       clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
       copyComputedStyles(el, clone);
+      clone.style.backgroundColor = bg;
       wrapper.appendChild(clone);
 
-      var serialized = new XMLSerializer().serializeToString(wrapper);
-      var svgMarkup =
-        '<?xml version="1.0" encoding="UTF-8"?>' +
-        '<svg xmlns="http://www.w3.org/2000/svg" width="' +
-        w +
-        '" height="' +
-        h +
-        '">' +
-        '<foreignObject width="100%" height="100%">' +
-        serialized +
-        "</foreignObject></svg>";
+      inlineImagesInTree(clone)
+        .then(function () {
+          var serialized = new XMLSerializer().serializeToString(wrapper);
+          var svgMarkup =
+            '<?xml version="1.0" encoding="UTF-8"?>' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+            w +
+            '" height="' +
+            h +
+            '">' +
+            '<foreignObject width="100%" height="100%">' +
+            serialized +
+            "</foreignObject></svg>";
 
-      var img = new Image();
-      var url =
-        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgMarkup);
-      img.onload = function () {
-        var canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        var ctx = canvas.getContext("2d");
-        if (!ctx) {
+          var img = new Image();
+          var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgMarkup);
+          img.onload = function () {
+            var canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext("2d");
+            if (!ctx) {
+              reject(new Error("missing_capture"));
+              return;
+            }
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas);
+          };
+          img.onerror = function () {
+            reject(new Error("missing_capture"));
+          };
+          img.src = url;
+        })
+        .catch(function () {
           reject(new Error("missing_capture"));
-          return;
-        }
-        ctx.fillStyle = elementBackground(el, fallbackBg || "#0b1220");
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas);
-      };
-      img.onerror = function () {
-        reject(new Error("missing_capture"));
-      };
-      img.src = url;
+        });
     });
   }
 
@@ -274,15 +361,16 @@
     var gap = 8;
     var labelH = 18;
     var rowH = 40;
-    var titleH = 28;
-    var h = pad + labelH + rowH + gap + labelH + rowH + gap + titleH + pad;
+    var titleH = 26;
+    var headerPadBottom = 8;
+    var h = pad + labelH + rowH + gap + labelH + rowH + gap + titleH + headerPadBottom + pad;
     var canvas = document.createElement("canvas");
     canvas.width = targetW;
     canvas.height = h;
     var ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("missing_capture");
 
-    ctx.fillStyle = "#c5d9dc";
+    ctx.fillStyle = HEAD_BG;
     ctx.fillRect(0, 0, targetW, h);
 
     var fromLabel = nodeText(head, "[data-btca-baza-from]");
@@ -295,7 +383,7 @@
     var faceGap = 8;
     var faceW = (targetW - pad * 2 - faceGap) / 2;
 
-    ctx.fillStyle = "#111111";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
     ctx.font = "600 14px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -304,6 +392,7 @@
 
     drawRoundedRect(ctx, pad, y, faceW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
     drawRoundedRect(ctx, pad + faceW + faceGap, y, faceW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
+    ctx.fillStyle = "#111827";
     ctx.font = "600 16px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.fillText(fromLabel || "—", pad + faceW / 2, y + rowH / 2);
     ctx.fillText(toLabel || "—", pad + faceW + faceGap + faceW / 2, y + rowH / 2);
@@ -311,26 +400,67 @@
 
     var taskW = Math.max(72, Math.round((targetW - pad * 2 - faceGap) * 0.28));
     var exW = targetW - pad * 2 - faceGap - taskW;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
     ctx.font = "600 14px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.fillText("Упражнение", pad + exW / 2, y + labelH / 2);
     ctx.fillText("Задача", pad + exW + faceGap + taskW / 2, y + labelH / 2);
     y += labelH;
     drawRoundedRect(ctx, pad, y, exW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
     drawRoundedRect(ctx, pad + exW + faceGap, y, taskW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
+    ctx.fillStyle = "#111827";
     ctx.font = "600 16px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.fillText(exerciseLabel || "—", pad + exW / 2, y + rowH / 2);
     ctx.fillText(taskLabel || "—", pad + exW + faceGap + taskW / 2, y + rowH / 2);
     y += rowH + gap;
 
-    ctx.font = "600 17px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.font = "400 17px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.fillText(chartTitle || "", targetW / 2, y + titleH / 2);
+    canvas.__btcaHeadTitleY = y + titleH / 2;
     return canvas;
   }
 
+  function drawArrowOnHeadCanvas(canvas, head) {
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return Promise.resolve(canvas);
+
+    var arrowEl = head.querySelector(".btca-l1-green-arrow__img");
+    var src = (arrowEl && arrowEl.getAttribute("src")) || brandingUrl("up.png");
+    var disabled = !!head.querySelector(".btca-l1-green-arrow--disabled");
+    var isL2 = document.body && document.body.classList.contains("btca-level2-mode");
+    var titleCy = canvas.__btcaHeadTitleY || canvas.height / 2;
+    var cx = canvas.width - ARROW_SLOT_W_PX / 2;
+
+    return loadImageUrl(src)
+      .then(function (img) {
+        ctx.save();
+        if (disabled) {
+          ctx.globalAlpha = 0.35;
+          ctx.filter = ARROW_DISABLED_FILTER;
+        } else {
+          ctx.filter = isL2 ? ARROW_PURPLE_FILTER : ARROW_GREEN_FILTER;
+        }
+        ctx.translate(cx, titleCy);
+        ctx.rotate(Math.PI / 2);
+        ctx.drawImage(img, -ARROW_SIZE_PX / 2, -ARROW_SIZE_PX / 2, ARROW_SIZE_PX, ARROW_SIZE_PX);
+        ctx.restore();
+        return canvas;
+      })
+      .catch(function () {
+        return canvas;
+      });
+  }
+
+  function drawHeadFallbackCanvasAsync(head, targetW) {
+    return drawArrowOnHeadCanvas(drawHeadFallbackCanvas(head, targetW), head);
+  }
+
   function captureHeadPanel(head) {
-    return domToCanvas(head, "#c5d9dc").catch(function () {
-      return drawHeadFallbackCanvas(head, OUT_WIDTH_PX);
-    });
+    function viaFallback() {
+      return drawHeadFallbackCanvasAsync(head, OUT_WIDTH_PX);
+    }
+    if (isAppleMobile()) return viaFallback();
+    return domToCanvas(head, HEAD_BG).catch(viaFallback);
   }
 
   function canvasToPngBlob(canvas) {
