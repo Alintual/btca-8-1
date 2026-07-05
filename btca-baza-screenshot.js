@@ -689,13 +689,14 @@
     return /iPhone|iPad|iPod/.test(ua) || iPadDesktop;
   }
 
-  /** iPad/iPhone: «Поделиться» → «Сохранить в Файлы» (без blob:/iframe и без *.html). */
-  function saveViaShare(fileName, pngBlob) {
+  /** iPad/iPhone: «Поделиться» → «Сохранить в Файлы» (без blob: preview). */
+  function saveViaShare(fileName, blob, mimeType) {
     var FileCtor = global.File;
     if (!FileCtor || !global.navigator || typeof global.navigator.share !== "function") {
       return Promise.reject(new Error("download_failed"));
     }
-    var file = new FileCtor([pngBlob], fileName, { type: "image/png" });
+    var type = mimeType || (blob && blob.type) || "application/octet-stream";
+    var file = new FileCtor([blob], fileName, { type: type });
     if (typeof global.navigator.canShare === "function" && !global.navigator.canShare({ files: [file] })) {
       return Promise.reject(new Error("download_failed"));
     }
@@ -705,9 +706,10 @@
     });
   }
 
-  function saveViaAnchorBlob(fileName, pngBlob) {
+  function saveViaAnchorBlob(fileName, blob) {
     return new Promise(function (resolve, reject) {
-      var downloadBlob = new Blob([pngBlob], { type: "application/octet-stream" });
+      var downloadBlob =
+        blob instanceof Blob ? blob : new Blob([blob], { type: "application/octet-stream" });
       var url = URL.createObjectURL(downloadBlob);
       var a = document.createElement("a");
       a.href = url;
@@ -739,24 +741,33 @@
     });
   }
 
-  function saveBazaScreenshotBlob(fileName, pngBlob) {
-    if (!pngBlob) return Promise.reject(new Error("missing_capture"));
-    var name = String(fileName || "screenshot.png").replace(/[\\/:*?"<>|]+/g, "_");
-    if (!/\.png$/i.test(name)) name += ".png";
+  function saveBazaFileBlob(fileName, blob, mimeType) {
+    if (!blob) return Promise.reject(new Error("missing_capture"));
+    var name = String(fileName || "file.bin").replace(/[\\/:*?"<>|]+/g, "_");
+    var type = mimeType || (blob instanceof Blob && blob.type) || "application/octet-stream";
+    var outBlob = blob instanceof Blob && blob.type ? blob : new Blob([blob], { type: type });
 
     if (isAppleMobile()) {
-      return saveViaShare(name, pngBlob);
+      return saveViaShare(name, outBlob, type);
     }
 
     if (typeof global.showSaveFilePicker === "function") {
+      var pickerTypes;
+      if (type === "image/png") {
+        pickerTypes = [{ description: "PNG", accept: { "image/png": [".png"] } }];
+      } else if (type === "application/json") {
+        pickerTypes = [{ description: "JSON", accept: { "application/json": [".json"] } }];
+      } else {
+        pickerTypes = [{ description: "File", accept: { [type]: [] } }];
+      }
       return global
         .showSaveFilePicker({
           suggestedName: name,
-          types: [{ description: "PNG", accept: { "image/png": [".png"] } }],
+          types: pickerTypes,
         })
         .then(function (handle) {
           return handle.createWritable().then(function (writable) {
-            return writable.write(pngBlob).then(function () {
+            return writable.write(outBlob).then(function () {
               return writable.close();
             });
           });
@@ -767,12 +778,20 @@
         });
     }
 
-    return saveViaAnchorBlob(name, pngBlob);
+    return saveViaAnchorBlob(name, outBlob);
+  }
+
+  function saveBazaScreenshotBlob(fileName, pngBlob) {
+    if (!pngBlob) return Promise.reject(new Error("missing_capture"));
+    var name = String(fileName || "screenshot.png").replace(/[\\/:*?"<>|]+/g, "_");
+    if (!/\.png$/i.test(name)) name += ".png";
+    return saveBazaFileBlob(name, pngBlob, "image/png");
   }
 
   global.BTCA_BAZA_SCREENSHOT = {
     buildBazaScreenshotFileName: buildBazaScreenshotFileName,
     captureBazaScreenshotPng: captureBazaScreenshotPng,
     saveBazaScreenshotBlob: saveBazaScreenshotBlob,
+    saveBazaFileBlob: saveBazaFileBlob,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

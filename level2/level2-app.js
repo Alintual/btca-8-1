@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.116";
+  var VERSION = "8.1.118";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2056,10 +2056,15 @@
   }
 
   function runBazaExport(userId) {
+    var SAVE = window.BTCA_BAZA_SCREENSHOT;
+    if (!SAVE || typeof SAVE.saveBazaFileBlob !== "function") {
+      showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_EXPORT_ERROR);
+      return;
+    }
     DB.exportBazaBackup(userId).then(function (result) {
       if (!result.ok) {
         showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_EXPORT_ERROR);
-        return;
+        return Promise.reject(new Error("export_failed"));
       }
       if (userId && !state.bazaUserFileId) {
         return DB.saveUserFileIdentifier(userId).then(function () {
@@ -2069,18 +2074,16 @@
       }
       return result;
     }).then(function (result) {
-      if (!result || !result.ok) return;
       var blob = new Blob([JSON.stringify(result.payload, null, 2)], { type: "application/json" });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = result.fileName || "BTCA_L2_backup.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      var fileName = result.fileName || "BTCA_L2_backup.json";
       state.bazaMenuOpen = false;
       renderBazaMenuLayer();
+      return SAVE.saveBazaFileBlob(fileName, blob, "application/json");
+    }).then(function () {
       showBazaSuccessToast();
-    }).catch(function () {
+    }).catch(function (err) {
+      if (err && String(err.message || err) === "cancelled") return;
+      if (err && String(err.message || err) === "export_failed") return;
       showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_EXPORT_ERROR);
     });
   }
