@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.111";
+  var VERSION = "8.1.112";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1719,8 +1719,8 @@
     };
   }
 
-  function openBazaIdentifierDialog() {
-    state.bazaIdentifierMode = "screenshot";
+  function openBazaIdentifierDialog(mode) {
+    state.bazaIdentifierMode = mode || "screenshot";
     state.bazaIdentifierDraft = state.bazaUserFileId || "";
     state.bazaIdentifierError = "";
     renderBazaIdentifierDialog();
@@ -1735,6 +1735,7 @@
       layer.innerHTML = "";
       return;
     }
+    var mode = state.bazaIdentifierMode;
     var hasId = !!state.bazaUserFileId;
     var showInput = !hasId;
     var canConfirm = hasId || String(state.bazaIdentifierDraft || "").trim().length > 0;
@@ -1742,7 +1743,7 @@
     layer.innerHTML = DLG.buildLayerWithPanel(
       'data-btca-baza-id-close',
       DLG.buildPanel({
-        bodyText: DLG.identifierBodyText("screenshot", hasId),
+        bodyText: DLG.identifierBodyText(mode, hasId),
         showInput: showInput,
         inputValue: state.bazaIdentifierDraft,
         inputError: state.bazaIdentifierError,
@@ -1884,8 +1885,7 @@
       return;
     }
     if (action === "screenshot" && caps.canScreenshot) {
-      if (state.bazaUserFileId) runBazaScreenshot(state.bazaUserFileId);
-      else openBazaIdentifierDialog();
+      openBazaIdentifierDialog("screenshot");
     }
   }
 

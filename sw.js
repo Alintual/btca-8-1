@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.219";
+const CACHE_VERSION = "btca-web-8.1.220";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
@@ -39,13 +39,6 @@ const CORE_ASSETS = [
   "/btca-8-1/level2/data/polezDescriptions.json"
 ];
 
-const pendingDownloads = new Map();
-const BAZA_DOWNLOAD_PREFIX = BASE_PATH + "/baza-download/";
-
-function safeDownloadFileName(name) {
-  return String(name || "screenshot.png").replace(/[\\/"'\r\n]+/g, "_");
-}
-
 function networkFirst(request, cacheName) {
   const liveRequest = new Request(request, { cache: "no-store" });
   return fetch(liveRequest)
@@ -64,18 +57,6 @@ function networkFirst(request, cacheName) {
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
-  }
-  const data = event.data;
-  if (data && data.type === "BAZA_STORE_DOWNLOAD" && data.id && data.buffer) {
-    pendingDownloads.set(String(data.id), {
-      buffer: data.buffer,
-      name: safeDownloadFileName(data.name),
-      mime: data.mime || "application/octet-stream",
-    });
-    setTimeout(() => pendingDownloads.delete(String(data.id)), 120000);
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({ ok: true });
-    }
   }
 });
 
@@ -102,24 +83,6 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
-
-  if (requestUrl.pathname.startsWith(BAZA_DOWNLOAD_PREFIX)) {
-    const id = decodeURIComponent(requestUrl.pathname.slice(BAZA_DOWNLOAD_PREFIX.length));
-    event.respondWith(
-      Promise.resolve().then(() => {
-        const entry = pendingDownloads.get(id);
-        if (!entry) return new Response("Not found", { status: 404 });
-        pendingDownloads.delete(id);
-        const headers = new Headers();
-        headers.set("Content-Type", entry.mime);
-        headers.set("Content-Disposition", 'attachment; filename="' + entry.name + '"');
-        headers.set("Content-Length", String(entry.buffer.byteLength || 0));
-        headers.set("Cache-Control", "no-store");
-        return new Response(entry.buffer, { headers });
-      })
-    );
-    return;
-  }
 
   const isLevelModule =
     /\/level[12]\/.*\.js$/i.test(requestUrl.pathname) ||

@@ -1,6 +1,6 @@
 (function (global) {
   var OUT_WIDTH_PX = 800;
-  var ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+  var ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
   var STYLE_PROPS = [
     "color",
@@ -408,13 +408,6 @@
       .then(canvasToPngBlob);
   }
 
-  /** Сохранить PNG без открытия «Просмотр» / Quick Look (iPad: через service worker + attachment). */
-  function getBasePath() {
-    var base = global.__BTCA_BASE__ || "/btca-8-1/";
-    if (!/\/$/.test(base)) base += "/";
-    return base;
-  }
-
   function isAppleMobile() {
     var nav = global.navigator;
     if (!nav) return false;
@@ -423,73 +416,19 @@
     return /iPhone|iPad|iPod/.test(ua) || iPadDesktop;
   }
 
-  function triggerHiddenDownload(url) {
-    return new Promise(function (resolve) {
-      var done = false;
-      function finish() {
-        if (done) return;
-        done = true;
-        resolve();
-      }
-      var iframe = document.createElement("iframe");
-      iframe.setAttribute("aria-hidden", "true");
-      iframe.style.cssText =
-        "position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none;left:-9999px;top:-9999px;";
-      iframe.onload = function () {
-        window.setTimeout(finish, 500);
-      };
-      document.body.appendChild(iframe);
-      iframe.src = url;
-      window.setTimeout(finish, 2500);
-    });
-  }
-
-  function saveViaServiceWorker(fileName, pngBlob) {
-    var nav = global.navigator;
-    if (!nav || !nav.serviceWorker) return Promise.reject(new Error("no_sw"));
-    return nav.serviceWorker.ready.then(function (reg) {
-      var sw = reg.active || nav.serviceWorker.controller;
-      if (!sw) return Promise.reject(new Error("no_sw"));
-      return pngBlob.arrayBuffer().then(function (buffer) {
-        var id =
-          "d" +
-          Date.now().toString(36) +
-          Math.random().toString(36).replace(/[^a-z0-9]/g, "").slice(0, 10);
-        var url = getBasePath() + "baza-download/" + encodeURIComponent(id);
-        return new Promise(function (resolve, reject) {
-          var channel = new MessageChannel();
-          var settled = false;
-          function finish(err) {
-            if (settled) return;
-            settled = true;
-            if (err) reject(err);
-            else triggerHiddenDownload(url).then(resolve).catch(reject);
-          }
-          channel.port1.onmessage = function () {
-            finish(null);
-          };
-          channel.port1.onmessageerror = function () {
-            finish(new Error("download_failed"));
-          };
-          window.setTimeout(function () {
-            finish(new Error("download_failed"));
-          }, 3000);
-          try {
-            sw.postMessage(
-              {
-                type: "BAZA_STORE_DOWNLOAD",
-                id: id,
-                name: fileName,
-                mime: "application/octet-stream",
-                buffer: buffer,
-              },
-              [channel.port2]
-            );
-          } catch (err) {
-            finish(err || new Error("download_failed"));
-          }
-        });
-      });
+  /** iPad/iPhone: «Поделиться» → «Сохранить в Файлы» (без blob:/iframe и без *.html). */
+  function saveViaShare(fileName, pngBlob) {
+    var FileCtor = global.File;
+    if (!FileCtor || !global.navigator || typeof global.navigator.share !== "function") {
+      return Promise.reject(new Error("download_failed"));
+    }
+    var file = new FileCtor([pngBlob], fileName, { type: "application/octet-stream" });
+    if (typeof global.navigator.canShare === "function" && !global.navigator.canShare({ files: [file] })) {
+      return Promise.reject(new Error("download_failed"));
+    }
+    return global.navigator.share({ files: [file], title: fileName }).catch(function (err) {
+      if (err && err.name === "AbortError") throw new Error("cancelled");
+      throw new Error("download_failed");
     });
   }
 
@@ -532,7 +471,11 @@
     var name = String(fileName || "screenshot.png").replace(/[\\/:*?"<>|]+/g, "_");
     if (!/\.png$/i.test(name)) name += ".png";
 
-    if (typeof global.showSaveFilePicker === "function" && !isAppleMobile()) {
+    if (isAppleMobile()) {
+      return saveViaShare(name, pngBlob);
+    }
+
+    if (typeof global.showSaveFilePicker === "function") {
       return global
         .showSaveFilePicker({
           suggestedName: name,
@@ -551,14 +494,6 @@
         });
     }
 
-    if (global.navigator && global.navigator.serviceWorker) {
-      return saveViaServiceWorker(name, pngBlob).catch(function () {
-        if (isAppleMobile()) return Promise.reject(new Error("download_failed"));
-        return saveViaAnchorBlob(name, pngBlob);
-      });
-    }
-
-    if (isAppleMobile()) return Promise.reject(new Error("download_failed"));
     return saveViaAnchorBlob(name, pngBlob);
   }
 
