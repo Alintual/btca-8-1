@@ -9,8 +9,6 @@
     "brightness(0) saturate(100%) invert(33%) sepia(85%) saturate(4000%) hue-rotate(272deg) brightness(84%) contrast(96%)";
   var ARROW_DISABLED_FILTER =
     "brightness(0) saturate(100%) invert(15%) sepia(5%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(90%)";
-  var ARROW_SIZE_PX = 32;
-  var ARROW_SLOT_W_PX = 112;
 
   var STYLE_PROPS = [
     "color",
@@ -200,7 +198,8 @@
     return fallback || HEAD_BG;
   }
 
-  function domToCanvas(el, fallbackBg) {
+  function domToCanvas(el, fallbackBg, opts) {
+    opts = opts || {};
     return new Promise(function (resolve, reject) {
       if (!(el instanceof Element)) {
         reject(new Error("missing_capture"));
@@ -228,6 +227,12 @@
       clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
       copyComputedStyles(el, clone);
       clone.style.backgroundColor = bg;
+      if (opts.hideSelectors) {
+        opts.hideSelectors.forEach(function (sel) {
+          var hidden = clone.querySelectorAll(sel);
+          for (var k = 0; k < hidden.length; k++) hidden[k].style.visibility = "hidden";
+        });
+      }
       wrapper.appendChild(clone);
 
       inlineImagesInTree(clone)
@@ -333,10 +338,85 @@
     return out;
   }
 
-  function nodeText(el, selector) {
-    if (!(el instanceof Element)) return "";
-    var node = selector ? el.querySelector(selector) : el;
-    return node ? String(node.textContent || "").trim() : "";
+  function scaleCanvasToWidth(canvas, targetW, bgColor) {
+    if (Math.abs(canvas.width - targetW) < 1) return canvas;
+    var scale = targetW / Math.max(1, canvas.width);
+    var h = Math.max(1, Math.round(canvas.height * scale));
+    var out = document.createElement("canvas");
+    out.width = targetW;
+    out.height = h;
+    var ctx = out.getContext("2d");
+    if (!ctx) throw new Error("missing_capture");
+    ctx.fillStyle = bgColor || HEAD_BG;
+    ctx.fillRect(0, 0, targetW, h);
+    ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, targetW, h);
+    return out;
+  }
+
+  function rectRel(el, rootRect, scale) {
+    var r = el.getBoundingClientRect();
+    return {
+      x: (r.left - rootRect.left) * scale,
+      y: (r.top - rootRect.top) * scale,
+      w: r.width * scale,
+      h: r.height * scale,
+    };
+  }
+
+  function parsePx(value, scale) {
+    var m = /^([\d.]+)px$/.exec(String(value || "").trim());
+    return m ? parseFloat(m[1]) * scale : 0;
+  }
+
+  function fontFromEl(el, scale) {
+    var cs = global.getComputedStyle(el);
+    var px = parseFloat(cs.fontSize) * scale;
+    var weight = cs.fontWeight || "400";
+    var family = cs.fontFamily || "system-ui, sans-serif";
+    return weight + " " + px + "px " + family;
+  }
+
+  function drawCenteredTextInRect(ctx, text, rect, font, color) {
+    ctx.save();
+    ctx.font = font;
+    ctx.fillStyle = color || "#111827";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2);
+    ctx.restore();
+  }
+
+  function wrapTextLines(ctx, text, maxWidth) {
+    var words = String(text || "").split(/\s+/).filter(Boolean);
+    if (!words.length) return [];
+    var lines = [];
+    var line = words[0];
+    for (var i = 1; i < words.length; i++) {
+      var test = line + " " + words[i];
+      if (ctx.measureText(test).width <= maxWidth) line = test;
+      else {
+        lines.push(line);
+        line = words[i];
+      }
+    }
+    lines.push(line);
+    return lines;
+  }
+
+  function drawWrappedCenteredText(ctx, text, box, font, color, lineHeightPx) {
+    ctx.save();
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    var lines = wrapTextLines(ctx, text, Math.max(1, box.w - 4));
+    var lh = lineHeightPx || parseFloat(font) || 20;
+    var totalH = lines.length * lh;
+    var startY = box.y + (box.h - totalH) / 2 + lh / 2;
+    for (var i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], box.x + box.w / 2, startY + i * lh);
+    }
+    ctx.restore();
   }
 
   function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke) {
@@ -359,81 +439,113 @@
     }
   }
 
-  function drawHeadFallbackCanvas(head, targetW) {
-    var pad = 16;
-    var gap = 8;
-    var labelH = 18;
-    var rowH = 40;
-    var titleH = 26;
-    var headerPadBottom = 8;
-    var h = pad + labelH + rowH + gap + labelH + rowH + gap + titleH + headerPadBottom + pad;
+  function drawMeasuredFace(ctx, faceEl, rootRect, scale) {
+    if (!(faceEl instanceof Element)) return;
+    var rect = rectRel(faceEl, rootRect, scale);
+    var cs = global.getComputedStyle(faceEl);
+    var radius = parsePx(cs.borderTopLeftRadius, 1);
+    var opacity = parseFloat(cs.opacity);
+    if (faceEl.classList.contains("btca-l1-face--disabled")) opacity = Math.min(isFinite(opacity) ? opacity : 1, 0.55);
+    ctx.save();
+    ctx.globalAlpha = isFinite(opacity) ? opacity : 1;
+    drawRoundedRect(ctx, rect.x, rect.y, rect.w, rect.h, radius, cs.backgroundColor || "#ffffff", "rgba(17, 24, 39, 0.18)");
+    ctx.restore();
+
+    var textEl = faceEl.querySelector(".btca-l1-face__text");
+    if (textEl) {
+      drawCenteredTextInRect(
+        ctx,
+        textEl.textContent.trim(),
+        rectRel(textEl, rootRect, scale),
+        fontFromEl(textEl, scale),
+        cs.color
+      );
+    }
+    var iconEl = faceEl.querySelector(".btca-l1-period-face__icon");
+    if (iconEl) {
+      drawCenteredTextInRect(
+        ctx,
+        iconEl.textContent.trim(),
+        rectRel(iconEl, rootRect, scale),
+        fontFromEl(iconEl, scale),
+        cs.color
+      );
+    }
+    var chevronEl = faceEl.querySelector(".btca-l1-face__chevron");
+    if (chevronEl) {
+      var chCs = global.getComputedStyle(chevronEl);
+      drawCenteredTextInRect(
+        ctx,
+        chevronEl.textContent.trim(),
+        rectRel(chevronEl, rootRect, scale),
+        fontFromEl(chevronEl, scale),
+        chCs.color
+      );
+    }
+  }
+
+  function drawMeasuredLabel(ctx, labelEl, rootRect, scale) {
+    if (!(labelEl instanceof Element)) return;
+    var cs = global.getComputedStyle(labelEl);
+    drawCenteredTextInRect(
+      ctx,
+      labelEl.textContent.trim(),
+      rectRel(labelEl, rootRect, scale),
+      fontFromEl(labelEl, scale),
+      cs.color
+    );
+  }
+
+  function drawHeadMeasuredCanvas(head, targetW) {
+    var headRect = head.getBoundingClientRect();
+    var scale = targetW / Math.max(1, headRect.width);
+    var h = Math.max(1, Math.round(headRect.height * scale));
     var canvas = document.createElement("canvas");
     canvas.width = targetW;
     canvas.height = h;
     var ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("missing_capture");
-
     ctx.fillStyle = HEAD_BG;
     ctx.fillRect(0, 0, targetW, h);
 
-    var fromLabel = nodeText(head, "[data-btca-baza-from]");
-    var toLabel = nodeText(head, "[data-btca-baza-to]");
-    var exerciseLabel = nodeText(head, "[data-btca-baza-exercise]");
-    var taskLabel = nodeText(head, "[data-btca-baza-task]");
-    var chartTitle = nodeText(head, ".btca-l1-baza-chart-title");
+    var labels = head.querySelectorAll(".btca-l1-field-label");
+    for (var i = 0; i < labels.length; i++) drawMeasuredLabel(ctx, labels[i], headRect, scale);
 
-    var y = pad;
-    var faceGap = 8;
-    var faceW = (targetW - pad * 2 - faceGap) / 2;
+    var faces = head.querySelectorAll(".btca-l1-face");
+    for (var j = 0; j < faces.length; j++) drawMeasuredFace(ctx, faces[j], headRect, scale);
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.font = "600 14px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Период", targetW / 2, y + labelH / 2);
-    y += labelH;
-
-    drawRoundedRect(ctx, pad, y, faceW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
-    drawRoundedRect(ctx, pad + faceW + faceGap, y, faceW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
-    ctx.fillStyle = "#111827";
-    ctx.font = "600 16px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText(fromLabel || "—", pad + faceW / 2, y + rowH / 2);
-    ctx.fillText(toLabel || "—", pad + faceW + faceGap + faceW / 2, y + rowH / 2);
-    y += rowH + gap;
-
-    var taskW = Math.max(72, Math.round((targetW - pad * 2 - faceGap) * 0.28));
-    var exW = targetW - pad * 2 - faceGap - taskW;
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.font = "600 14px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText("Упражнение", pad + exW / 2, y + labelH / 2);
-    ctx.fillText("Задача", pad + exW + faceGap + taskW / 2, y + labelH / 2);
-    y += labelH;
-    drawRoundedRect(ctx, pad, y, exW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
-    drawRoundedRect(ctx, pad + exW + faceGap, y, taskW, rowH, 12, "#ffffff", "rgba(17, 24, 39, 0.18)");
-    ctx.fillStyle = "#111827";
-    ctx.font = "600 16px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText(exerciseLabel || "—", pad + exW / 2, y + rowH / 2);
-    ctx.fillText(taskLabel || "—", pad + exW + faceGap + taskW / 2, y + rowH / 2);
-    y += rowH + gap;
-
-    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-    ctx.font = "400 17px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText(chartTitle || "", targetW / 2, y + titleH / 2);
-    canvas.__btcaHeadTitleY = y + titleH / 2;
+    var titleEl = head.querySelector(".btca-l1-baza-chart-title");
+    if (titleEl) {
+      var tcs = global.getComputedStyle(titleEl);
+      var box = rectRel(titleEl, headRect, scale);
+      var lh = parseFloat(tcs.lineHeight);
+      if (!isFinite(lh) || lh <= 0) lh = parseFloat(tcs.fontSize) * 1.4;
+      drawWrappedCenteredText(
+        ctx,
+        titleEl.textContent.trim(),
+        box,
+        fontFromEl(titleEl, scale),
+        tcs.color,
+        lh * scale
+      );
+    }
     return canvas;
   }
 
-  function drawArrowOnHeadCanvas(canvas, head) {
+  function drawArrowOnHeadCanvasMeasured(head, canvas, targetW) {
     var ctx = canvas.getContext("2d");
     if (!ctx) return Promise.resolve(canvas);
-
     var arrowEl = head.querySelector(".btca-l1-green-arrow__img");
-    var src = (arrowEl && arrowEl.getAttribute("src")) || brandingUrl("up.png");
+    if (!arrowEl) return Promise.resolve(canvas);
+    var headRect = head.getBoundingClientRect();
+    var scale = targetW / Math.max(1, headRect.width);
+    var r = arrowEl.getBoundingClientRect();
+    var cx = (r.left - headRect.left + r.width / 2) * scale;
+    var cy = (r.top - headRect.top + r.height / 2) * scale;
+    var size = Math.max(r.width, r.height) * scale;
+    var src = arrowEl.getAttribute("src") || brandingUrl("up.png");
     var disabled = !!head.querySelector(".btca-l1-green-arrow--disabled");
     var isL2 = document.body && document.body.classList.contains("btca-level2-mode");
-    var titleCy = canvas.__btcaHeadTitleY || canvas.height / 2;
-    var cx = canvas.width - ARROW_SLOT_W_PX / 2;
-
     return loadImageUrl(src)
       .then(function (img) {
         ctx.save();
@@ -443,9 +555,9 @@
         } else {
           ctx.filter = isL2 ? ARROW_PURPLE_FILTER : ARROW_GREEN_FILTER;
         }
-        ctx.translate(cx, titleCy);
+        ctx.translate(cx, cy);
         ctx.rotate(Math.PI / 2);
-        ctx.drawImage(img, -ARROW_SIZE_PX / 2, -ARROW_SIZE_PX / 2, ARROW_SIZE_PX, ARROW_SIZE_PX);
+        ctx.drawImage(img, -size / 2, -size / 2, size, size);
         ctx.restore();
         return canvas;
       })
@@ -454,13 +566,22 @@
       });
   }
 
-  function drawHeadFallbackCanvasAsync(head, targetW) {
-    return drawArrowOnHeadCanvas(drawHeadFallbackCanvas(head, targetW), head);
+  function drawHeadMeasuredCanvasAsync(head, targetW) {
+    return drawArrowOnHeadCanvasMeasured(head, drawHeadMeasuredCanvas(head, targetW), targetW);
   }
 
-  /** Всегда canvas-отрисовка: тёмно-зелёный фон и up.png (CSS filter в foreignObject ненадёжен). */
+  /** DOM-захват с масштабированием до 800px; стрелка up.png — поверх по измеренным координатам. */
   function captureHeadPanel(head) {
-    return drawHeadFallbackCanvasAsync(head, OUT_WIDTH_PX);
+    return domToCanvas(head, HEAD_BG, { hideSelectors: [".btca-l1-green-arrow", ".btca-l1-green-arrow__img"] })
+      .then(function (canvas) {
+        return scaleCanvasToWidth(canvas, OUT_WIDTH_PX, HEAD_BG);
+      })
+      .then(function (canvas) {
+        return drawArrowOnHeadCanvasMeasured(head, canvas, OUT_WIDTH_PX);
+      })
+      .catch(function () {
+        return drawHeadMeasuredCanvasAsync(head, OUT_WIDTH_PX);
+      });
   }
 
   function wrapChartPanelCanvas(contentCanvas, targetW) {
@@ -570,11 +691,11 @@
     if (!FileCtor || !global.navigator || typeof global.navigator.share !== "function") {
       return Promise.reject(new Error("download_failed"));
     }
-    var file = new FileCtor([pngBlob], fileName, { type: "application/octet-stream" });
+    var file = new FileCtor([pngBlob], fileName, { type: "image/png" });
     if (typeof global.navigator.canShare === "function" && !global.navigator.canShare({ files: [file] })) {
       return Promise.reject(new Error("download_failed"));
     }
-    return global.navigator.share({ files: [file], title: fileName }).catch(function (err) {
+    return global.navigator.share({ files: [file] }).catch(function (err) {
       if (err && err.name === "AbortError") throw new Error("cancelled");
       throw new Error("download_failed");
     });
