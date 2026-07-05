@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.232" />
+    <meta name="btca-cache-version" content="btca-web-8.1.233" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -449,6 +449,25 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line2 {
   text-align: center;
 }
 
+/* Поясняющий текст страницы загрузки — единый кегль (преамбула, панель iOS, подписи кнопок). */
+.home__intro > p:not(.eyebrow),
+.ios-panel .hint,
+.ios-panel .prepare-status,
+.ios-panel .ios-next-step,
+.ios-panel .status-pill,
+.platform-button small {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.ios-panel__header strong,
+.ios-panel__header > span {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: #c8e2e6;
@@ -547,8 +566,6 @@ code {
 
 .platform-button small {
   color: #dcecef;
-  font-size: 0.86rem;
-  line-height: 1.3;
 }
 
 .platform-button:hover,
@@ -3443,7 +3460,6 @@ body.btca-level2-mode .btca-date-picker-day--selected {
   border-radius: 999px;
   color: #173c47;
   background: #d8edf1;
-  font-size: 0.78rem;
   line-height: 1.25;
 }
 
@@ -3487,13 +3503,11 @@ body.btca-level2-mode .btca-date-picker-day--selected {
   border-radius: 14px;
   color: #173c47;
   background: #d8edf1;
-  font-size: 0.92rem;
 }
 
 .prepare-status {
   min-height: 24px;
   margin-bottom: 0;
-  font-size: 0.92rem;
 }
 
 .prepare-status--error {
@@ -3511,7 +3525,6 @@ body.btca-level2-mode .btca-date-picker-day--selected {
 .ios-next-step {
   margin-bottom: 0;
   color: #dcecef;
-  font-size: 0.9rem;
 }
 
 .footer {
@@ -3649,7 +3662,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
           </nav>
 
           <section id="btca-static-ios-panel" class="ios-panel" aria-label="Подготовка iOS/iPadOS">
-            <div class="ios-panel__header"><strong>iOS/iPadOS</strong></div>
+            <div class="ios-panel__header"><span>iOS/iPadOS</span></div>
             <p class="hint">Стартовая страница загружена. Подготовка offline-пакета будет подключена следующим шагом.</p>
           </section>
         </section>
@@ -3671,7 +3684,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
             if (window.__BTCA_IOS_INSTALLER_READY__) return;
             panel.className = "ios-panel ios-panel--open";
             panel.innerHTML =
-              '<div class="ios-panel__header"><strong>iOS/iPadOS</strong></div>' +
+              '<div class="ios-panel__header"><span>iOS/iPadOS</span></div>' +
               '<p class="prepare-status prepare-status--error">Скрипт подготовки offline не загрузился. Обновите хостинг из свежей папки dist и перезагрузите страницу в Safari.</p>';
           }, 600);
         });
@@ -3682,8 +3695,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.232:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.232:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.233:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.233:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3724,8 +3737,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.123";
-  var LEVEL2_MODULE_VERSION = "8.1.123";
+  var LEVEL1_MODULE_VERSION = "8.1.124";
+  var LEVEL2_MODULE_VERSION = "8.1.124";
 
   var CORE_REL_PATHS = [
     "",
@@ -4895,7 +4908,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       return;
     }
     setPanel(
-      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + pct + "%</span></div>" +
+      '<div class="ios-panel__header"><span>' + escapeHtml(title) + "</span><span>" + pct + "%</span></div>" +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
       '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>" +
       iosInstallGuidanceHtml()
@@ -4904,7 +4917,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
 
   function renderInfo(title, message) {
     setPanel(
-      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong></div>" +
+      '<div class="ios-panel__header"><span>' + escapeHtml(title) + "</span></div>" +
       '<p class="hint">' + escapeHtml(message) + "</p>"
     );
   }
@@ -4916,7 +4929,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
       return;
     }
     setPanel(
-      '<div class="ios-panel__header"><strong>iOS/iPadOS</strong><span>100%</span></div>' +
+      '<div class="ios-panel__header"><span>iOS/iPadOS</span><span>100%</span></div>' +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:100%"></div></div>' +
       '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
       iosInstallGuidanceHtml()
@@ -5656,7 +5669,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
 
   function renderError(error) {
     setPanel(
-      '<div class="ios-panel__header"><strong>Ошибка iOS/iPadOS</strong></div>' +
+      '<div class="ios-panel__header"><span>Ошибка iOS/iPadOS</span></div>' +
       '<p class="prepare-status prepare-status--error">' + escapeHtml(error && (error.message || error)) + "</p>"
     );
   }

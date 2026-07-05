@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.232:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.232:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.233:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.233:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -44,8 +44,8 @@
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.123";
-  var LEVEL2_MODULE_VERSION = "8.1.123";
+  var LEVEL1_MODULE_VERSION = "8.1.124";
+  var LEVEL2_MODULE_VERSION = "8.1.124";
 
   var CORE_REL_PATHS = [
     "",
@@ -1215,7 +1215,7 @@
       return;
     }
     setPanel(
-      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong><span>" + pct + "%</span></div>" +
+      '<div class="ios-panel__header"><span>' + escapeHtml(title) + "</span><span>" + pct + "%</span></div>" +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
       '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>" +
       iosInstallGuidanceHtml()
@@ -1224,7 +1224,7 @@
 
   function renderInfo(title, message) {
     setPanel(
-      '<div class="ios-panel__header"><strong>' + escapeHtml(title) + "</strong></div>" +
+      '<div class="ios-panel__header"><span>' + escapeHtml(title) + "</span></div>" +
       '<p class="hint">' + escapeHtml(message) + "</p>"
     );
   }
@@ -1236,7 +1236,7 @@
       return;
     }
     setPanel(
-      '<div class="ios-panel__header"><strong>iOS/iPadOS</strong><span>100%</span></div>' +
+      '<div class="ios-panel__header"><span>iOS/iPadOS</span><span>100%</span></div>' +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:100%"></div></div>' +
       '<p class="prepare-status prepare-status--ready">Готово для offline.</p>' +
       iosInstallGuidanceHtml()
@@ -1976,7 +1976,7 @@
 
   function renderError(error) {
     setPanel(
-      '<div class="ios-panel__header"><strong>Ошибка iOS/iPadOS</strong></div>' +
+      '<div class="ios-panel__header"><span>Ошибка iOS/iPadOS</span></div>' +
       '<p class="prepare-status prepare-status--error">' + escapeHtml(error && (error.message || error)) + "</p>"
     );
   }
