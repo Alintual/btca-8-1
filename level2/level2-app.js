@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.119";
+  var VERSION = "8.1.120";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2089,63 +2089,51 @@
   }
 
   function runBazaImportPick() {
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    var SQLITE = window.BTCA_BAZA_SQLITE;
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = ".sqlite,.json,application/vnd.sqlite3,application/json";
+    input.accept = ".sqlite,application/vnd.sqlite3,application/x-sqlite3";
     input.style.display = "none";
     document.body.appendChild(input);
     input.addEventListener("change", function () {
       var file = input.files && input.files[0];
       document.body.removeChild(input);
       if (!file) return;
-      var name = String(file.name || "").toLowerCase();
-      var isSqlite = name.endsWith(".sqlite") || file.type === "application/vnd.sqlite3";
-      if (isSqlite) {
-        var readerBin = new FileReader();
-        readerBin.onload = function () {
-          DB.importBazaBackupSqlite(readerBin.result, file.name).then(function (res) {
-            if (!res.ok) {
-              showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
-              return;
-            }
-            state.bazaMenuOpen = false;
-            renderBazaMenuLayer();
-            return refreshBazaContext();
-          }).then(function () {
-            renderActiveTab();
-            renderTitleBar();
-            showBazaSuccessToast();
-          }).catch(function () {
-            showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
-          });
-        };
-        readerBin.readAsArrayBuffer(file);
+      var name = String(file.name || "");
+      if (!/\.sqlite$/i.test(name)) {
+        showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
         return;
       }
-      var reader = new FileReader();
-      reader.onload = function () {
-        try {
-          var payload = JSON.parse(String(reader.result || ""));
-          DB.importBazaBackupObject(payload).then(function (res) {
-            if (!res.ok) {
-              showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
-              return;
-            }
-            state.bazaMenuOpen = false;
-            renderBazaMenuLayer();
-            return refreshBazaContext();
-          }).then(function () {
+      if (SQLITE && typeof SQLITE.validateL2BackupFileName === "function") {
+        var nameCheck = SQLITE.validateL2BackupFileName(name);
+        if (!nameCheck.ok) {
+          showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+          return;
+        }
+      }
+      var readerBin = new FileReader();
+      readerBin.onload = function () {
+        DB.importBazaBackupSqlite(readerBin.result, file.name).then(function (res) {
+          if (!res.ok) {
+            showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+            return;
+          }
+          state.bazaMenuOpen = false;
+          renderBazaMenuLayer();
+          return refreshBazaContext().then(function () {
             renderActiveTab();
             renderTitleBar();
             showBazaSuccessToast();
-          }).catch(function () {
-            showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
           });
-        } catch (_) {
-          showBazaErrorToast(window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR);
-        }
+        }).catch(function () {
+          showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+        });
       };
-      reader.readAsText(file, "utf-8");
+      readerBin.onerror = function () {
+        showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
+      };
+      readerBin.readAsArrayBuffer(file);
     });
     input.click();
   }

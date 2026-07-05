@@ -542,12 +542,13 @@
 
   function importBazaBackupSqlite(bytes, fileName) {
     var SQLITE = typeof window !== "undefined" ? window.BTCA_BAZA_SQLITE : null;
-    if (!SQLITE || typeof SQLITE.parseBackupSqlite !== "function") {
+    if (!SQLITE || typeof SQLITE.validateBackupForImport !== "function") {
       return Promise.resolve({ ok: false, error: "sqlite_unavailable" });
     }
-    return SQLITE.parseBackupSqlite(bytes, fileName, 2)
-      .then(function (parsed) {
-        var rows = parsed.rows || [];
+    return SQLITE.validateBackupForImport(bytes, fileName, 2)
+      .then(function (validated) {
+        if (!validated.ok) return validated;
+        var rows = validated.rows || [];
         return clearForeignDatabase().then(function () {
           return runTx(["foreign_results"], "readwrite", function (transaction, finish, fail) {
             transaction.oncomplete = function () { finish({ ok: true }); };
@@ -566,7 +567,7 @@
             });
           });
         }).then(function () {
-          var importId = String(parsed.importId || "import").trim();
+          var importId = String(validated.importId || "import").trim();
           return saveImportFileIdentifier(importId).then(function () {
             return { ok: true, importId: importId };
           });
