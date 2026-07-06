@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.140";
+  var VERSION = "8.1.141";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2091,7 +2091,7 @@
       canExport: state.bazaStats.hasOwn,
       canImportView: !state.bazaStats.hasForeign && !state.bazaForeignAvailable,
       canImportOverwrite: true,
-      canDeleteOwn: state.bazaStats.hasOwn,
+      canDeleteOwn: !state.bazaOwnEmpty,
       canDeleteForeign: state.bazaStats.hasForeign,
       canScreenshot: chartMeta.showChart && state.bazaExpandedRows.length > 0,
     };
