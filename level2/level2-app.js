@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.133";
+  var VERSION = "8.1.134";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1130,14 +1130,30 @@
     return Math.min(menuW, Math.max(200, half));
   }
 
+  function bazaMenuTriIconHtml(kind) {
+    var up = kind === "export";
+    return (
+      '<span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--tri btca-l2-baza-menu__icon--' +
+      kind +
+      '" aria-hidden="true">' +
+      '<svg class="btca-l2-baza-menu__tri-svg" viewBox="0 0 18 13" width="18" height="13" focusable="false" aria-hidden="true">' +
+      (up ? '<path d="M9 0 L18 13 H0 Z"/>' : '<path d="M0 0 H18 L9 13 Z"/>') +
+      "</svg></span>"
+    );
+  }
+
   function buildBazaImportSubmenuItems(caps) {
     return (
       '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__sub-item' +
       (caps.canImportView ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
-      '" data-btca-baza-action="importView"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--triangle btca-l2-baza-menu__icon--import-view" aria-hidden="true"></span><span>Просмотр</span></button>' +
+      '" data-btca-baza-action="importView">' +
+      bazaMenuTriIconHtml("import-view") +
+      "<span>Просмотр</span></button>" +
       '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__sub-item' +
       (caps.canImportOverwrite ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
-      '" data-btca-baza-action="importOverwrite"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--triangle btca-l2-baza-menu__icon--import-overwrite" aria-hidden="true"></span><span>Перезапись</span></button>'
+      '" data-btca-baza-action="importOverwrite">' +
+      bazaMenuTriIconHtml("import-overwrite") +
+      "<span>Перезапись</span></button>"
     );
   }
 
@@ -2079,11 +2095,15 @@
     var importSubPanelHtml = buildBazaImportSubmenuItems(caps);
     var items =
       '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canExport ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
-      '" data-btca-baza-action="export"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--triangle btca-l2-baza-menu__icon--export" aria-hidden="true"></span><span>Экспорт</span></button>' +
+      '" data-btca-baza-action="export">' +
+      bazaMenuTriIconHtml("export") +
+      "<span>Экспорт</span></button>" +
       '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__import-toggle' +
       (state.bazaImportSubmenuOpen ? " btca-l2-baza-menu__delete-toggle--open" : "") +
       '" data-btca-baza-import-toggle aria-expanded="' + (state.bazaImportSubmenuOpen ? "true" : "false") +
-      '" aria-haspopup="true"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--triangle btca-l2-baza-menu__icon--import" aria-hidden="true"></span><span>Импорт</span><span class="btca-l2-baza-menu__chevron" aria-hidden="true"></span></button>' +
+      '" aria-haspopup="true">' +
+      bazaMenuTriIconHtml("import") +
+      "<span>Импорт</span><span class=\"btca-l2-baza-menu__chevron\" aria-hidden=\"true\"></span></button>" +
       '<button type="button" class="btca-l1-baza-sheet-menu__item btca-l2-baza-menu__delete-toggle' +
       (state.bazaDeleteSubmenuOpen ? " btca-l2-baza-menu__delete-toggle--open" : "") +
       (canOpenDeleteSub ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
