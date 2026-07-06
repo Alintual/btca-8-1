@@ -120,6 +120,7 @@
     sanitizeBazaFileIdentifier: sanitizeBazaFileIdentifier,
     buildBazaImportGroupLabel: buildBazaImportGroupLabel,
     BAZA_EXERCISE_ALL: "all",
+    BAZA_FOREIGN_DATA: "__foreign_data__",
     BAZA_GROUP_OWN: "__group_own__",
     BAZA_GROUP_FOREIGN: "__group_foreign__",
   };

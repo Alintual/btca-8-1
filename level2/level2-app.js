@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.138";
+  var VERSION = "8.1.139";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -328,9 +328,18 @@
     return row ? row.label : "Все";
   }
 
+  function bazaExercisePickerValue(exercise, dataSource) {
+    var FOREIGN = BAZA ? BAZA.BAZA_FOREIGN_DATA : "__foreign_data__";
+    var ALL = BAZA ? BAZA.BAZA_EXERCISE_ALL : "all";
+    if (exercise === FOREIGN) return FOREIGN;
+    if (exercise === ALL && dataSource === "foreign") return FOREIGN;
+    return exercise;
+  }
+
   function buildBazaExercisePickerOptions() {
     if (!BAZA) return [{ value: "all", label: "Все" }];
     var BAZA_ALL = BAZA.BAZA_EXERCISE_ALL;
+    var BAZA_FOREIGN = BAZA.BAZA_FOREIGN_DATA;
     var GROUP_OWN = BAZA.BAZA_GROUP_OWN;
     var GROUP_FOREIGN = BAZA.BAZA_GROUP_FOREIGN;
     var ownKeys = state.bazaOwnKeys;
@@ -375,7 +384,7 @@
         importHeader: !!String(importId || "").trim(),
         source: "foreign",
       });
-      out.push({ value: BAZA_ALL, label: "Все", source: "foreign" });
+      out.push({ value: BAZA_FOREIGN, label: "Все", source: "foreign" });
       appendExerciseRows("foreign", foreignKeys);
     }
     return out;
@@ -383,7 +392,7 @@
 
   function bazaExerciseFaceLabel(exercise, dataSource, disabled, options) {
     if (disabled) return "---";
-    if (exercise === "all") return "Все";
+    if (exercise === "all" || exercise === "__foreign_data__") return "Все";
     var opts = options || buildBazaExercisePickerOptions();
     var row = opts.filter(function (o) {
       return !o.groupHeader && o.value === exercise && (o.source || dataSource) === dataSource;
@@ -392,7 +401,7 @@
   }
 
   function isBazaExerciseSelectionValid(exercise, dataSource) {
-    if (exercise === "all") return true;
+    if (exercise === "all" || exercise === "__foreign_data__") return true;
     var keys = dataSource === "foreign" ? state.bazaForeignKeys : state.bazaOwnKeys;
     return keys.indexOf(exercise) >= 0;
   }
@@ -1051,7 +1060,7 @@
 
   function loadBazaTableRows(baza) {
     var src = baza.dataSource === "foreign" ? "foreign" : "own";
-    var queryEx = baza.exercise;
+    var queryEx = bazaExerciseForQuery(baza.exercise);
     var task = baza.task === "all" ? "all" : baza.task;
     return DB.bazaQueryForSource(src, {
       from: baza.periodFrom,
@@ -1546,7 +1555,8 @@
           return '<div class="' + groupClass + '">' + escapeHtml(opt.label) + "</div>";
         }
         var optSource = opt.source || "own";
-        var active = opt.value === current && (!currentSource || optSource === currentSource);
+        var pickerCurrent = bazaExercisePickerValue(current, currentSource || "own");
+        var active = opt.value === pickerCurrent;
         var itemClass = "btca-level1-picker__item";
         if (pickerOpts.catalogList) itemClass += " btca-level1-picker__item--catalog";
         if (itemExtraClass) itemClass += itemExtraClass;
@@ -1872,18 +1882,25 @@
           ex = "all";
         }
 
-        if (state.bazaOwnEmpty && foreignAvailable && ex === "all" && src !== "foreign") {
+        if (state.bazaOwnEmpty && foreignAvailable && (ex === "all" || ex === "__foreign_data__") && src !== "foreign") {
           src = "foreign";
+          ex = "__foreign_data__";
+        }
+
+        if (ex === "all" && src === "foreign") {
+          ex = "__foreign_data__";
         }
 
         if (
           ex !== "all" &&
+          ex !== "__foreign_data__" &&
           !isBazaExerciseSelectionValid(ex, src)
         ) {
           if (state.bazaOwnEmpty && foreignAvailable) {
             src = "foreign";
-            ex = "all";
+            ex = "__foreign_data__";
           } else {
+            src = "own";
             ex = "all";
           }
           tk = "all";
@@ -1906,7 +1923,7 @@
           return;
         }
 
-        if (ex !== "all") {
+        if (ex !== "all" && ex !== "__foreign_data__") {
           state.bazaRuleTasks = taskNumbersForExercise(ex);
         } else {
           state.bazaRuleTasks = [];
@@ -1923,9 +1940,13 @@
     });
   }
 
+  function bazaExerciseForQuery(exercise) {
+    return exercise === "__foreign_data__" ? "all" : exercise;
+  }
+
   function refreshBazaRows() {
     var baza = state.ui.baza;
-    var queryEx = baza.exercise;
+    var queryEx = bazaExerciseForQuery(baza.exercise);
     var src = baza.dataSource === "foreign" ? "foreign" : "own";
     return DB.bazaQueryForSource(src, {
       from: baza.periodFrom,
@@ -1951,7 +1972,7 @@
   function reconcileBazaExerciseChartState() {
     var baza = state.ui.baza;
     var ex = baza.exercise;
-    if (!ex || ex === "all") return false;
+    if (!ex || ex === "all" || ex === "__foreign_data__") return false;
     var src = baza.dataSource === "foreign" ? "foreign" : "own";
     if (state.bazaNoExercisesInPeriod) return false;
     if (!isBazaExerciseSelectionValid(ex, src)) {
@@ -2577,10 +2598,20 @@
     if (!item || item.groupHeader || item.disabled || item.disabledHeader) return;
     if (BAZA && (item.value === BAZA.BAZA_GROUP_OWN || item.value === BAZA.BAZA_GROUP_FOREIGN)) return;
     if (item.value === "all") {
-      state.ui.baza.dataSource = item.source === "foreign" ? "foreign" : "own";
+      state.ui.baza.dataSource = "own";
       state.ui.baza.exercise = "all";
       state.ui.baza.task = "all";
-      applyUiPatch({ baza: { dataSource: state.ui.baza.dataSource, exercise: "all", task: "all" } });
+      applyUiPatch({ baza: { dataSource: "own", exercise: "all", task: "all" } });
+      return refreshBazaContext().then(function () {
+        renderActiveTab();
+        renderTitleBar();
+      });
+    }
+    if (item.value === "__foreign_data__") {
+      state.ui.baza.dataSource = "foreign";
+      state.ui.baza.exercise = "__foreign_data__";
+      state.ui.baza.task = "all";
+      applyUiPatch({ baza: { dataSource: "foreign", exercise: "__foreign_data__", task: "all" } });
       return refreshBazaContext().then(function () {
         renderActiveTab();
         renderTitleBar();
@@ -2605,8 +2636,8 @@
     var fromLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—");
     var toLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodTo) || "—");
     var exerciseLabel = bazaExerciseFaceLabel(baza.exercise, baza.dataSource, exerciseDisabled, buildBazaExercisePickerOptions());
-    var taskLabel = taskFilterEmpty || baza.exercise === "all" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
-    var taskDisabled = taskFilterEmpty || baza.exercise === "all";
+    var taskLabel = taskFilterEmpty || baza.exercise === "all" || baza.exercise === "__foreign_data__" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
+    var taskDisabled = taskFilterEmpty || baza.exercise === "all" || baza.exercise === "__foreign_data__";
     var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
     var DIAG = window.BTCA_BAZA_DIAGRAM;
     var diagramPanel = chartMeta.showChart
@@ -2664,7 +2695,7 @@
     }
     if (!exerciseDisabled) {
       var exerciseOptions = buildBazaExercisePickerOptions();
-      var pickerValue = baza.exercise;
+      var pickerValue = bazaExercisePickerValue(baza.exercise, baza.dataSource);
     content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
         openPicker("Упражнение", exerciseOptions, pickerValue, function (value, source) {
           var item = exerciseOptions.filter(function (o) {
