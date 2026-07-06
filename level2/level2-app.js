@@ -3,13 +3,13 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.141";
+  var VERSION = "8.1.142";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
-    var NAV_FILTER_ALL = "all";
+  var NAV_FILTER_ALL = "all";
   var POLEZ_ALL = "all";
-    var PICK_DELAY_MS = 1500;
+  var PICK_DELAY_MS = 1500;
   var PICKER_ROW_SIMPLE = 40;
   var PICKER_ROW_GROUP = 40;
   var PICKER_ROW_IMPORT = 64;
@@ -350,7 +350,7 @@
     var out = [];
 
     function appendExerciseRows(source, keys) {
-    var bySection = {};
+      var bySection = {};
       keys.forEach(function (key) {
         var section = sectionForDbKey(key);
         if (!section || section === "—") {
@@ -1509,7 +1509,7 @@
       (sheet.emoji ? '<span class="btca-level1-titlebar__emoji' +
         (state.ui.tab === "forma" ? " btca-level1-titlebar__emoji--forma" :
           state.ui.tab === "nav" ? " btca-level1-titlebar__emoji--nav" :
-          state.ui.tab === "polez" ? " btca-level1-titlebar__emoji--polez" : "") +
+            state.ui.tab === "polez" ? " btca-level1-titlebar__emoji--polez" : "") +
         '" aria-hidden="true">' + sheet.emoji + "</span>" : "") +
       "</div>" +
       '<span class="btca-level1-titlebar__spacer"></span>' +
@@ -1750,17 +1750,17 @@
 
   function buildFormaSaveRows() {
     syncUiFromDb();
-      var b5 = b5FromSelectValue(state.ui.exerciseValue);
-      var rules = exerciseRulesL1(b5);
+    var b5 = b5FromSelectValue(state.ui.exerciseValue);
+    var rules = exerciseRulesL1(b5);
     var okByTask = state.ui.taskOk || {};
-      var rows = [];
-      for (var task = 1; task <= 12; task += 1) {
-        var req = rules.requiredByTask[task - 1];
+    var rows = [];
+    for (var task = 1; task <= 12; task += 1) {
+      var req = rules.requiredByTask[task - 1];
       var okRaw = okByTask[String(task)] || "";
-        var okParsed = parseNonNegativeInt(okRaw);
-        var ok = okParsed === null || Number.isNaN(okParsed) ? null : Number(okParsed);
-        rows.push({ task: task, req: req === null ? null : Number(req), ok: ok });
-      }
+      var okParsed = parseNonNegativeInt(okRaw);
+      var ok = okParsed === null || Number.isNaN(okParsed) ? null : Number(okParsed);
+      rows.push({ task: task, req: req === null ? null : Number(req), ok: ok });
+    }
     return rows;
   }
 
@@ -2051,7 +2051,7 @@
     host.innerHTML = DLG
       ? DLG.buildToastHtml(state.bazaToast.message, state.bazaToast.color)
       : '<div class="btca-baza-toast-layer btca-baza-toast-layer--show" role="status"><div class="btca-baza-toast-card btca-baza-toast-card--success">' +
-        escapeHtml(state.bazaToast.message) + "</div></div>";
+      escapeHtml(state.bazaToast.message) + "</div></div>";
     var layer = host.querySelector(".btca-baza-toast-layer");
     if (layer) {
       layer.classList.remove("btca-baza-toast-layer--show");
@@ -2205,16 +2205,13 @@
     var mode = state.bazaIdentifierMode;
     var hasId = !!state.bazaUserFileId;
     var isImport = mode === "import";
-    var isOverwrite = mode === "overwrite";
-    var showInput = !hasId && !isImport && !isOverwrite;
-    var canConfirm = isImport || isOverwrite || hasId || String(state.bazaIdentifierDraft || "").trim().length > 0;
+    var showInput = !hasId && !isImport;
+    var canConfirm = isImport || hasId || String(state.bazaIdentifierDraft || "").trim().length > 0;
     layer.removeAttribute("hidden");
     layer.innerHTML = DLG.buildLayerWithPanel(
       'data-btca-baza-id-close',
       DLG.buildPanel({
-        bodyText: isOverwrite
-          ? DLG.TEXT_OVERWRITE_CONFIRM
-          : DLG.identifierBodyText(mode, hasId),
+        bodyText: DLG.identifierBodyText(mode, hasId),
         showInput: showInput,
         inputValue: state.bazaIdentifierDraft,
         inputError: state.bazaIdentifierError,
@@ -2242,9 +2239,29 @@
         return;
       }
       if (mode === "overwrite") {
-        state.bazaIdentifierMode = null;
-        renderBazaIdentifierDialog();
-        runBazaOverwritePick();
+        var overwriteId = state.bazaUserFileId;
+        if (!overwriteId) {
+          var overwriteInput = layer.querySelector(".btca-baza-dialog-input");
+          var overwriteValidation = validateBazaIdentifierInput(
+            overwriteInput ? overwriteInput.value : state.bazaIdentifierDraft
+          );
+          if (!overwriteValidation.ok) {
+            state.bazaIdentifierError = overwriteValidation.error;
+            renderBazaIdentifierDialog();
+            return;
+          }
+          overwriteId = overwriteValidation.value;
+        }
+        var startOverwritePick = function () {
+          state.bazaIdentifierMode = null;
+          state.bazaIdentifierError = "";
+          renderBazaIdentifierDialog();
+          runBazaOverwritePick(overwriteId);
+        };
+        DB.saveUserFileIdentifier(overwriteId).then(function () {
+          state.bazaUserFileId = overwriteId;
+          startOverwritePick();
+        });
         return;
       }
       var input = layer.querySelector(".btca-baza-dialog-input");
@@ -2354,7 +2371,7 @@
     input.click();
   }
 
-  function runBazaOverwritePick() {
+  function runBazaOverwritePick(knownOwnId) {
     var DLG = window.BTCA_BAZA_DIALOGS;
     var SQLITE = window.BTCA_BAZA_SQLITE;
     var input = document.createElement("input");
@@ -2382,7 +2399,7 @@
       }
       var readerBin = new FileReader();
       readerBin.onload = function () {
-        DB.overwriteOwnBazaBackupSqlite(readerBin.result, file.name).then(function (res) {
+        DB.overwriteOwnBazaBackupSqlite(readerBin.result, file.name, knownOwnId).then(function (res) {
           if (!res.ok) {
             if (res.error === "not_own_backup") {
               showBazaErrorToast("Файл не является вашей резервной копией");
@@ -2678,32 +2695,32 @@
       "</div></div>";
 
     if (!periodDisabled) {
-    content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
-      openDateInput(baza.periodFrom, function (iso) {
-        state.ui.baza.periodFrom = iso;
+      content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
+        openDateInput(baza.periodFrom, function (iso) {
+          state.ui.baza.periodFrom = iso;
           applyUiPatch({ baza: { periodFrom: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
-      }, "Период с");
-    });
-    content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
-      openDateInput(baza.periodTo, function (iso) {
-        state.ui.baza.periodTo = iso;
+        }, "Период с");
+      });
+      content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
+        openDateInput(baza.periodTo, function (iso) {
+          state.ui.baza.periodTo = iso;
           applyUiPatch({ baza: { periodTo: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
-      }, "Период по");
-    });
+        }, "Период по");
+      });
     }
     if (!exerciseDisabled) {
       var exerciseOptions = buildBazaExercisePickerOptions();
       var pickerValue = bazaExercisePickerValue(baza.exercise, baza.dataSource);
-    content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
+      content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
         openPicker("Упражнение", exerciseOptions, pickerValue, function (value, source) {
           var item = exerciseOptions.filter(function (o) {
             return o.value === value && (o.source || "own") === (source || baza.dataSource);
           })[0];
           onPickBazaExercise(item || { value: value, source: source || baza.dataSource });
-      }, event.currentTarget, { currentSource: baza.dataSource });
-    });
+        }, event.currentTarget, { currentSource: baza.dataSource });
+      });
     }
     var taskBtn = content.querySelector("[data-btca-baza-task]");
     if (taskBtn && !taskDisabled) {
@@ -2711,12 +2728,12 @@
         var options = [{ value: "all", label: "Все" }].concat(
           state.bazaRuleTasks.map(function (t) { return { value: String(t), label: String(t) }; })
         );
-      openPicker("Задача", options, baza.task, function (value) {
-        state.ui.baza.task = value;
+        openPicker("Задача", options, baza.task, function (value) {
+          state.ui.baza.task = value;
           applyUiPatch({ baza: { task: value } });
-        refreshBazaRowsWithReconcile().then(function () { renderBazaTab(content); });
-      }, event.currentTarget);
-    });
+          refreshBazaRowsWithReconcile().then(function () { renderBazaTab(content); });
+        }, event.currentTarget);
+      });
     }
     var tableBtn = content.querySelector("[data-btca-baza-table]");
     if (tableBtn && !chartMeta.arrowDisabled) tableBtn.addEventListener("click", function () { openBazaTable(); });
@@ -2775,7 +2792,7 @@
       "</div>" +
       (img
         ? '<div class="btca-l1-nav-card-frame" data-btca-nav-card-frame data-btca-nav-card-value="' + escapeHtml(item.value) + '">' +
-          '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy" draggable="false"></div>'
+        '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.label) + '" loading="lazy" draggable="false"></div>'
         : '<div class="btca-l1-nav-card-frame"><div class="btca-l1-card-placeholder">' + escapeHtml(item.label) + "</div></div>") +
       "</div></article>";
   }
@@ -2864,7 +2881,7 @@
 
     var navRoot = content.querySelector("[data-btca-nav-root]");
     if (!navRoot) {
-    content.innerHTML =
+      content.innerHTML =
         '<div class="btca-l1-tab btca-l1-nav" data-btca-nav-root>' +
         '<div data-btca-nav-head></div>' +
         '<div class="btca-l1-tab-body btca-l1-nav-cards" data-btca-nav-cards></div></div>';
@@ -2954,7 +2971,7 @@
           ? (single
             ? '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy" draggable="false">'
             : '<button type="button" class="btca-l1-card-image-btn" data-btca-polez-image="' + escapeHtml(row.key) + '">' +
-              '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>')
+            '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(row.label) + '" loading="lazy"></button>')
           : '<div class="btca-l1-card-placeholder">' + escapeHtml(row.label) + "</div>";
         var frameClass = "btca-l1-polez-card-frame" + (single && img ? " btca-l1-nav-card-frame--swipe" : "");
         var frameAttr = single && img ? ' data-btca-polez-image-swipe="' + escapeHtml(row.key) + '"' : "";

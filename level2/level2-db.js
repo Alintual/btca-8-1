@@ -542,7 +542,7 @@
     });
   }
 
-  function overwriteOwnBazaBackupSqlite(bytes, fileName) {
+  function overwriteOwnBazaBackupSqlite(bytes, fileName, ownIdOverride) {
     var SQLITE = typeof window !== "undefined" ? window.BTCA_BAZA_SQLITE : null;
     if (!SQLITE || typeof SQLITE.validateBackupForImport !== "function") {
       return Promise.resolve({ ok: false, error: "sqlite_unavailable" });
@@ -550,7 +550,11 @@
     return SQLITE.validateBackupForImport(bytes, fileName, 2)
       .then(function (validated) {
         if (!validated.ok) return validated;
-        return loadUserFileIdentifier().then(function (ownId) {
+        var ownFromOverride = String(ownIdOverride || "").trim();
+        var ownPromise = ownFromOverride
+          ? Promise.resolve(ownFromOverride)
+          : loadUserFileIdentifier();
+        return ownPromise.then(function (ownId) {
           var own = String(ownId || "").trim();
           var backupId = String(validated.importId || "").trim();
           if (!own || !backupId || own !== backupId) {

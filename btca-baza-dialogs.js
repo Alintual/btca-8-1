@@ -20,6 +20,8 @@
     "Подтвердите импорт копии Базы данных и далее выберите файл в Файлах";
   var TEXT_OVERWRITE_CONFIRM =
     "Подтвердите загрузку резервной копии Вашей Базы данных. Все текущие данные будут удалены!";
+  var TEXT_OVERWRITE_FIRST =
+    "Введите свой персональный идентификатор для файлов и далее Подтвердите загрузку резервной копии Вашей Базы данных. Все текущие данные будут удалены!";
 
   var DELETE_OWN_MSG = "Удалить текущие данные по выбранным фильтрам?";
   var DELETE_FOREIGN_MSG = "Подтвердите удаление всех импортированных данных";
@@ -137,6 +139,7 @@
   function identifierBodyText(mode, hasIdentifier) {
     if (mode === "export") return hasIdentifier ? TEXT_EXPORT_CONFIRM : TEXT_EXPORT_FIRST;
     if (mode === "import") return TEXT_IMPORT_CONFIRM;
+    if (mode === "overwrite") return hasIdentifier ? TEXT_OVERWRITE_CONFIRM : TEXT_OVERWRITE_FIRST;
     return hasIdentifier ? TEXT_SCREENSHOT_CONFIRM : TEXT_SCREENSHOT_FIRST;
   }
 
@@ -286,6 +289,7 @@
     TOAST_MSG_IMPORT_ERROR: TOAST_MSG_IMPORT_ERROR,
     TOAST_MSG_SCREENSHOT_ERROR: TOAST_MSG_SCREENSHOT_ERROR,
     TEXT_OVERWRITE_CONFIRM: TEXT_OVERWRITE_CONFIRM,
+    TEXT_OVERWRITE_FIRST: TEXT_OVERWRITE_FIRST,
     DELETE_OWN_MSG: DELETE_OWN_MSG,
     DELETE_FOREIGN_MSG: DELETE_FOREIGN_MSG,
     buildBazaDeleteConfirmMessage: buildBazaDeleteConfirmMessage,
