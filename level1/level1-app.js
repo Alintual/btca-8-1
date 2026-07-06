@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.136";
+  var VERSION = "8.1.137";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1836,7 +1836,15 @@
     layer.innerHTML = DLG.buildLayerWithPanel(
       'data-btca-baza-del-close',
       DLG.buildPanel({
-        bodyText: DLG.DELETE_OWN_MSG,
+        bodyText: DLG.buildBazaDeleteConfirmMessage({
+          trainingLevel: 1,
+          target: "own",
+          periodFrom: state.ui.baza.periodFrom,
+          periodTo: state.ui.baza.periodTo,
+          exercise: state.ui.baza.exercise,
+          exerciseLabel: bazaExerciseFaceLabel(state.ui.baza.exercise, false),
+          task: "all",
+        }),
         confirmIcon: "del",
         canConfirm: true,
         closeAttr: 'data-btca-baza-del-close',

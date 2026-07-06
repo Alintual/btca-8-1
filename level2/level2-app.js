@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.136";
+  var VERSION = "8.1.137";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2459,11 +2459,27 @@
       return;
     }
     var own = state.bazaDeleteConfirm === "own";
+    var baza = state.ui.baza;
     layer.removeAttribute("hidden");
     layer.innerHTML = DLG.buildLayerWithPanel(
       'data-btca-baza-del-close',
       DLG.buildPanel({
-        bodyText: own ? DLG.DELETE_OWN_MSG : DLG.DELETE_FOREIGN_MSG,
+        bodyText: own
+          ? DLG.buildBazaDeleteConfirmMessage({
+            trainingLevel: 2,
+            target: "own",
+            periodFrom: baza.periodFrom,
+            periodTo: baza.periodTo,
+            exercise: baza.exercise,
+            exerciseLabel: bazaExerciseFaceLabel(
+              baza.exercise,
+              baza.dataSource,
+              false,
+              buildBazaExercisePickerOptions()
+            ),
+            task: baza.task,
+          })
+          : DLG.DELETE_FOREIGN_MSG,
         confirmIcon: "del",
         canConfirm: true,
         closeAttr: 'data-btca-baza-del-close',

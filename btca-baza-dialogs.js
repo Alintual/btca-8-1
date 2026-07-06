@@ -22,7 +22,87 @@
     "Подтвердите загрузку резервной копии Вашей Базы данных. Все текущие данные будут удалены!\nДалее, выберите файл в Файлах";
 
   var DELETE_OWN_MSG = "Удалить текущие данные по выбранным фильтрам?";
-  var DELETE_FOREIGN_MSG = "Удалить все импортированные данные?";
+  var DELETE_FOREIGN_MSG = "Подтвердите удаление всех импортированных данных";
+
+  function formatIsoDateAsDdMmYyyy(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || "").trim());
+    return m ? m[3] + "-" + m[2] + "-" + m[1] : String(iso || "").trim();
+  }
+
+  function parseYmd(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || "").trim());
+    if (!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function formatYmd(d) {
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var dd = String(d.getDate()).padStart(2, "0");
+    return yyyy + "-" + mm + "-" + dd;
+  }
+
+  function countInclusivePeriodDays(fromIso, toIso) {
+    var from = String(fromIso || "").trim();
+    var to = String(toIso || "").trim();
+    var today = formatYmd(new Date());
+    if (!from && !to) return 1;
+    if (!from) from = to || today;
+    if (!to) to = from || today;
+    if (from > to) {
+      var tmp = from;
+      from = to;
+      to = tmp;
+    }
+    var d0 = parseYmd(from);
+    var d1 = parseYmd(to);
+    if (!d0 || !d1) return 1;
+    return Math.max(1, Math.floor((d1.getTime() - d0.getTime()) / 86400000) + 1);
+  }
+
+  function buildBazaDeleteConfirmMessage(opts) {
+    opts = opts || {};
+    if (opts.target === "foreign") {
+      return DELETE_FOREIGN_MSG;
+    }
+    var level = Number(opts.trainingLevel) === 2 ? 2 : 1;
+    var from = String(opts.periodFrom || "").trim();
+    var to = String(opts.periodTo || "").trim();
+    var fromLabel = formatIsoDateAsDdMmYyyy(from) || from;
+    var toLabel = formatIsoDateAsDdMmYyyy(to) || to;
+    var days = countInclusivePeriodDays(from, to);
+    var prefix =
+      level === 2
+        ? "Подтвердите удаление Текущих данных:"
+        : "Подтвердите удаление данных:";
+    var exRaw = String(opts.exercise || "").trim();
+    var ex =
+      exRaw === "__foreign_data__" || exRaw === "all" || !exRaw ? "all" : exRaw;
+    var exercisePart;
+    if (ex === "all") {
+      exercisePart = "Все";
+    } else {
+      var label = String(opts.exerciseLabel || "").trim() || ex;
+      var task = String(opts.task || "all").trim();
+      if (level === 2 && task && task !== "all") {
+        exercisePart = label + " [" + task + "]";
+      } else {
+        exercisePart = label;
+      }
+    }
+    return (
+      prefix +
+      " Период - от " +
+      fromLabel +
+      " до " +
+      toLabel +
+      " [" +
+      days +
+      "], Упражнение - " +
+      exercisePart
+    );
+  }
 
   var IDENTIFIER_MAX_LEN = 32;
   var IDENTIFIER_PLACEHOLDER = "Идентификатор анг...";
@@ -208,6 +288,7 @@
     TEXT_OVERWRITE_CONFIRM: TEXT_OVERWRITE_CONFIRM,
     DELETE_OWN_MSG: DELETE_OWN_MSG,
     DELETE_FOREIGN_MSG: DELETE_FOREIGN_MSG,
+    buildBazaDeleteConfirmMessage: buildBazaDeleteConfirmMessage,
     IDENTIFIER_MAX_LEN: IDENTIFIER_MAX_LEN,
     IDENTIFIER_PLACEHOLDER: IDENTIFIER_PLACEHOLDER,
     validateBazaIdentifierInput: validateBazaIdentifierInput,
