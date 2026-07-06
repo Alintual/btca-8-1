@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.137";
+  var VERSION = "8.1.138";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2067,7 +2067,7 @@
   function bazaMenuCapabilities() {
     var chartMeta = getBazaChartMeta(state.ui.baza, bazaFiltersDisabled());
     return {
-      canExport: !state.bazaStats.empty,
+      canExport: state.bazaStats.hasOwn,
       canImportView: !state.bazaStats.hasForeign && !state.bazaForeignAvailable,
       canImportOverwrite: true,
       canDeleteOwn: state.bazaStats.hasOwn,
