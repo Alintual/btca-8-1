@@ -6,6 +6,7 @@
   var KV_UI_KEY = "level2_ui_state_v1";
   var KV_USER_FILE_ID = "baza_file_identifier_user_l2_v1";
   var KV_IMPORT_FILE_ID = "baza_import_file_identifier_l2_v1";
+  var KV_USER_FILE_ID_LEGACY = "baza_file_identifier_v1";
   var DB_MAX_ROWS = 36512;
   var BACKUP_LEVEL_MARKER = "28.1";
 
@@ -99,10 +100,16 @@
       exerciseValue: "1",
       trainingDate: today,
       taskOk: {},
-      baza: { periodFrom: today, periodTo: today, exercise: "all", task: "all", dataSource: "own" },
+      baza: { periodFrom: "", periodTo: "", exercise: "all", task: "all", dataSource: "own" },
       nav: { sectionKey: "all", exerciseFilterKey: "all" },
       polez: { catalogKey: "all" },
     };
+  }
+
+  function bazaPeriodField(raw, fallback) {
+    if (typeof raw !== "string") return fallback;
+    if (!raw.trim()) return "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : fallback;
   }
 
   function formatYmd(d) {
@@ -129,8 +136,8 @@
     }
     var bazaRaw = raw.baza && typeof raw.baza === "object" ? raw.baza : {};
     var baza = {
-      periodFrom: typeof bazaRaw.periodFrom === "string" && iso.test(bazaRaw.periodFrom) ? bazaRaw.periodFrom : base.baza.periodFrom,
-      periodTo: typeof bazaRaw.periodTo === "string" && iso.test(bazaRaw.periodTo) ? bazaRaw.periodTo : base.baza.periodTo,
+      periodFrom: bazaPeriodField(bazaRaw.periodFrom, base.baza.periodFrom),
+      periodTo: bazaPeriodField(bazaRaw.periodTo, base.baza.periodTo),
       exercise: typeof bazaRaw.exercise === "string" ? bazaRaw.exercise : base.baza.exercise,
       task: typeof bazaRaw.task === "string" ? bazaRaw.task : base.baza.task,
       dataSource: bazaRaw.dataSource === "foreign" ? "foreign" : "own",
@@ -466,6 +473,20 @@
     return writeKv(KV_IMPORT_FILE_ID, "");
   }
 
+  function clearUserFileIdentifier() {
+    return Promise.all([
+      writeKv(KV_USER_FILE_ID, ""),
+      writeKv(KV_USER_FILE_ID_LEGACY, ""),
+    ]);
+  }
+
+  function clearBazaIdentifiersForNormalize() {
+    return Promise.all([
+      clearUserFileIdentifier(),
+      clearImportFileIdentifier(),
+    ]);
+  }
+
   function clearForeignDatabase() {
     return runTx(["foreign_results"], "readwrite", function (transaction, finish, fail) {
       var req = transaction.objectStore("foreign_results").clear();
@@ -736,7 +757,7 @@
         req.onerror = function () { fail(req.error); };
       });
     }).then(function () {
-      return clearImportFileIdentifier();
+      return clearBazaIdentifiersForNormalize();
     }).then(function () {
       return resetUiStateForNormalize();
     });
@@ -764,9 +785,11 @@
     hasForeignDatabase: hasForeignDatabase,
     loadUserFileIdentifier: loadUserFileIdentifier,
     saveUserFileIdentifier: saveUserFileIdentifier,
+    clearUserFileIdentifier: clearUserFileIdentifier,
     loadImportFileIdentifier: loadImportFileIdentifier,
     saveImportFileIdentifier: saveImportFileIdentifier,
     clearImportFileIdentifier: clearImportFileIdentifier,
+    clearBazaIdentifiersForNormalize: clearBazaIdentifiersForNormalize,
     clearForeignDatabase: clearForeignDatabase,
     bazaDeleteCurrentByFilters: bazaDeleteCurrentByFilters,
     exportBazaBackup: exportBazaBackup,

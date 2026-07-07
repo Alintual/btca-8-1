@@ -107,10 +107,16 @@
       exerciseValue: "1",
       trainingDate: today,
       taskOk: {},
-      baza: { periodFrom: today, periodTo: today, exercise: "all", task: "all", dataSource: "own" },
+      baza: { periodFrom: "", periodTo: "", exercise: "all", task: "all", dataSource: "own" },
       nav: { exerciseFilterKey: "all" },
       polez: { catalogKey: "all" },
     };
+  }
+
+  function bazaPeriodField(raw, fallback) {
+    if (typeof raw !== "string") return fallback;
+    if (!raw.trim()) return "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : fallback;
   }
 
   function formatYmd(d) {
@@ -137,8 +143,8 @@
     }
     var bazaRaw = raw.baza && typeof raw.baza === "object" ? raw.baza : {};
     var baza = {
-      periodFrom: typeof bazaRaw.periodFrom === "string" && iso.test(bazaRaw.periodFrom) ? bazaRaw.periodFrom : base.baza.periodFrom,
-      periodTo: typeof bazaRaw.periodTo === "string" && iso.test(bazaRaw.periodTo) ? bazaRaw.periodTo : base.baza.periodTo,
+      periodFrom: bazaPeriodField(bazaRaw.periodFrom, base.baza.periodFrom),
+      periodTo: bazaPeriodField(bazaRaw.periodTo, base.baza.periodTo),
       exercise: typeof bazaRaw.exercise === "string" ? bazaRaw.exercise : base.baza.exercise,
       task: typeof bazaRaw.task === "string" ? bazaRaw.task : base.baza.task,
       dataSource: bazaRaw.dataSource === "foreign" ? "foreign" : "own",
@@ -381,6 +387,7 @@
   }
 
   var KV_USER_FILE_ID = "baza_file_identifier_user_l1_v1";
+  var KV_USER_FILE_ID_LEGACY = "baza_file_identifier_v1";
 
   function loadUserFileIdentifier() {
     return readKv(KV_USER_FILE_ID).then(function (v) { return v || ""; });
@@ -390,6 +397,13 @@
     var id = String(value || "").trim();
     if (!id) return Promise.resolve();
     return writeKv(KV_USER_FILE_ID, id);
+  }
+
+  function clearUserFileIdentifier() {
+    return Promise.all([
+      writeKv(KV_USER_FILE_ID, ""),
+      writeKv(KV_USER_FILE_ID_LEGACY, ""),
+    ]);
   }
 
   function bazaDeleteCurrentByFilters(filters) {
@@ -460,6 +474,8 @@
       req.onsuccess = function () { finish(); };
       req.onerror = function () { fail(req.error); };
     }).then(function () {
+      return clearUserFileIdentifier();
+    }).then(function () {
       return resetUiStateForNormalize();
     });
   }
@@ -481,6 +497,7 @@
     bazaDeleteCurrentByFilters: bazaDeleteCurrentByFilters,
     loadUserFileIdentifier: loadUserFileIdentifier,
     saveUserFileIdentifier: saveUserFileIdentifier,
+    clearUserFileIdentifier: clearUserFileIdentifier,
     formatYmd: formatYmd,
   };
 
