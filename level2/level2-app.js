@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.142";
+  var VERSION = "8.1.143";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1022,7 +1022,7 @@
       text: showChart
         ? "Успешные удары по упражнению за период"
         : "Нет данных по упражнению",
-      arrowDisabled: exerciseFieldDisabled || isAll,
+      arrowDisabled: exerciseFieldDisabled,
       showChart: showChart,
     };
   }
