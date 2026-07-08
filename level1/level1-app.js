@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.148";
+  var VERSION = "8.1.149";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -856,22 +856,29 @@
   var BAZA_TABLE_SECTION_CURRENT = "--- ТЕКУЩИЕ ---";
 
   function loadBazaTableDisplayItems(baza, fullDb) {
-    if (!fullDb) {
-      return loadBazaTableRows(baza).then(function (rows) {
-        return rows.map(function (row, i) {
-          return { kind: "row", key: "r-" + i, row: row };
+    var queryEx = fullDb
+      ? "all"
+      : (baza.exercise === "all" || baza.exercise === "__foreign_data__" ? "all" : baza.exercise);
+    var task = fullDb ? "all" : (baza.task === "all" ? "all" : baza.task);
+    var query = fullDb
+      ? { from: "", to: "", exercise: "all", task: "all" }
+      : {
+        from: baza.periodFrom,
+        to: baza.periodTo,
+        exercise: queryEx,
+        task: task,
+      };
+    return DB.bazaQuery(query).then(function (result) {
+      var rows = queryEx === "all"
+        ? expandBazaRowsAllL1(result.rows || [])
+        : expandBazaRowsL1(result.rows || [], queryEx).map(function (row) {
+          if (row.exercise) row.exercise = labelForExerciseValue(row.exerciseKey || row.exercise);
+          return row;
         });
+      var items = [{ kind: "section", key: "sec-own", title: BAZA_TABLE_SECTION_CURRENT }];
+      rows.forEach(function (row, i) {
+        items.push({ kind: "row", key: "own-" + i, row: row });
       });
-    }
-    return DB.bazaQuery({ from: "", to: "", exercise: "all", task: "all" }).then(function (result) {
-      var rows = expandBazaRowsAllL1(result.rows || []);
-      var items = [];
-      if (rows.length) {
-        items.push({ kind: "section", key: "sec-own", title: BAZA_TABLE_SECTION_CURRENT });
-        rows.forEach(function (row, i) {
-          items.push({ kind: "row", key: "own-" + i, row: row });
-        });
-      }
       return items;
     });
   }

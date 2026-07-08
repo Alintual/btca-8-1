@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.148";
+  var VERSION = "8.1.149";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1085,39 +1085,37 @@
   }
 
   function loadBazaTableDisplayItems(baza, fullDb) {
-    if (!fullDb) {
-      return loadBazaTableRows(baza).then(function (rows) {
-        return rows.map(function (row, i) {
-          return { kind: "row", key: "r-" + i, row: row };
-        });
-      });
-    }
-    var items = [];
-    return DB.bazaQueryForSource("own", { from: "", to: "", exercise: "all", task: "all" }).then(function (ownRes) {
+    var queryEx = fullDb ? "all" : bazaExerciseForQuery(baza.exercise);
+    var task = fullDb ? "all" : (baza.task === "all" ? "all" : baza.task);
+    var query = fullDb
+      ? { from: "", to: "", exercise: "all", task: "all" }
+      : {
+        from: baza.periodFrom,
+        to: baza.periodTo,
+        exercise: queryEx,
+        task: task,
+      };
+    var items = [{ kind: "section", key: "sec-own", title: BAZA_TABLE_SECTION_CURRENT }];
+    return DB.bazaQueryForSource("own", query).then(function (ownRes) {
       var ownRows = BAZA
-        ? BAZA.expandBazaRows(ownRes.rows || [], "all", exerciseRulesL1, b5FromSelectValue)
+        ? BAZA.expandBazaRows(ownRes.rows || [], queryEx, exerciseRulesL1, b5FromSelectValue)
         : (ownRes.rows || []);
-      if (ownRows.length) {
-        items.push({ kind: "section", key: "sec-own", title: BAZA_TABLE_SECTION_CURRENT });
-        ownRows.forEach(function (row, i) {
-          items.push({ kind: "row", key: "own-" + i, row: row });
-        });
-      }
+      ownRows.forEach(function (row, i) {
+        items.push({ kind: "row", key: "own-" + i, row: row });
+      });
       if (!state.bazaStats.hasForeign) return items;
-      return DB.bazaQueryForSource("foreign", { from: "", to: "", exercise: "all", task: "all" }).then(function (forRes) {
+      items.push({
+        kind: "section",
+        key: "sec-for",
+        title: buildBazaImportTableSectionTitle(state.bazaImportLabelId),
+      });
+      return DB.bazaQueryForSource("foreign", query).then(function (forRes) {
         var forRows = BAZA
-          ? BAZA.expandBazaRows(forRes.rows || [], "all", exerciseRulesL1, b5FromSelectValue)
+          ? BAZA.expandBazaRows(forRes.rows || [], queryEx, exerciseRulesL1, b5FromSelectValue)
           : (forRes.rows || []);
-        if (forRows.length) {
-          items.push({
-            kind: "section",
-            key: "sec-for",
-            title: buildBazaImportTableSectionTitle(state.bazaImportLabelId),
-          });
-          forRows.forEach(function (row, i) {
-            items.push({ kind: "row", key: "for-" + i, row: row });
-          });
-        }
+        forRows.forEach(function (row, i) {
+          items.push({ kind: "row", key: "for-" + i, row: row });
+        });
         return items;
       });
     });
