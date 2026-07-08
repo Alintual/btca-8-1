@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.150";
+  var VERSION = "8.1.151";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1594,9 +1594,9 @@
     var itemExtraClass = pickerOpts.itemClass || "";
     var pickerClass = "btca-level1-picker btca-level1-picker--anchored";
     var pickerStyle = "";
-    var layout = anchorEl && anchorEl.getBoundingClientRect
-      ? computeAnchoredPickerLayout(anchorEl)
-      : null;
+    var layout =
+      pickerOpts.anchorLayout ||
+      (anchorEl && anchorEl.getBoundingClientRect ? computeAnchoredPickerLayout(anchorEl) : null);
     if (layout) {
       pickerStyle =
         ' style="position:fixed;top:' + layout.top + "px;left:" + layout.left + "px;width:" + layout.width +
@@ -2780,6 +2780,9 @@
     }
     if (!exerciseDisabled) {
       content.querySelector("[data-btca-baza-exercise]").addEventListener("click", function (event) {
+        var anchorEl = event.currentTarget;
+        var anchorLayout =
+          anchorEl && anchorEl.getBoundingClientRect ? computeAnchoredPickerLayout(anchorEl) : null;
         refreshBazaContext().then(function () {
           var exerciseOptions = buildBazaExercisePickerOptions();
           var pickerValue = bazaExercisePickerValue(state.ui.baza.exercise, state.ui.baza.dataSource);
@@ -2788,7 +2791,7 @@
               return o.value === value && (o.source || "own") === (source || state.ui.baza.dataSource);
             })[0];
             onPickBazaExercise(item || { value: value, source: source || state.ui.baza.dataSource });
-          }, event.currentTarget, { currentSource: state.ui.baza.dataSource });
+          }, null, { currentSource: state.ui.baza.dataSource, anchorLayout: anchorLayout });
         });
       });
     }
