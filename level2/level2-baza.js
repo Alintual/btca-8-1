@@ -96,10 +96,8 @@
     return String(raw || "").trim().replace(/[^\w\u0400-\u04FF.-]/g, "").slice(0, 32);
   }
 
-  function buildBazaImportGroupLabel(importLabelId) {
-    var importId = String(importLabelId || "").trim();
-    if (!importId) return "--- ИМПОРТ ---";
-    return "--- ИМПОРТ ---\n          " + importId;
+  function buildBazaImportGroupLabel() {
+    return "--- ИМПОРТ ---";
   }
 
   window.BTCA_LEVEL2_BAZA = {
