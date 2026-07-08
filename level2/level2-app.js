@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.147";
+  var VERSION = "8.1.148";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1039,8 +1039,9 @@
 
   function buildBazaTableTitle(baza, fullDb) {
     if (fullDb) return "БД по всем упражнениям (вся база)";
-    var from = String(baza.periodFrom || "").trim();
-    var to = String(baza.periodTo || "").trim();
+    var period = DB.normalizeBazaPeriod(baza.periodFrom, baza.periodTo);
+    var from = period.from;
+    var to = period.to;
     var fromLabel = formatIsoDateAsDdMmYyyy(from) || from;
     var toLabel = formatIsoDateAsDdMmYyyy(to) || to;
     var exercisePart = baza.exercise === "all"

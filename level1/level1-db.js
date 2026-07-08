@@ -6,6 +6,20 @@
   var KV_UI_KEY = "level1_ui_state_v1";
   var DB_MAX_ROWS = 36512;
 
+  function normalizeBazaPeriod(from, to) {
+    var fromIso = String(from || "").trim();
+    var toIso = String(to || "").trim();
+    var isoRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (!isoRe.test(fromIso)) fromIso = "";
+    if (!isoRe.test(toIso)) toIso = "";
+    if (fromIso && toIso && fromIso > toIso) {
+      var tmp = fromIso;
+      fromIso = toIso;
+      toIso = tmp;
+    }
+    return { from: fromIso, to: toIso };
+  }
+
   var dbPromise = null;
   var dbInstance = null;
 
@@ -317,8 +331,9 @@
   }
 
   function bazaQuery(query) {
-    var from = String(query.from || "").trim();
-    var to = String(query.to || "").trim();
+    var period = normalizeBazaPeriod(query.from, query.to);
+    var from = period.from;
+    var to = period.to;
     var exercise = String(query.exercise || "all").trim() || "all";
     var taskRaw = String(query.task || "all").trim() || "all";
 
@@ -407,8 +422,9 @@
   }
 
   function bazaDeleteCurrentByFilters(filters) {
-    var from = String(filters.from || "").trim();
-    var to = String(filters.to || "").trim();
+    var period = normalizeBazaPeriod(filters.from, filters.to);
+    var from = period.from;
+    var to = period.to;
     var exercise = String(filters.exercise || "all").trim() || "all";
     var taskRaw = String(filters.task || "all").trim() || "all";
     return runTx(["results"], "readwrite", function (transaction, finish, fail) {
@@ -492,6 +508,7 @@
     saveCluster: saveCluster,
     dbCapacity: dbCapacity,
     bazaQuery: bazaQuery,
+    normalizeBazaPeriod: normalizeBazaPeriod,
     dbStats: dbStats,
     bazaFillStatusText: bazaFillStatusText,
     bazaDeleteCurrentByFilters: bazaDeleteCurrentByFilters,
