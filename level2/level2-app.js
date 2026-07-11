@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.157";
+  var VERSION = "8.1.158";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1437,23 +1437,41 @@
     scrollPickerListActiveToCenter(listEl);
   }
 
-  function scrollNavCardsToTop(content) {
-    var el = content && content.querySelector(".btca-l1-nav-cards");
-    if (el) el.scrollTop = 0;
+  function getNavCardsScrollEl(content) {
+    return content ? content.querySelector(".btca-l1-nav-cards") : null;
   }
 
-  function scrollNavCardsToExercise(content, exerciseValue, sectionKey) {
-    var el = content && content.querySelector(".btca-l1-nav-cards");
+  /** Сброс прокрутки списка: «Выбрать» видна (одно упражнение) или первое упражнение («Все»). */
+  function scheduleNavCardsScroll(content) {
+    var el = getNavCardsScrollEl(content);
     if (!el) return;
-    var items = filterNavCardItems(sectionKey || NAV_SECTION_FILTER_ALL, NAV_FILTER_ALL);
-    var idx = -1;
-    for (var i = 0; i < items.length; i += 1) {
-      if (items[i].value === exerciseValue) { idx = i; break; }
+
+    function apply() {
+      if (!el.isConnected) return;
+      el.scrollTop = 0;
+      el.scrollLeft = 0;
     }
-    if (idx < 0) return;
-    var cards = el.querySelectorAll(".btca-l1-nav-card");
-    var card = cards[idx];
-    if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    apply();
+    requestAnimationFrame(function () {
+      apply();
+      requestAnimationFrame(apply);
+    });
+    setTimeout(apply, 0);
+    setTimeout(apply, 50);
+    setTimeout(apply, 120);
+    setTimeout(apply, 400);
+    setTimeout(apply, 800);
+
+    el.querySelectorAll("img").forEach(function (img) {
+      if (img.complete) return;
+      var onDone = function () {
+        apply();
+        setTimeout(apply, 80);
+      };
+      img.addEventListener("load", onDone, { once: true });
+      img.addEventListener("error", onDone, { once: true });
+    });
   }
 
   function applyNavSectionChange(content, nextSectionKey) {
@@ -1471,32 +1489,26 @@
       nav: { sectionKey: state.ui.nav.sectionKey, exerciseFilterKey: state.ui.nav.exerciseFilterKey },
     });
     renderNavTab(content);
-    scrollNavCardsToTop(content);
     renderTitleBar();
   }
 
   function applyNavExerciseFilterChange(content, value, ctx) {
     if (!value || value.indexOf("__group:") === 0) return;
     var sectionKey = ctx.sectionKey;
-    var filterKey = ctx.filterKey;
     var sectionIsAll = sectionKey === NAV_SECTION_FILTER_ALL;
-    var listWasAll = filterKey === NAV_FILTER_ALL;
     if (value === NAV_FILTER_ALL) {
       state.ui.nav.exerciseFilterKey = NAV_FILTER_ALL;
       applyUiPatch({ nav: { exerciseFilterKey: NAV_FILTER_ALL } });
       renderNavTab(content);
-      scrollNavCardsToTop(content);
       renderTitleBar();
       return;
     }
-    if (listWasAll) scrollNavCardsToExercise(content, value, sectionKey);
     if (sectionIsAll) state.ui.nav.sectionKey = sectionKeyForExerciseValue(value);
     state.ui.nav.exerciseFilterKey = value;
     applyUiPatch({
       nav: { sectionKey: state.ui.nav.sectionKey, exerciseFilterKey: value },
     });
     renderNavTab(content);
-    scrollNavCardsToTop(content);
     renderTitleBar();
   }
 
@@ -3022,9 +3034,7 @@
       openNavExerciseImage({ exerciseValue: filterKey, title: labelForExerciseValue(filterKey) });
     });
 
-    if (!filterIsAll) {
-      requestAnimationFrame(function () { scrollNavCardsToTop(content); });
-    }
+    scheduleNavCardsScroll(content);
   }
 
   function renderPolezTab(content) {
@@ -3108,13 +3118,7 @@
     if (!state.root || !state.ui || state.ui.tab !== "nav") return;
     var content = state.root.querySelector("[data-btca-level2-content]");
     if (!content) return;
-    function scroll() {
-      scrollNavCardsToTop(content);
-    }
-    scroll();
-    requestAnimationFrame(scroll);
-    setTimeout(scroll, 120);
-    setTimeout(scroll, 400);
+    scheduleNavCardsScroll(content);
   }
 
   function exerciseImageReturnTo(payload) {

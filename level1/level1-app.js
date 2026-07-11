@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.157";
+  var VERSION = "8.1.158";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2331,13 +2331,7 @@
     if (!state.root || !state.ui || state.ui.tab !== "nav") return;
     var content = state.root.querySelector("[data-btca-level1-content]");
     if (!content) return;
-    function scroll() {
-      scrollNavCardsToTop(content);
-    }
-    scroll();
-    requestAnimationFrame(scroll);
-    setTimeout(scroll, 120);
-    setTimeout(scroll, 400);
+    scheduleNavCardsScroll(content);
   }
 
   function exerciseImageReturnTo(payload) {
