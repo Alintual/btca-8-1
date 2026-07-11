@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.156";
+  var VERSION = "8.1.157";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -3134,8 +3134,10 @@
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--forma-image-portrait";
     overlay.innerHTML =
-      '<header class="btca-l1-overlay__header btca-l1-overlay__header--forma-image btca-l1-overlay__header--compact">' +
+      '<header class="btca-l1-overlay__header btca-l1-overlay__header--portrait-image">' +
       '<button type="button" class="btca-back-button" data-btca-forma-img-close aria-label="Назад">←</button>' +
+      '<span aria-hidden="true"></span>' +
+      greenArrowHtml({ dataAttr: 'data-btca-forma-img-landscape aria-label="Просмотр в альбомной ориентации"' }) +
       "</header>" +
       '<div class="btca-l1-image-view" data-btca-forma-img-swipe>' +
       '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(payload.title || "Упражнение") + '"></div>';
@@ -3155,6 +3157,8 @@
     }
 
     overlay.querySelector("[data-btca-forma-img-close]").addEventListener("click", closePortrait);
+    var landscapeBtn = overlay.querySelector("[data-btca-forma-img-landscape]");
+    if (landscapeBtn) landscapeBtn.addEventListener("click", openLandscape);
     bindHorizontalSwipe(overlay.querySelector("[data-btca-forma-img-swipe]") || overlay, {
       onSwipeLeft: closePortrait,
       onSwipeRight: openLandscape,

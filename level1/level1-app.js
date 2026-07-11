@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.156";
+  var VERSION = "8.1.157";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1130,40 +1130,55 @@
     scrollPickerListActiveToCenter(listEl);
   }
 
-  function scrollNavCardsToTop(content) {
-    var el = content && content.querySelector(".btca-l1-nav-cards");
-    if (el) el.scrollTop = 0;
+  function getNavCardsScrollEl(content) {
+    return content ? content.querySelector(".btca-l1-nav-cards") : null;
   }
 
-  function scrollNavCardsToExercise(content, exerciseValue) {
-    var el = content && content.querySelector(".btca-l1-nav-cards");
+  /** Сброс прокрутки списка: «Выбрать» видна (одно упражнение) или первое упражнение («Все»). */
+  function scheduleNavCardsScroll(content) {
+    var el = getNavCardsScrollEl(content);
     if (!el) return;
-    var idx = -1;
-    for (var i = 0; i < state.data.exercises.length; i += 1) {
-      if (state.data.exercises[i].value === exerciseValue) { idx = i; break; }
+
+    function apply() {
+      if (!el.isConnected) return;
+      el.scrollTop = 0;
+      el.scrollLeft = 0;
     }
-    if (idx < 0) return;
-    var cards = el.querySelectorAll(".btca-l1-nav-card");
-    var card = cards[idx];
-    if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    apply();
+    requestAnimationFrame(function () {
+      apply();
+      requestAnimationFrame(apply);
+    });
+    setTimeout(apply, 0);
+    setTimeout(apply, 50);
+    setTimeout(apply, 120);
+    setTimeout(apply, 400);
+    setTimeout(apply, 800);
+
+    el.querySelectorAll("img").forEach(function (img) {
+      if (img.complete) return;
+      var onDone = function () {
+        apply();
+        setTimeout(apply, 80);
+      };
+      img.addEventListener("load", onDone, { once: true });
+      img.addEventListener("error", onDone, { once: true });
+    });
   }
 
   function applyNavExerciseFilterChange(content, value, filterKey) {
     if (!value || value.indexOf("__group:") === 0) return;
-    var listWasAll = filterKey === NAV_FILTER_ALL;
     if (value === NAV_FILTER_ALL) {
       state.ui.nav.exerciseFilterKey = NAV_FILTER_ALL;
       applyUiPatch({ nav: { exerciseFilterKey: NAV_FILTER_ALL } });
       renderNavTab(content);
-      scrollNavCardsToTop(content);
       renderTitleBar();
       return;
     }
-    if (listWasAll) scrollNavCardsToExercise(content, value);
     state.ui.nav.exerciseFilterKey = value;
     applyUiPatch({ nav: { exerciseFilterKey: value } });
     renderNavTab(content);
-    scrollNavCardsToTop(content);
     renderTitleBar();
   }
 
@@ -2232,9 +2247,7 @@
       openNavExerciseImage({ exerciseValue: filterKey, title: labelForExerciseValue(filterKey) });
     });
 
-    if (!filterIsAll) {
-      requestAnimationFrame(function () { scrollNavCardsToTop(content); });
-    }
+    scheduleNavCardsScroll(content);
   }
 
   function renderPolezTab(content) {
@@ -2344,8 +2357,10 @@
     var overlay = document.createElement("div");
     overlay.className = "btca-l1-overlay btca-l1-overlay--forma-image-portrait";
     overlay.innerHTML =
-      '<header class="btca-l1-overlay__header btca-l1-overlay__header--forma-image btca-l1-overlay__header--compact">' +
+      '<header class="btca-l1-overlay__header btca-l1-overlay__header--portrait-image">' +
       '<button type="button" class="btca-back-button" data-btca-forma-img-close aria-label="Назад">←</button>' +
+      '<span aria-hidden="true"></span>' +
+      greenArrowHtml({ dataAttr: 'data-btca-forma-img-landscape aria-label="Просмотр в альбомной ориентации"' }) +
       "</header>" +
       '<div class="btca-l1-image-view" data-btca-forma-img-swipe>' +
       '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(payload.title || "Упражнение") + '"></div>';
@@ -2365,6 +2380,8 @@
     }
 
     overlay.querySelector("[data-btca-forma-img-close]").addEventListener("click", closePortrait);
+    var landscapeBtn = overlay.querySelector("[data-btca-forma-img-landscape]");
+    if (landscapeBtn) landscapeBtn.addEventListener("click", openLandscape);
     bindHorizontalSwipe(overlay.querySelector("[data-btca-forma-img-swipe]") || overlay, {
       onSwipeLeft: closePortrait,
       onSwipeRight: openLandscape,
