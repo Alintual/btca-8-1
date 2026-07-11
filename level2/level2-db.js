@@ -114,7 +114,7 @@
       exerciseValue: "1",
       trainingDate: today,
       taskOk: {},
-      baza: { periodFrom: "", periodTo: "", exercise: "all", task: "all", dataSource: "own" },
+      baza: { periodFrom: "", periodTo: "", exercise: "all", task: "all", dataSource: "own", exerciseSectionFilter: "all" },
       nav: { sectionKey: "all", exerciseFilterKey: "all" },
       polez: { catalogKey: "all" },
     };
@@ -155,6 +155,10 @@
       exercise: typeof bazaRaw.exercise === "string" ? bazaRaw.exercise : base.baza.exercise,
       task: typeof bazaRaw.task === "string" ? bazaRaw.task : base.baza.task,
       dataSource: bazaRaw.dataSource === "foreign" ? "foreign" : "own",
+      exerciseSectionFilter:
+        typeof bazaRaw.exerciseSectionFilter === "string" && bazaRaw.exerciseSectionFilter.trim()
+          ? bazaRaw.exerciseSectionFilter.trim()
+          : base.baza.exerciseSectionFilter,
     };
     var navRaw = raw.nav && typeof raw.nav === "object" ? raw.nav : {};
     var polezRaw = raw.polez && typeof raw.polez === "object" ? raw.polez : {};

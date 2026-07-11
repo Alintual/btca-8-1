@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.269" />
+    <meta name="btca-cache-version" content="btca-web-8.1.270" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1231,6 +1231,66 @@ body.btca-level2-mode .btca-level1-picker--anchored .btca-level1-picker__group--
   display: block;
   width: 100%;
   text-align: center;
+}
+
+.btca-baza-exercise-picker__chips {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(4rem / 17);
+  padding: calc(6rem / 17) calc(4rem / 17) calc(4rem / 17);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.12);
+}
+
+.btca-baza-exercise-picker__chip-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: calc(6rem / 17);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.btca-baza-exercise-picker__chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.btca-baza-exercise-picker__chip {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0;
+  padding: calc(4rem / 17) calc(10rem / 17);
+  border: 1px solid rgba(17, 24, 39, 0.22);
+  border-radius: 999px;
+  color: #111827;
+  background: rgba(17, 24, 39, 0.04);
+  font-size: calc(14rem / 17);
+  font-weight: 600;
+  line-height: calc(20rem / 17);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+}
+
+.btca-baza-exercise-picker__chip--active {
+  border-color: rgba(17, 24, 39, 0.42);
+  color: #111827;
+  background: rgba(17, 24, 39, 0.1);
+}
+
+body.btca-level2-mode .btca-baza-exercise-picker__chip--active {
+  border-color: #bb20e8;
+  color: #bb20e8;
+  background: rgba(187, 32, 232, 0.08);
+}
+
+.btca-baza-exercise-picker .btca-level1-picker__list {
+  flex: 1;
+  min-height: 0;
 }
 
 body.btca-apple-comfort {
@@ -3759,8 +3819,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.269:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.269:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.270:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.270:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3801,8 +3861,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.160";
-  var LEVEL2_MODULE_VERSION = "8.1.160";
+  var LEVEL1_MODULE_VERSION = "8.1.161";
+  var LEVEL2_MODULE_VERSION = "8.1.161";
 
   var CORE_REL_PATHS = [
     "",
