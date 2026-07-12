@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.163";
+  var VERSION = "8.1.164";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1085,10 +1085,19 @@
     return id ? "--- ИМПОРТ - " + id + " ---" : "--- ИМПОРТ ---";
   }
 
+  function bazaTableIncludeSource(baza, showAllMode, source) {
+    if (showAllMode) return source === "own" ? true : !!state.bazaStats.hasForeign;
+    if (baza.exercise === "__foreign_data__") return source === "foreign";
+    if (baza.exercise === "all") return source === "own";
+    var src = baza.dataSource === "foreign" ? "foreign" : "own";
+    return src === source;
+  }
+
   function loadBazaTableDisplayItems(baza, fullDb) {
-    var queryEx = fullDb ? "all" : bazaExerciseForQuery(baza.exercise);
-    var task = fullDb ? "all" : (baza.task === "all" ? "all" : baza.task);
-    var query = fullDb
+    var showAllMode = fullDb || !!baza.showAll;
+    var queryEx = showAllMode ? "all" : bazaExerciseForQuery(baza.exercise);
+    var task = showAllMode ? "all" : (baza.task === "all" ? "all" : baza.task);
+    var query = showAllMode
       ? { from: "", to: "", exercise: "all", task: "all" }
       : {
         from: baza.periodFrom,
@@ -1096,30 +1105,42 @@
         exercise: queryEx,
         task: task,
       };
-    var items = [{ kind: "section", key: "sec-own", title: BAZA_TABLE_SECTION_CURRENT }];
-    return DB.bazaQueryForSource("own", query).then(function (ownRes) {
-      var ownRows = BAZA
-        ? BAZA.expandBazaRows(ownRes.rows || [], queryEx, exerciseRulesL1, b5FromSelectValue)
-        : (ownRes.rows || []);
-      ownRows.forEach(function (row, i) {
-        items.push({ kind: "row", key: "own-" + i, row: row });
-      });
-      if (!state.bazaStats.hasForeign) return items;
-      items.push({
-        kind: "section",
-        key: "sec-for",
-        title: buildBazaImportTableSectionTitle(state.bazaImportLabelId),
-      });
-      return DB.bazaQueryForSource("foreign", query).then(function (forRes) {
-        var forRows = BAZA
-          ? BAZA.expandBazaRows(forRes.rows || [], queryEx, exerciseRulesL1, b5FromSelectValue)
-          : (forRes.rows || []);
-        forRows.forEach(function (row, i) {
-          items.push({ kind: "row", key: "for-" + i, row: row });
+    var items = [];
+    var chain = Promise.resolve();
+
+    if (bazaTableIncludeSource(baza, showAllMode, "own")) {
+      items.push({ kind: "section", key: "sec-own", title: BAZA_TABLE_SECTION_CURRENT });
+      chain = chain.then(function () {
+        return DB.bazaQueryForSource("own", query).then(function (ownRes) {
+          var ownRows = BAZA
+            ? BAZA.expandBazaRows(ownRes.rows || [], queryEx, exerciseRulesL1, b5FromSelectValue)
+            : (ownRes.rows || []);
+          ownRows.forEach(function (row, i) {
+            items.push({ kind: "row", key: "own-" + i, row: row });
+          });
         });
-        return items;
       });
-    });
+    }
+
+    if (bazaTableIncludeSource(baza, showAllMode, "foreign")) {
+      chain = chain.then(function () {
+        items.push({
+          kind: "section",
+          key: "sec-for",
+          title: buildBazaImportTableSectionTitle(state.bazaImportLabelId),
+        });
+        return DB.bazaQueryForSource("foreign", query).then(function (forRes) {
+          var forRows = BAZA
+            ? BAZA.expandBazaRows(forRes.rows || [], queryEx, exerciseRulesL1, b5FromSelectValue)
+            : (forRes.rows || []);
+          forRows.forEach(function (row, i) {
+            items.push({ kind: "row", key: "for-" + i, row: row });
+          });
+        });
+      });
+    }
+
+    return chain.then(function () { return items; });
   }
 
   function bazaTableColumnsHeadHtml() {
@@ -2901,7 +2922,7 @@
 
   function openBazaTable() {
     var baza = state.ui.baza;
-    var fullDb = Boolean(baza.showAll) || (state.bazaNoExercisesInPeriod && !state.bazaStats.empty);
+    var fullDb = Boolean(baza.showAll);
     var title = buildBazaTableTitle(baza, fullDb);
     setBazaTableLandscape(true);
     var overlay = document.createElement("div");
