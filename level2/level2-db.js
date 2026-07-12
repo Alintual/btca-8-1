@@ -114,7 +114,7 @@
       exerciseValue: "1",
       trainingDate: today,
       taskOk: {},
-      baza: { periodFrom: "", periodTo: "", exercise: "all", task: "all", dataSource: "own" },
+      baza: { periodFrom: "", periodTo: "", exercise: "all", task: "all", dataSource: "own", showAll: false },
       nav: { sectionKey: "all", exerciseFilterKey: "all" },
       polez: { catalogKey: "all" },
     };
@@ -155,6 +155,7 @@
       exercise: typeof bazaRaw.exercise === "string" ? bazaRaw.exercise : base.baza.exercise,
       task: typeof bazaRaw.task === "string" ? bazaRaw.task : base.baza.task,
       dataSource: bazaRaw.dataSource === "foreign" ? "foreign" : "own",
+      showAll: bazaRaw.showAll === true,
     };
     var navRaw = raw.nav && typeof raw.nav === "object" ? raw.nav : {};
     var polezRaw = raw.polez && typeof raw.polez === "object" ? raw.polez : {};
@@ -716,6 +717,51 @@
     });
   }
 
+  function ownDbDateRange() {
+    return runTx(["results"], "readonly", function (transaction, finish, fail) {
+      var store = transaction.objectStore("results");
+      var req = store.openCursor();
+      var minDate = "";
+      var maxDate = "";
+      req.onsuccess = function () {
+        var cursor = req.result;
+        if (!cursor) {
+          if (!minDate || !maxDate) finish(null);
+          else finish({ from: minDate, to: maxDate });
+          return;
+        }
+        var d = String(cursor.value.date || "");
+        if (d) {
+          if (!minDate || d < minDate) minDate = d;
+          if (!maxDate || d > maxDate) maxDate = d;
+        }
+        cursor.continue();
+      };
+      req.onerror = function () { fail(req.error); };
+    });
+  }
+
+  function mergeDateRanges(a, b) {
+    if (!a && !b) return null;
+    if (!a) return b;
+    if (!b) return a;
+    return {
+      from: a.from < b.from ? a.from : b.from,
+      to: a.to > b.to ? a.to : b.to,
+    };
+  }
+
+  function combinedDbDateRange() {
+    return ownDbDateRange().then(function (ownRange) {
+      return hasForeignDatabase().then(function (hasForeign) {
+        if (!hasForeign) return ownRange;
+        return foreignDbDateRange().then(function (foreignRange) {
+          return mergeDateRanges(ownRange, foreignRange);
+        });
+      });
+    });
+  }
+
   function flushUiState() {
     if (!uiCache) return Promise.resolve();
     if (uiSaveTimer) {
@@ -814,6 +860,8 @@
     overwriteOwnBazaBackupSqlite: overwriteOwnBazaBackupSqlite,
     importBazaBackupObject: importBazaBackupObject,
     foreignDbDateRange: foreignDbDateRange,
+    ownDbDateRange: ownDbDateRange,
+    combinedDbDateRange: combinedDbDateRange,
     bazaFillStatusText: bazaFillStatusText,
     formatYmd: formatYmd,
   };

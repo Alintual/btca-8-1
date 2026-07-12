@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.162";
+  var VERSION = "8.1.163";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1025,7 +1025,7 @@
       text: showChart
         ? "Успешные удары по упражнению за период"
         : "Нет данных по упражнению",
-      arrowDisabled: Boolean(dbEmpty),
+      arrowDisabled: Boolean(dbEmpty) || Boolean(exerciseFieldDisabled),
       showChart: showChart,
     };
   }
@@ -1637,7 +1637,9 @@
         }
         var optSource = opt.source || "own";
         var pickerCurrent = bazaExercisePickerValue(current, currentSource || "own");
-        var active = opt.value === pickerCurrent;
+        var active = pickerOpts.showAllMode
+          ? !opt.groupHeader && (opt.value === "all" || opt.value === "__foreign_data__")
+          : opt.value === pickerCurrent;
         var itemClass = "btca-level1-picker__item";
         if (pickerOpts.catalogList) itemClass += " btca-level1-picker__item--catalog";
         if (itemExtraClass) itemClass += itemExtraClass;
@@ -1977,7 +1979,12 @@
           ex = "all";
         }
 
-        if (state.bazaOwnEmpty && foreignAvailable && (ex === "all" || ex === "__foreign_data__") && src !== "foreign") {
+        if (baza.showAll) {
+          src = "own";
+          ex = "all";
+          tk = "all";
+          state.bazaNoExercisesInPeriod = false;
+        } else if (state.bazaOwnEmpty && foreignAvailable && (ex === "all" || ex === "__foreign_data__") && src !== "foreign") {
           src = "foreign";
           ex = "__foreign_data__";
         }
@@ -2002,7 +2009,7 @@
         }
 
         var sectionKeys = src === "foreign" ? state.bazaForeignKeys : state.bazaOwnKeys;
-        state.bazaNoExercisesInPeriod = sectionKeys.length === 0;
+        state.bazaNoExercisesInPeriod = baza.showAll ? false : sectionKeys.length === 0;
 
         if (src !== baza.dataSource || ex !== baza.exercise || tk !== baza.task) {
           state.ui.baza.dataSource = src;
@@ -2189,6 +2196,7 @@
       canDeleteOwn: !state.bazaOwnEmpty,
       canDeleteForeign: state.bazaStats.hasForeign,
       canScreenshot: chartMeta.showChart && state.bazaExpandedRows.length > 0,
+      canShowAll: !state.bazaStats.empty,
     };
   }
 
@@ -2226,7 +2234,9 @@
       '" data-btca-baza-delete-toggle aria-expanded="' + (state.bazaDeleteSubmenuOpen ? "true" : "false") +
       '" aria-haspopup="true"><span class="btca-l2-baza-menu__icon" aria-hidden="true">🔴</span><span>Удалить данные</span><span class="btca-l2-baza-menu__chevron" aria-hidden="true"></span></button>' +
       '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canScreenshot ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
-      '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>';
+      '" data-btca-baza-action="screenshot"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--shot" aria-hidden="true">📷</span><span>Скриншот</span></button>' +
+      '<button type="button" class="btca-l1-baza-sheet-menu__item' + (caps.canShowAll ? "" : " btca-l1-baza-sheet-menu__item--disabled") +
+      '" data-btca-baza-action="showAll"><span class="btca-l2-baza-menu__icon btca-l2-baza-menu__icon--show-all" aria-hidden="true">Σ</span><span>Показать всё</span></button>';
     layer.removeAttribute("hidden");
     layer.classList.toggle("btca-level1-menu-layer--delete-sub-open", !!state.bazaDeleteSubmenuOpen);
     layer.classList.toggle("btca-level1-menu-layer--import-sub-open", !!state.bazaImportSubmenuOpen);
@@ -2691,6 +2701,13 @@
       openBazaIdentifierDialog("screenshot");
       return;
     }
+    if (action === "showAll" && caps.canShowAll) {
+      closeBazaSubmenus();
+      state.bazaMenuOpen = false;
+      renderBazaMenuLayer();
+      applyBazaShowAll();
+      return;
+    }
     if (action === "deleteOwn" && caps.canDeleteOwn) {
       closeBazaDeleteSubmenu();
       state.bazaMenuOpen = false;
@@ -2706,8 +2723,44 @@
     }
   }
 
+  function clearBazaShowAll() {
+    if (!state.ui.baza.showAll) return;
+    state.ui.baza.showAll = false;
+    applyUiPatch({ baza: { showAll: false } });
+  }
+
+  function applyBazaShowAll() {
+    return DB.combinedDbDateRange().then(function (range) {
+      var today = DB.formatYmd(new Date());
+      var from = range && range.from ? range.from : today;
+      var to = range && range.to ? range.to : today;
+      state.ui.baza.showAll = true;
+      state.ui.baza.periodFrom = from;
+      state.ui.baza.periodTo = to;
+      state.ui.baza.dataSource = "own";
+      state.ui.baza.exercise = "all";
+      state.ui.baza.task = "all";
+      applyUiPatch({
+        baza: {
+          showAll: true,
+          periodFrom: from,
+          periodTo: to,
+          dataSource: "own",
+          exercise: "all",
+          task: "all",
+        },
+      });
+      return refreshBazaContext().then(function () {
+        renderActiveTab();
+        renderTitleBar();
+        openBazaTable();
+      });
+    });
+  }
+
   function onPickBazaExercise(item) {
     if (!item || item.groupHeader || item.disabled || item.disabledHeader) return;
+    clearBazaShowAll();
     if (BAZA && (item.value === BAZA.BAZA_GROUP_OWN || item.value === BAZA.BAZA_GROUP_FOREIGN)) return;
     if (item.value === "all") {
       state.ui.baza.dataSource = "own";
@@ -2743,7 +2796,7 @@
   function renderBazaTab(content) {
     var baza = state.ui.baza;
     var periodDisabled = bazaFiltersDisabled();
-    var exerciseDisabled = periodDisabled || state.bazaNoExercisesInPeriod;
+    var exerciseDisabled = periodDisabled || (state.bazaNoExercisesInPeriod && !baza.showAll);
     var taskFilterEmpty = exerciseDisabled;
     var fromLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—");
     var toLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodTo) || "—");
@@ -2792,6 +2845,7 @@
     if (!periodDisabled) {
       content.querySelector("[data-btca-baza-from]").addEventListener("click", function () {
         openDateInput(baza.periodFrom, function (iso) {
+          clearBazaShowAll();
           state.ui.baza.periodFrom = iso;
           applyUiPatch({ baza: { periodFrom: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
@@ -2799,6 +2853,7 @@
       });
       content.querySelector("[data-btca-baza-to]").addEventListener("click", function () {
         openDateInput(baza.periodTo, function (iso) {
+          clearBazaShowAll();
           state.ui.baza.periodTo = iso;
           applyUiPatch({ baza: { periodTo: iso } });
           refreshBazaContext().then(function () { renderBazaTab(content); renderTitleBar(); });
@@ -2818,7 +2873,11 @@
               return o.value === value && (o.source || "own") === (source || state.ui.baza.dataSource);
             })[0];
             onPickBazaExercise(item || { value: value, source: source || state.ui.baza.dataSource });
-          }, null, { currentSource: state.ui.baza.dataSource, anchorLayout: anchorLayout });
+          }, null, {
+            currentSource: state.ui.baza.dataSource,
+            anchorLayout: anchorLayout,
+            showAllMode: state.ui.baza.showAll,
+          });
         });
       });
     }
@@ -2842,7 +2901,7 @@
 
   function openBazaTable() {
     var baza = state.ui.baza;
-    var fullDb = state.bazaNoExercisesInPeriod && !state.bazaStats.empty;
+    var fullDb = Boolean(baza.showAll) || (state.bazaNoExercisesInPeriod && !state.bazaStats.empty);
     var title = buildBazaTableTitle(baza, fullDb);
     setBazaTableLandscape(true);
     var overlay = document.createElement("div");
