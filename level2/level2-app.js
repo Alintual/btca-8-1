@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.161";
+  var VERSION = "8.1.162";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -128,7 +128,6 @@
 
   var FORMA_LEVEL2_DEFAULT_EXERCISE = "10";
   var NAV_SECTION_FILTER_ALL = "all";
-  var BAZA_SECTION_FILTER_ALL = "all";
   var NAV_TRAINING_KIND_ORDER = [
     "Тренировка чужих прямых",
     "Тренировка чужих на резке",
@@ -338,118 +337,58 @@
     return exercise;
   }
 
-  function bazaKeysForPickerSource(source) {
-    return source === "foreign" ? state.bazaForeignKeys : state.bazaOwnKeys;
-  }
-
-  function bazaPickerSourceAvailable(source) {
-    if (source === "foreign") return !!state.bazaForeignAvailable;
-    return !state.bazaOwnEmpty;
-  }
-
-  function resolveBazaPickerSource(preferred) {
-    var src = preferred === "foreign" ? "foreign" : "own";
-    if (bazaPickerSourceAvailable(src)) return src;
-    if (bazaPickerSourceAvailable("own")) return "own";
-    if (bazaPickerSourceAvailable("foreign")) return "foreign";
-    return "own";
-  }
-
-  function bazaSourceChipLabel(source) {
-    if (source !== "foreign") return "Текущие";
-    var id = String(state.bazaImportLabelId || "").trim();
-    return id ? "Импорт · " + id : "Импорт";
-  }
-
-  function buildBazaSourceChipOptions() {
-    var out = [];
-    if (bazaPickerSourceAvailable("own")) out.push({ value: "own", label: bazaSourceChipLabel("own") });
-    if (bazaPickerSourceAvailable("foreign")) out.push({ value: "foreign", label: bazaSourceChipLabel("foreign") });
-    return out;
-  }
-
-  function buildBazaSectionChipOptions(source) {
-    var keys = bazaKeysForPickerSource(source);
-    var present = {};
-    keys.forEach(function (key) {
-      var sec = sectionForDbKey(key);
-      if (sec && sec !== "—") present[sec] = true;
-    });
-    var out = [{ value: BAZA_SECTION_FILTER_ALL, label: "Все разделы" }];
-    NAV_TRAINING_KIND_ORDER.forEach(function (sec) {
-      if (present[sec]) out.push({ value: sec, label: sec });
-    });
-    Object.keys(present).forEach(function (sec) {
-      if (NAV_TRAINING_KIND_ORDER.indexOf(sec) < 0) out.push({ value: sec, label: sec });
-    });
-    return out;
-  }
-
-  function normalizeBazaSectionFilterForSource(source, sectionFilter) {
-    if (!sectionFilter || sectionFilter === BAZA_SECTION_FILTER_ALL) return BAZA_SECTION_FILTER_ALL;
-    var keys = bazaKeysForPickerSource(source);
-    for (var i = 0; i < keys.length; i += 1) {
-      if (sectionForDbKey(keys[i]) === sectionFilter) return sectionFilter;
-    }
-    return BAZA_SECTION_FILTER_ALL;
-  }
-
-  function appendBazaExerciseRowsGrouped(out, source, keys) {
-    var bySection = {};
-    var unsectioned = [];
-    keys.forEach(function (key) {
-      var section = sectionForDbKey(key);
-      if (!section || section === "—") {
-        unsectioned.push(key);
-        return;
-      }
-      if (!bySection[section]) bySection[section] = [];
-      bySection[section].push(key);
-    });
-    unsectioned.forEach(function (key) {
-      out.push({ value: key, label: labelForExerciseValue(key), source: source });
-    });
-    var secOrder = NAV_TRAINING_KIND_ORDER.filter(function (s) { return bySection[s]; });
-    var extraSections = Object.keys(bySection).filter(function (s) {
-      return NAV_TRAINING_KIND_ORDER.indexOf(s) < 0;
-    });
-    extraSections.sort(function (a, b) { return a.localeCompare(b, "ru"); });
-    extraSections.forEach(function (s) { secOrder.push(s); });
-    secOrder.forEach(function (section) {
-      out.push({
-        value: "__section:" + source + ":" + section,
-        label: section,
-        groupHeader: true,
-        sectionHeader: true,
-      });
-      bySection[section].forEach(function (key) {
-        out.push({ value: key, label: labelForExerciseValue(key), source: source });
-      });
-    });
-  }
-
-  function buildBazaExercisePickerOptions(source, sectionFilter) {
-    if (!BAZA) return [{ value: "all", label: "Все", source: "own" }];
-    source = source === "foreign" ? "foreign" : "own";
-    sectionFilter = sectionFilter || BAZA_SECTION_FILTER_ALL;
+  function buildBazaExercisePickerOptions() {
+    if (!BAZA) return [{ value: "all", label: "Все" }];
     var BAZA_ALL = BAZA.BAZA_EXERCISE_ALL;
     var BAZA_FOREIGN = BAZA.BAZA_FOREIGN_DATA;
+    var GROUP_OWN = BAZA.BAZA_GROUP_OWN;
+    var GROUP_FOREIGN = BAZA.BAZA_GROUP_FOREIGN;
+    var ownKeys = state.bazaOwnKeys;
+    var foreignKeys = state.bazaForeignKeys;
+    var foreignAvailable = state.bazaForeignAvailable;
+    var importId = state.bazaImportLabelId;
+    var ownDbEmpty = state.bazaOwnEmpty;
+    var out = [];
 
-    if (source === "own" && state.bazaOwnEmpty) return [];
-    if (source === "foreign" && !state.bazaForeignAvailable) return [];
-
-    var keys = bazaKeysForPickerSource(source);
-    var allValue = source === "foreign" ? BAZA_FOREIGN : BAZA_ALL;
-    var out = [{ value: allValue, label: "Все", source: source }];
-
-    if (sectionFilter === BAZA_SECTION_FILTER_ALL) {
-      appendBazaExerciseRowsGrouped(out, source, keys);
-    } else {
+    function appendExerciseRows(source, keys) {
+      var bySection = {};
       keys.forEach(function (key) {
-        if (sectionForDbKey(key) === sectionFilter) {
+        var section = sectionForDbKey(key);
+        if (!section || section === "—") {
           out.push({ value: key, label: labelForExerciseValue(key), source: source });
+          return;
         }
+        if (!bySection[section]) bySection[section] = [];
+        bySection[section].push(key);
       });
+      Object.keys(bySection).forEach(function (section) {
+        out.push({ value: "__section:" + source + ":" + section, label: section, groupHeader: true, sectionHeader: true });
+        bySection[section].forEach(function (key) {
+          out.push({ value: key, label: labelForExerciseValue(key), source: source });
+        });
+      });
+    }
+
+    if (ownDbEmpty) {
+      /* Раздел «Текущие» не показываем, если своих данных нет (У2). */
+    } else {
+      out.push({ value: GROUP_OWN, label: "--- ТЕКУЩИЕ ---", groupHeader: true });
+      out.push({ value: BAZA_ALL, label: "Все", source: "own" });
+      appendExerciseRows("own", ownKeys);
+    }
+
+    if (foreignAvailable) {
+      var importIdStr = String(importId || "").trim();
+      out.push({
+        value: GROUP_FOREIGN,
+        label: BAZA.buildBazaImportGroupLabel(),
+        groupHeader: true,
+        importHeader: true,
+        importId: importIdStr,
+        source: "foreign",
+      });
+      out.push({ value: BAZA_FOREIGN, label: "Все", source: "foreign" });
+      appendExerciseRows("foreign", foreignKeys);
     }
     return out;
   }
@@ -457,7 +396,7 @@
   function bazaExerciseFaceLabel(exercise, dataSource, disabled, options) {
     if (disabled) return "---";
     if (exercise === "all" || exercise === "__foreign_data__") return "Все";
-    var opts = options || buildBazaExercisePickerOptions(dataSource, BAZA_SECTION_FILTER_ALL);
+    var opts = options || buildBazaExercisePickerOptions();
     var row = opts.filter(function (o) {
       return !o.groupHeader && o.value === exercise && (o.source || dataSource) === dataSource;
     })[0];
@@ -1725,127 +1664,6 @@
     };
   }
 
-  function buildBazaExercisePickerChipRowHtml(options, activeValue, chipAttr) {
-    return options.map(function (opt) {
-      var active = opt.value === activeValue;
-      return (
-        '<button type="button" class="btca-baza-exercise-picker__chip' +
-        (active ? " btca-baza-exercise-picker__chip--active" : "") +
-        '" ' + chipAttr + '="' + escapeHtml(opt.value) + '">' +
-        escapeHtml(opt.label) + "</button>"
-      );
-    }).join("");
-  }
-
-  function buildBazaExercisePickerListHtml(options, currentValue, currentSource) {
-    return options.map(function (opt) {
-      if (opt.groupHeader) {
-        var groupClass = "btca-level1-picker__group";
-        if (opt.sectionHeader) groupClass += " btca-level1-picker__group--section";
-        return '<div class="' + groupClass + '">' + escapeHtml(opt.label) + "</div>";
-      }
-      var optSource = opt.source || "own";
-      var pickerCurrent = currentValue == null ? null : bazaExercisePickerValue(currentValue, currentSource || "own");
-      var active = pickerCurrent != null && opt.value === pickerCurrent;
-      return (
-        '<button type="button" class="btca-level1-picker__item' +
-        (active ? " btca-level1-picker__item--active" : "") +
-        '" data-btca-picker-value="' + escapeHtml(opt.value) +
-        '" data-btca-picker-source="' + escapeHtml(optSource) +
-        '"><span class="btca-level1-picker__text">' +
-        escapeHtml(opt.label) + "</span></button>"
-      );
-    }).join("");
-  }
-
-  function openBazaExercisePicker(anchorLayout) {
-    var layer = state.root && state.root.querySelector("[data-btca-level2-picker]");
-    if (!layer) return;
-    var baza = state.ui.baza;
-    var pickerSource = resolveBazaPickerSource(baza.dataSource);
-    var pickerSection = normalizeBazaSectionFilterForSource(
-      pickerSource,
-      baza.exerciseSectionFilter || BAZA_SECTION_FILTER_ALL
-    );
-
-    function pickerListCurrentValue() {
-      if (pickerSource !== baza.dataSource) return null;
-      return baza.exercise;
-    }
-
-    function renderPickerBody() {
-      var sourceOptions = buildBazaSourceChipOptions();
-      var sectionOptions = buildBazaSectionChipOptions(pickerSource);
-      pickerSection = normalizeBazaSectionFilterForSource(pickerSource, pickerSection);
-      var exerciseOptions = buildBazaExercisePickerOptions(pickerSource, pickerSection);
-      var pickerStyle = "";
-      if (anchorLayout) {
-        pickerStyle =
-          ' style="position:fixed;top:' + anchorLayout.top + "px;left:" + anchorLayout.left + "px;width:" + anchorLayout.width +
-          "px;height:" + anchorLayout.height + 'px;right:auto;"';
-      }
-      layer.innerHTML =
-        '<button class="btca-level1-menu-backdrop" type="button" data-btca-picker-close aria-label="Закрыть"></button>' +
-        '<div class="btca-level1-picker btca-level1-picker--anchored btca-baza-exercise-picker" role="dialog" aria-label="Упражнение"' + pickerStyle + ">" +
-        '<div class="btca-baza-exercise-picker__chips">' +
-        '<div class="btca-baza-exercise-picker__chip-row" data-btca-baza-source-chips>' +
-        buildBazaExercisePickerChipRowHtml(sourceOptions, pickerSource, "data-btca-baza-source-chip") +
-        "</div>" +
-        '<div class="btca-baza-exercise-picker__chip-row" data-btca-baza-section-chips>' +
-        buildBazaExercisePickerChipRowHtml(sectionOptions, pickerSection, "data-btca-baza-section-chip") +
-        "</div></div>" +
-        '<div class="btca-level1-picker__list" data-btca-picker-list>' +
-        buildBazaExercisePickerListHtml(exerciseOptions, pickerListCurrentValue(), pickerSource) +
-        "</div></div>";
-      var listEl = layer.querySelector("[data-btca-picker-list]");
-      scrollPickerToActive(listEl, exerciseOptions, pickerListCurrentValue(), PICKER_ROW_SIMPLE);
-    }
-
-    layer.removeAttribute("hidden");
-    renderPickerBody();
-
-    layer.onclick = function (event) {
-      if (event.target.closest("[data-btca-picker-close]")) {
-        closePicker();
-        return;
-      }
-      var sourceChip = event.target.closest("[data-btca-baza-source-chip]");
-      if (sourceChip) {
-        var nextSource = sourceChip.getAttribute("data-btca-baza-source-chip");
-        if (nextSource && nextSource !== pickerSource) {
-          pickerSource = nextSource === "foreign" ? "foreign" : "own";
-          pickerSection = normalizeBazaSectionFilterForSource(pickerSource, pickerSection);
-          renderPickerBody();
-        }
-        return;
-      }
-      var sectionChip = event.target.closest("[data-btca-baza-section-chip]");
-      if (sectionChip) {
-        var nextSection = sectionChip.getAttribute("data-btca-baza-section-chip");
-        if (nextSection && nextSection !== pickerSection) {
-          pickerSection = nextSection;
-          state.ui.baza.exerciseSectionFilter = pickerSection;
-          applyUiPatch({ baza: { exerciseSectionFilter: pickerSection } });
-          renderPickerBody();
-        }
-        return;
-      }
-      var btn = event.target.closest("[data-btca-picker-value]");
-      if (!btn) return;
-      var value = btn.getAttribute("data-btca-picker-value");
-      if (!value || value.indexOf("__section:") === 0) return;
-      var source = btn.getAttribute("data-btca-picker-source") || pickerSource;
-      var exerciseOptions = buildBazaExercisePickerOptions(pickerSource, pickerSection);
-      var item = exerciseOptions.filter(function (o) {
-        return o.value === value && (o.source || pickerSource) === source;
-      })[0];
-      closePicker();
-      state.ui.baza.exerciseSectionFilter = pickerSection;
-      applyUiPatch({ baza: { exerciseSectionFilter: pickerSection } });
-      onPickBazaExercise(item || { value: value, source: source });
-    };
-  }
-
   function computeFormaRows() {
     syncUiFromDb();
     var b5 = b5FromSelectValue(state.ui.exerciseValue);
@@ -2790,7 +2608,7 @@
               baza.exercise,
               baza.dataSource,
               false,
-              buildBazaExercisePickerOptions(baza.dataSource, BAZA_SECTION_FILTER_ALL)
+              buildBazaExercisePickerOptions()
             ),
             task: baza.task,
           })
@@ -2929,12 +2747,7 @@
     var taskFilterEmpty = exerciseDisabled;
     var fromLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodFrom) || "—");
     var toLabel = periodDisabled ? "---" : (formatIsoDateAsDdMmYyyy(baza.periodTo) || "—");
-    var exerciseLabel = bazaExerciseFaceLabel(
-      baza.exercise,
-      baza.dataSource,
-      exerciseDisabled,
-      buildBazaExercisePickerOptions(baza.dataSource, BAZA_SECTION_FILTER_ALL)
-    );
+    var exerciseLabel = bazaExerciseFaceLabel(baza.exercise, baza.dataSource, exerciseDisabled, buildBazaExercisePickerOptions());
     var taskLabel = taskFilterEmpty || baza.exercise === "all" || baza.exercise === "__foreign_data__" ? (taskFilterEmpty ? "---" : "Все") : (baza.task === "all" ? "Все" : baza.task);
     var taskDisabled = taskFilterEmpty || baza.exercise === "all" || baza.exercise === "__foreign_data__";
     var chartMeta = getBazaChartMeta(baza, exerciseDisabled);
@@ -2998,7 +2811,14 @@
         var anchorLayout =
           anchorEl && anchorEl.getBoundingClientRect ? computeAnchoredPickerLayout(anchorEl) : null;
         refreshBazaContext().then(function () {
-          openBazaExercisePicker(anchorLayout);
+          var exerciseOptions = buildBazaExercisePickerOptions();
+          var pickerValue = bazaExercisePickerValue(state.ui.baza.exercise, state.ui.baza.dataSource);
+          openPicker("Упражнение", exerciseOptions, pickerValue, function (value, source) {
+            var item = exerciseOptions.filter(function (o) {
+              return o.value === value && (o.source || "own") === (source || state.ui.baza.dataSource);
+            })[0];
+            onPickBazaExercise(item || { value: value, source: source || state.ui.baza.dataSource });
+          }, null, { currentSource: state.ui.baza.dataSource, anchorLayout: anchorLayout });
         });
       });
     }
