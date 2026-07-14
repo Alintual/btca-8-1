@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.168";
+  var VERSION = "8.1.169";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2378,15 +2378,17 @@
           }
           overwriteId = overwriteValidation.value;
         }
-        var startOverwritePick = function () {
-          state.bazaIdentifierMode = null;
-          state.bazaIdentifierError = "";
-          renderBazaIdentifierDialog();
-          runBazaOverwritePick(overwriteId);
-        };
-        DB.saveUserFileIdentifier(overwriteId).then(function () {
-          state.bazaUserFileId = overwriteId;
-          startOverwritePick();
+        /* File picker обязан открыться синхронно из click; иначе Safari/Chrome
+           блокируют input.click() после await/Promise («тишина»). */
+        state.bazaUserFileId = overwriteId;
+        state.bazaIdentifierMode = null;
+        state.bazaIdentifierError = "";
+        renderBazaIdentifierDialog();
+        runBazaOverwritePick(overwriteId);
+        DB.saveUserFileIdentifier(overwriteId).catch(function () {
+          showBazaErrorToast(
+            window.BTCA_BAZA_DIALOGS && window.BTCA_BAZA_DIALOGS.TOAST_MSG_IMPORT_ERROR
+          );
         });
         return;
       }
