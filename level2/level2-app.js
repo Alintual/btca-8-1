@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.170";
+  var VERSION = "8.1.171";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2445,6 +2445,38 @@
     });
   }
 
+  function applyBazaFiltersAfterDbLoad(mode) {
+    var today = DB.formatYmd(new Date());
+    var rangePromise = mode === "foreign" ? DB.foreignDbDateRange() : DB.ownDbDateRange();
+    return rangePromise.then(function (range) {
+      var from = (range && range.from && String(range.from).trim()) || today;
+      var to = (range && range.to && String(range.to).trim()) || today;
+      if (mode === "foreign") {
+        applyUiPatch({
+          baza: {
+            dataSource: "foreign",
+            exercise: "__foreign_data__",
+            task: "all",
+            periodFrom: from,
+            periodTo: to,
+            showAll: false,
+          },
+        });
+        return;
+      }
+      applyUiPatch({
+        baza: {
+          dataSource: "own",
+          exercise: "all",
+          task: "all",
+          periodFrom: from,
+          periodTo: to,
+          showAll: false,
+        },
+      });
+    });
+  }
+
   function runBazaImportPick() {
     var DLG = window.BTCA_BAZA_DIALOGS;
     var SQLITE = window.BTCA_BAZA_SQLITE;
@@ -2482,10 +2514,12 @@
           }
           state.bazaMenuOpen = false;
           renderBazaMenuLayer();
-          return refreshBazaContext().then(function () {
-            renderActiveTab();
-            renderTitleBar();
-            showBazaSuccessToast();
+          return applyBazaFiltersAfterDbLoad("foreign").then(function () {
+            return refreshBazaContext().then(function () {
+              renderActiveTab();
+              renderTitleBar();
+              showBazaSuccessToast();
+            });
           });
         }).catch(function () {
           showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);
@@ -2539,25 +2573,12 @@
           state.bazaMenuOpen = false;
           closeBazaSubmenus();
           renderBazaMenuLayer();
-          var today = DB.formatYmd(new Date());
-          state.ui.baza.dataSource = "own";
-          state.ui.baza.exercise = "all";
-          state.ui.baza.task = "all";
-          state.ui.baza.periodFrom = today;
-          state.ui.baza.periodTo = today;
-          applyUiPatch({
-            baza: {
-              dataSource: "own",
-              exercise: "all",
-              task: "all",
-              periodFrom: today,
-              periodTo: today,
-            },
-          });
-          return refreshBazaContext().then(function () {
-            renderActiveTab();
-            renderTitleBar();
-            showBazaSuccessToast();
+          return applyBazaFiltersAfterDbLoad("own").then(function () {
+            return refreshBazaContext().then(function () {
+              renderActiveTab();
+              renderTitleBar();
+              showBazaSuccessToast();
+            });
           });
         }).catch(function () {
           showBazaErrorToast(DLG && DLG.TOAST_MSG_IMPORT_ERROR);

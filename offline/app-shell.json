@@ -3,7 +3,7 @@
   "version": "8.1.0",
   "stage": "app-shell",
   "description": "Минимальный offline-пакет PWA-оболочки. Полные данные БТКА будут подключены отдельным пакетом на следующем этапе.",
-  "cacheVersion": "btca-web-8.1.279",
-  "level1ModuleVersion": "8.1.170",
-  "level2ModuleVersion": "8.1.170"
+  "cacheVersion": "btca-web-8.1.280",
+  "level1ModuleVersion": "8.1.171",
+  "level2ModuleVersion": "8.1.171"
 }
