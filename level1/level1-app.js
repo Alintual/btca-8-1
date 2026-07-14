@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.171";
+  var VERSION = "8.1.172";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2084,6 +2084,7 @@
       overlay.remove();
     }
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeTable);
+    bindHorizontalSwipe(overlay, { onSwipeLeft: closeTable });
     loadBazaTableDisplayItems(baza, fullDb).then(function (items) {
       if (!bodyEl || !overlay.isConnected) return;
       bodyEl.innerHTML = items.length ? renderBazaTableItemsHtml(items) : "";
@@ -2322,7 +2323,7 @@
     content.querySelectorAll("[data-btca-polez-image-swipe]").forEach(function (frame) {
       var key = frame.getAttribute("data-btca-polez-image-swipe");
       bindHorizontalSwipe(frame, {
-        onSwipeRight: function () { openPolezImageLandscape(key); },
+        onSwipeRight: function () { openPolezImagePortrait(key); },
       });
     });
   }
@@ -2420,13 +2421,18 @@
     openExerciseImageLandscape(payload);
   }
 
-  function polezDescriptionScreenHtml(desc) {
+  function polezDescriptionScreenHtml(desc, catalogKey) {
+    var row = polezRowsForLevel1().filter(function (r) { return r.key === catalogKey; })[0];
+    var hasImage = !!(row && row.file && polezImageUrl(row.file));
     return (
       '<main class="btca-about-screen">' +
       '<header class="btca-screen-header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
       "<strong>Описание</strong>" +
-      '<span aria-hidden="true"></span></header>' +
+      (hasImage
+        ? greenArrowHtml({ dataAttr: 'data-btca-polez-desc-image aria-label="Просмотр рисунка"' })
+        : '<span aria-hidden="true"></span>') +
+      "</header>" +
       '<section class="btca-about-content"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
       '<p>' + formatPolezBody(desc.body || "") + "</p></section></main>"
     );
@@ -2438,15 +2444,60 @@
     document.body.classList.add("btca-screen-mode");
     var overlay = document.createElement("div");
     overlay.className = "btca-polez-desc-root";
-    overlay.innerHTML = polezDescriptionScreenHtml(desc);
+    overlay.innerHTML = polezDescriptionScreenHtml(desc, catalogKey);
     state.root.appendChild(overlay);
     function closeOverlay() {
       document.body.classList.remove("btca-screen-mode");
       overlay.remove();
     }
+    function openImage() {
+      closeOverlay();
+      openPolezImagePortrait(catalogKey);
+    }
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
+    var imgBtn = overlay.querySelector("[data-btca-polez-desc-image]");
+    if (imgBtn) imgBtn.addEventListener("click", openImage);
     var header = overlay.querySelector(".btca-screen-header");
-    if (header) bindHorizontalSwipe(header, { onSwipeLeft: closeOverlay });
+    if (header) {
+      bindHorizontalSwipe(header, {
+        onSwipeLeft: closeOverlay,
+        onSwipeRight: imgBtn ? openImage : undefined,
+      });
+    }
+  }
+
+  function openPolezImagePortrait(catalogKey) {
+    var row = polezRowsForLevel1().filter(function (r) { return r.key === catalogKey; })[0];
+    if (!row || !row.file) return;
+    var url = polezImageUrl(row.file);
+    if (!url) return;
+    var overlay = document.createElement("div");
+    overlay.className = "btca-l1-overlay btca-l1-overlay--forma-image-portrait";
+    overlay.innerHTML =
+      '<header class="btca-l1-overlay__header btca-l1-overlay__header--portrait-image">' +
+      '<button type="button" class="btca-back-button" data-btca-polez-img-close aria-label="Назад">←</button>' +
+      '<span aria-hidden="true"></span>' +
+      greenArrowHtml({ dataAttr: 'data-btca-polez-img-landscape aria-label="Просмотр в альбомной ориентации"' }) +
+      "</header>" +
+      '<div class="btca-l1-image-view" data-btca-polez-img-swipe>' +
+      '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(row.label) + '"></div>';
+    state.root.appendChild(overlay);
+
+    function closePortrait() {
+      overlay.remove();
+    }
+    function openLandscape() {
+      overlay.remove();
+      openPolezImageLandscape(catalogKey);
+    }
+
+    overlay.querySelector("[data-btca-polez-img-close]").addEventListener("click", closePortrait);
+    var landscapeBtn = overlay.querySelector("[data-btca-polez-img-landscape]");
+    if (landscapeBtn) landscapeBtn.addEventListener("click", openLandscape);
+    bindHorizontalSwipe(overlay.querySelector("[data-btca-polez-img-swipe]") || overlay, {
+      onSwipeLeft: closePortrait,
+      onSwipeRight: openLandscape,
+    });
   }
 
   function openPolezImageLandscape(catalogKey) {
