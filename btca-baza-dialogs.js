@@ -114,10 +114,24 @@
     "Разрешены только латинские буквы A–Z, цифры 0–9, дефис (-) и подчёркивание (_).";
   var IDENTIFIER_ALLOWED_RE = /^[A-Za-z0-9_-]+$/;
 
-  function assetUrl(file) {
-    var base = global.__BTCA_BASE__ || "/btca-8-1/";
-    if (!/\/$/.test(base)) base += "/";
-    return base + "branding/" + file;
+  /** Inline SVG — не зависят от сети/кэша PNG (иначе крест/галочка иногда пропадали). */
+  function dialogIconSvg(kind) {
+    if (kind === "cross") {
+      return (
+        '<svg class="btca-baza-dialog-icon btca-baza-dialog-icon--cross" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">' +
+        '<path fill="#7c021c" d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 1 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 1 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z"/></svg>'
+      );
+    }
+    if (kind === "del") {
+      return (
+        '<svg class="btca-baza-dialog-icon btca-baza-dialog-icon--del" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false">' +
+        '<path fill="#7c021c" d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9zm-1 12h12a1 1 0 0 0 1-1V8H5v12a1 1 0 0 0 1 1z"/></svg>'
+      );
+    }
+    return (
+      '<svg class="btca-baza-dialog-icon btca-baza-dialog-icon--gal" viewBox="0 0 24 24" width="34" height="34" aria-hidden="true" focusable="false">' +
+      '<path fill="#0ab10a" d="M9.2 16.6 4.8 12.2a1 1 0 1 0-1.4 1.4l5.1 5.1a1 1 0 0 0 1.4 0l11-11a1 1 0 1 0-1.4-1.4L9.2 16.6z"/></svg>'
+    );
   }
 
   function escapeHtml(v) {
@@ -147,9 +161,6 @@
     opts = opts || {};
     var confirmDisabled = opts.canConfirm === false;
     var confirmIcon = opts.confirmIcon === "del" ? "del" : "gal";
-    var iconFile = confirmIcon === "del" ? "del.png" : "gal.png";
-    var iconClass =
-      confirmIcon === "del" ? "btca-baza-dialog-icon--del" : "btca-baza-dialog-icon--gal";
     var confirmLabel = confirmIcon === "del" ? "Удалить данные" : "Подтвердить";
 
     var inputBlock = "";
@@ -170,17 +181,18 @@
 
     return (
       '<div class="btca-baza-dialog-panel" role="dialog">' +
+      '<div class="btca-baza-dialog-scroll">' +
       '<p class="btca-baza-dialog-body">' +
       escapeHtml(opts.bodyText || "") +
       "</p>" +
       inputBlock +
+      "</div>" +
       '<div class="btca-baza-dialog-actions">' +
       '<button type="button" class="btca-baza-dialog-icon-btn" ' +
       (opts.closeAttr || "") +
       ' aria-label="Закрыть">' +
-      '<img class="btca-baza-dialog-icon btca-baza-dialog-icon--cross" src="' +
-      assetUrl("cross.png") +
-      '" alt="" draggable="false"></button>' +
+      dialogIconSvg("cross") +
+      "</button>" +
       '<button type="button" class="btca-baza-dialog-icon-btn' +
       (confirmDisabled ? " btca-baza-dialog-icon-btn--disabled" : "") +
       '" ' +
@@ -189,11 +201,8 @@
       ' aria-label="' +
       confirmLabel +
       '">' +
-      '<img class="btca-baza-dialog-icon ' +
-      iconClass +
-      '" src="' +
-      assetUrl(iconFile) +
-      '" alt="" draggable="false"></button>' +
+      dialogIconSvg(confirmIcon) +
+      "</button>" +
       "</div></div>"
     );
   }

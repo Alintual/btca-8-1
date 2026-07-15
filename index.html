@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.282" />
+    <meta name="btca-cache-version" content="btca-web-8.1.283" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -951,10 +951,12 @@ body.btca-level2-mode .btca-l1-pick--consumed {
 .btca-baza-dialog-panel {
   position: relative;
   z-index: 2;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   width: min(288px, calc(100vw - 8px));
   max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   padding: 14px 16px;
   border: 2px solid #ffffff;
   border-radius: 12px;
@@ -962,6 +964,13 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   color: #111111;
   box-shadow: 0 2px 8px rgba(26, 79, 92, 0.35);
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.btca-baza-dialog-scroll {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -1011,7 +1020,7 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   height: 40px;
   min-height: 40px;
   padding: 0 10px;
-  border: 1px solid rgba(17, 24, 39, 0.18);
+  border: 1px solid #9ca3af;
   border-radius: 12px;
   color: #111827;
   background: #ffffff;
@@ -1020,6 +1029,18 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   font-weight: 600;
   text-align: center;
   box-sizing: border-box;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.btca-baza-dialog-input:focus,
+.btca-baza-dialog-input:focus-visible,
+.btca-baza-dialog-input:hover {
+  border: 1px solid #9ca3af;
+  outline: none;
+  box-shadow: none;
 }
 
 .btca-baza-dialog-input::placeholder {
@@ -1039,6 +1060,7 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
   width: 100%;
   padding-top: 4px;
 }
@@ -1051,6 +1073,7 @@ body.btca-level2-mode .btca-l1-pick--consumed {
   padding: 0;
   border: 0;
   background: transparent;
+  color: inherit;
 }
 
 .btca-baza-dialog-icon-btn:active:not(:disabled) {
@@ -1058,17 +1081,20 @@ body.btca-level2-mode .btca-l1-pick--consumed {
 }
 
 .btca-baza-dialog-icon-btn--disabled {
-  opacity: 0.55;
+  opacity: 1;
 }
 
 .btca-baza-dialog-icon-btn--disabled .btca-baza-dialog-icon--gal,
 .btca-baza-dialog-icon-btn--disabled .btca-baza-dialog-icon--del {
-  opacity: 0.45;
+  opacity: 0.4;
+  filter: grayscale(0.35);
 }
 
 .btca-baza-dialog-icon {
   display: block;
+  flex-shrink: 0;
   object-fit: contain;
+  pointer-events: none;
 }
 
 .btca-baza-dialog-icon--cross {
@@ -3473,7 +3499,7 @@ body.btca-level2-mode .btca-date-picker-day--selected {
 .btca-level1-sheet-menu__item {
   min-height: 52px;
   padding: 12px 4px;
-  border: 1px solid rgba(10, 177, 10, 0.45);
+  border: 1px solid rgba(160, 160, 160, 0.75);
   border-radius: 10px;
   color: #ffffff;
   background: transparent;
@@ -3483,10 +3509,13 @@ body.btca-level2-mode .btca-date-picker-day--selected {
   text-align: center;
 }
 
-.btca-level1-sheet-menu__item--active,
-.btca-level1-sheet-menu__item:active {
+.btca-level1-sheet-menu__item--active {
   border-color: rgba(10, 177, 10, 0.88);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.btca-level1-sheet-menu__item:active:not(.btca-level1-sheet-menu__item--active) {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .ios-panel {
@@ -3768,8 +3797,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.282:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.282:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.283:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.283:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3810,8 +3839,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "ОТ АВТОРА. Система тренировок БТКА разработана по результатам систематизации методик обучения русскому бильярду на основе: секретов ведущих тренеров и игроков (в т.ч. В. Симонича, В. Лазарева, С. Баурова, Е. Сталева и др.), опыта «старой школы», а также современных научных и экспериментальных исследований и IT-технологий.\n\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.173";
-  var LEVEL2_MODULE_VERSION = "8.1.173";
+  var LEVEL1_MODULE_VERSION = "8.1.174";
+  var LEVEL2_MODULE_VERSION = "8.1.174";
 
   var CORE_REL_PATHS = [
     "",
@@ -3820,6 +3849,9 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "icons/btca-icon-512.png",
     "branding/up.png",
     "branding/baza.png",
+    "branding/cross.png",
+    "branding/gal.png",
+    "branding/del.png",
     "branding/splash.gif",
     "offline/app-shell.json",
     "offline/media/manifest.json",
