@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.174";
+  var VERSION = "8.1.175";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2316,6 +2316,13 @@
     state.bazaIdentifierMode = mode;
     state.bazaIdentifierDraft = state.bazaUserFileId || "";
     state.bazaIdentifierError = "";
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    if (DLG && typeof DLG.ensureDialogIconsReady === "function") {
+      DLG.ensureDialogIconsReady().finally(function () {
+        if (state.bazaIdentifierMode) renderBazaIdentifierDialog();
+      });
+      return;
+    }
     renderBazaIdentifierDialog();
   }
 
@@ -2633,6 +2640,13 @@
 
   function openBazaDeleteConfirm(target) {
     state.bazaDeleteConfirm = target;
+    var DLG = window.BTCA_BAZA_DIALOGS;
+    if (DLG && typeof DLG.ensureDialogIconsReady === "function") {
+      DLG.ensureDialogIconsReady().finally(function () {
+        if (state.bazaDeleteConfirm) renderBazaDeleteConfirm();
+      });
+      return;
+    }
     renderBazaDeleteConfirm();
   }
 

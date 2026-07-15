@@ -114,23 +114,90 @@
     "Разрешены только латинские буквы A–Z, цифры 0–9, дефис (-) и подчёркивание (_).";
   var IDENTIFIER_ALLOWED_RE = /^[A-Za-z0-9_-]+$/;
 
-  /** Inline SVG — не зависят от сети/кэша PNG (иначе крест/галочка иногда пропадали). */
-  function dialogIconSvg(kind) {
-    if (kind === "cross") {
-      return (
-        '<svg class="btca-baza-dialog-icon btca-baza-dialog-icon--cross" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">' +
-        '<path fill="#7c021c" d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 1 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 1 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z"/></svg>'
-      );
-    }
-    if (kind === "del") {
-      return (
-        '<svg class="btca-baza-dialog-icon btca-baza-dialog-icon--del" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false">' +
-        '<path fill="#7c021c" d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9zm-1 12h12a1 1 0 0 0 1-1V8H5v12a1 1 0 0 0 1 1z"/></svg>'
-      );
-    }
+  var DIALOG_ICON_FILES = {
+    cross: "cross.png",
+    gal: "gal.png",
+    del: "del.png",
+  };
+
+  /** URL иконок: после preload — blob: (стабильно offline), иначе обычный путь branding/. */
+  var dialogIconSrc = {
+    cross: null,
+    gal: null,
+    del: null,
+  };
+  var dialogIconsPreloadPromise = null;
+
+  function brandingPath(file) {
+    var base = String(global.__BTCA_BASE__ || "/btca-8-1/").replace(/\/?$/, "/");
+    return base + "branding/" + String(file || "").replace(/^\//, "");
+  }
+
+  function resolveDialogIconSrc(kind) {
+    var key = kind === "del" ? "del" : kind === "cross" ? "cross" : "gal";
+    return dialogIconSrc[key] || brandingPath(DIALOG_ICON_FILES[key]);
+  }
+
+  /**
+   * Прогрев иконок в память (fetch → blob URL).
+   * Так крест/галочка не мигают и не пропадают при offline / сбоях SW / повторном открытии диалога.
+   */
+  function ensureDialogIconsReady() {
+    if (dialogIconsPreloadPromise) return dialogIconsPreloadPromise;
+    var kinds = ["cross", "gal", "del"];
+    dialogIconsPreloadPromise = Promise.all(
+      kinds.map(function (kind) {
+        var file = DIALOG_ICON_FILES[kind];
+        var url = brandingPath(file);
+        dialogIconSrc[kind] = url;
+        return fetch(url, { cache: "force-cache", credentials: "same-origin" })
+          .then(function (res) {
+            if (!res || !res.ok) throw new Error("icon_fetch_failed");
+            return res.blob();
+          })
+          .then(function (blob) {
+            if (!blob || !blob.size) throw new Error("icon_empty");
+            try {
+              dialogIconSrc[kind] = URL.createObjectURL(blob);
+            } catch (_) {
+              dialogIconSrc[kind] = url;
+            }
+          })
+          .catch(function () {
+            return new Promise(function (resolve) {
+              var img = new Image();
+              img.onload = function () {
+                dialogIconSrc[kind] = url;
+                resolve();
+              };
+              img.onerror = function () {
+                dialogIconSrc[kind] = url;
+                resolve();
+              };
+              img.src = url;
+            });
+          });
+      })
+    ).then(function () {
+      return dialogIconSrc;
+    });
+    return dialogIconsPreloadPromise;
+  }
+
+  function dialogIconImgHtml(kind) {
+    var key = kind === "del" ? "del" : kind === "cross" ? "cross" : "gal";
+    var cls =
+      key === "cross"
+        ? "btca-baza-dialog-icon btca-baza-dialog-icon--cross"
+        : key === "del"
+          ? "btca-baza-dialog-icon btca-baza-dialog-icon--del"
+          : "btca-baza-dialog-icon btca-baza-dialog-icon--gal";
     return (
-      '<svg class="btca-baza-dialog-icon btca-baza-dialog-icon--gal" viewBox="0 0 24 24" width="34" height="34" aria-hidden="true" focusable="false">' +
-      '<path fill="#0ab10a" d="M9.2 16.6 4.8 12.2a1 1 0 1 0-1.4 1.4l5.1 5.1a1 1 0 0 0 1.4 0l11-11a1 1 0 1 0-1.4-1.4L9.2 16.6z"/></svg>'
+      '<img class="' +
+      cls +
+      '" src="' +
+      escapeHtml(resolveDialogIconSrc(key)) +
+      '" alt="" decoding="async" draggable="false">'
     );
   }
 
@@ -191,7 +258,7 @@
       '<button type="button" class="btca-baza-dialog-icon-btn" ' +
       (opts.closeAttr || "") +
       ' aria-label="Закрыть">' +
-      dialogIconSvg("cross") +
+      dialogIconImgHtml("cross") +
       "</button>" +
       '<button type="button" class="btca-baza-dialog-icon-btn' +
       (confirmDisabled ? " btca-baza-dialog-icon-btn--disabled" : "") +
@@ -201,7 +268,7 @@
       ' aria-label="' +
       confirmLabel +
       '">' +
-      dialogIconSvg(confirmIcon) +
+      dialogIconImgHtml(confirmIcon) +
       "</button>" +
       "</div></div>"
     );
@@ -312,5 +379,12 @@
     buildLayerWithPanel: buildLayerWithPanel,
     buildToastHtml: buildToastHtml,
     escapeHtml: escapeHtml,
+    ensureDialogIconsReady: ensureDialogIconsReady,
   };
+
+  try {
+    ensureDialogIconsReady();
+  } catch (_) {
+    /* ignore */
+  }
 })(typeof window !== "undefined" ? window : globalThis);
