@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.178";
+  var VERSION = "8.1.179";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -2460,17 +2460,9 @@
       document.body.classList.remove("btca-screen-mode");
       overlay.remove();
     }
-    function openImage() {
-      var row = polezRowsForLevel1().filter(function (r) { return r.key === catalogKey; })[0];
-      var hasImage = !!(row && row.file && polezImageUrl(row.file));
-      if (!hasImage) return;
-      closeOverlay();
-      openPolezImagePortrait(catalogKey);
-    }
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
     bindHorizontalSwipe(overlay, {
       onSwipeLeft: closeOverlay,
-      onSwipeRight: openImage,
     });
   }
 
