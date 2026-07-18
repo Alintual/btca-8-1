@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.177";
+  var VERSION = "8.1.178";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -3358,13 +3358,10 @@
       openPolezImagePortrait(catalogKey);
     }
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
-    var header = overlay.querySelector(".btca-screen-header");
-    if (header) {
-      bindHorizontalSwipe(header, {
-        onSwipeLeft: closeOverlay,
-        onSwipeRight: openImage,
-      });
-    }
+    bindHorizontalSwipe(overlay, {
+      onSwipeLeft: closeOverlay,
+      onSwipeRight: openImage,
+    });
   }
 
   function openPolezImagePortrait(catalogKey) {
