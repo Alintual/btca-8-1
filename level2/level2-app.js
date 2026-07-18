@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.176";
+  var VERSION = "8.1.177";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -3325,17 +3325,13 @@
     openExerciseImageLandscape(payload);
   }
 
-  function polezDescriptionScreenHtml(desc, catalogKey) {
-    var row = polezRowsForLevel1().filter(function (r) { return r.key === catalogKey; })[0];
-    var hasImage = !!(row && row.file && polezImageUrl(row.file));
+  function polezDescriptionScreenHtml(desc) {
     return (
       '<main class="btca-about-screen">' +
       '<header class="btca-screen-header">' +
       '<button type="button" class="btca-back-button" data-btca-overlay-close aria-label="Назад">←</button>' +
       "<strong>Описание</strong>" +
-      (hasImage
-        ? greenArrowHtml({ dataAttr: 'data-btca-polez-desc-image aria-label="Просмотр рисунка"' })
-        : '<span aria-hidden="true"></span>') +
+      '<span aria-hidden="true"></span>' +
       "</header>" +
       '<section class="btca-about-content"><h1>' + escapeHtml(desc.title || "") + "</h1>" +
       '<p>' + formatPolezBody(desc.body || "") + "</p></section></main>"
@@ -3348,24 +3344,25 @@
     document.body.classList.add("btca-screen-mode");
     var overlay = document.createElement("div");
     overlay.className = "btca-polez-desc-root";
-    overlay.innerHTML = polezDescriptionScreenHtml(desc, catalogKey);
+    overlay.innerHTML = polezDescriptionScreenHtml(desc);
     state.root.appendChild(overlay);
     function closeOverlay() {
       document.body.classList.remove("btca-screen-mode");
       overlay.remove();
     }
     function openImage() {
+      var row = polezRowsForLevel1().filter(function (r) { return r.key === catalogKey; })[0];
+      var hasImage = !!(row && row.file && polezImageUrl(row.file));
+      if (!hasImage) return;
       closeOverlay();
       openPolezImagePortrait(catalogKey);
     }
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
-    var imgBtn = overlay.querySelector("[data-btca-polez-desc-image]");
-    if (imgBtn) imgBtn.addEventListener("click", openImage);
     var header = overlay.querySelector(".btca-screen-header");
     if (header) {
       bindHorizontalSwipe(header, {
         onSwipeLeft: closeOverlay,
-        onSwipeRight: imgBtn ? openImage : undefined,
+        onSwipeRight: openImage,
       });
     }
   }
