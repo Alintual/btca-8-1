@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.289";
+const CACHE_VERSION = "btca-web-8.1.292";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
@@ -42,19 +42,75 @@ const CORE_ASSETS = [
   "/btca-8-1/level2/data/polezDescriptions.json"
 ];
 
-function networkFirst(request, cacheName) {
-  const liveRequest = new Request(request, { cache: "no-store" });
-  return fetch(liveRequest)
-    .then((response) => {
-      if (response && response.status === 200) {
-        const copy = response.clone();
-        caches.open(cacheName).then((cache) => {
-          cache.put(request, copy);
+function offlineFallback(request) {
+  const accept = (request.headers && request.headers.get("accept")) || "";
+  if (request.mode === "navigate" || accept.indexOf("text/html") !== -1) {
+    return caches.match(BASE_PATH + "/").then((shell) => {
+      if (shell) return shell;
+      return caches.match(BASE_PATH + "/index.html").then((page) => {
+        if (page) return page;
+        return new Response("<!doctype html><title>Offline</title><p>Offline</p>", {
+          status: 503,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
         });
-      }
+      });
+    });
+  }
+  return Promise.resolve(
+    new Response("", {
+      status: 503,
+      statusText: "Service Unavailable",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    })
+  );
+}
+
+function safeFetch(request) {
+  try {
+    return fetch(new Request(request, { cache: "no-store" }));
+  } catch (_err) {
+    return fetch(request);
+  }
+}
+
+function putInCache(cacheName, request, response) {
+  try {
+    if (!response || response.status !== 200 || response.type === "opaque") return;
+    const copy = response.clone();
+    caches
+      .open(cacheName)
+      .then((cache) => cache.put(request, copy).catch(function () {}))
+      .catch(function () {});
+  } catch (_err) {}
+}
+
+function networkFirst(request, cacheName) {
+  return safeFetch(request)
+    .then((response) => {
+      putInCache(cacheName, request, response);
       return response;
     })
-    .catch(() => caches.match(request));
+    .catch(() =>
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return offlineFallback(request);
+      })
+    );
+}
+
+function cacheFirst(request, cacheName) {
+  return caches
+    .match(request)
+    .then((cached) => {
+      if (cached) return cached;
+      return safeFetch(request)
+        .then((response) => {
+          putInCache(cacheName, request, response);
+          return response;
+        })
+        .catch(() => offlineFallback(request));
+    })
+    .catch(() => offlineFallback(request));
 }
 
 self.addEventListener("message", (event) => {
@@ -84,6 +140,8 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // Safari/iPad: Range и спец. режимы часто роняют respondWith.
+  if (event.request.headers && event.request.headers.get("range")) return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
@@ -98,18 +156,5 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200) return response;
-        const copy = response.clone();
-        caches.open(RUNTIME_CACHE).then((cache) => {
-          cache.put(event.request, copy);
-        });
-        return response;
-      });
-    })
-  );
+  event.respondWith(cacheFirst(event.request, RUNTIME_CACHE));
 });
