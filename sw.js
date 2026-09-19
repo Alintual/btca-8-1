@@ -1,4 +1,4 @@
-const CACHE_VERSION = "btca-web-8.1.293";
+const CACHE_VERSION = "btca-web-8.1.294";
 const APP_CACHE = `${CACHE_VERSION}:app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const BASE_PATH = "/btca-8-1";
