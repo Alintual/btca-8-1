@@ -186,6 +186,15 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line2 {
   text-transform: uppercase;
 }
 
+.eyebrow--release {
+  margin: -2px 0 10px;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.55;
+  text-transform: none;
+}
+
 .eyebrow--levels {
   display: grid;
   gap: 2px;
