@@ -3414,6 +3414,7 @@
   function formatPolezBody(body) {
     return escapeHtml(body)
       .replace(/&lt;b&gt;([\s\S]*?)&lt;\/b&gt;/g, "<strong>$1</strong>")
+      .replace(/&lt;i&gt;([\s\S]*?)&lt;\/i&gt;/g, "<em>$1</em>")
       .replace(
         /&lt;a\s+href=&quot;(https?:\/\/[^&]+)&quot;(\s+target=&quot;_blank&quot;)?(\s+rel=&quot;noopener noreferrer&quot;)?&gt;([\s\S]*?)&lt;\/a&gt;/g,
         '<a href="$1" target="_blank" rel="noopener noreferrer">$4</a>',
