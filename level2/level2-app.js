@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.185";
+  var VERSION = "8.1.186";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1463,7 +1463,24 @@
   }
 
   function getPolezCardsScrollEl(content) {
-    return content ? content.querySelector(".btca-l1-polez-cards") : null;
+    return content ? content.querySelector("[data-btca-polez-cards], .btca-l1-polez-cards") : null;
+  }
+
+  /** Подтянуть карточку рисунка к верху области прокрутки (под полем «Каталог»). */
+  function applyPolezCardsScrollAlign(el, content) {
+    if (!el || !el.isConnected) return;
+    el.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    if (content && content.scrollTop) content.scrollTop = 0;
+    var catalogKey = state.ui.polez.catalogKey;
+    if (catalogKey === POLEZ_ALL) return;
+    var anchor = el.querySelector(".btca-l1-nav-card-top") || el.querySelector(".btca-l1-polez-card-inner") || el.querySelector(".btca-l1-polez-card");
+    if (!anchor) return;
+    var hostTop = el.getBoundingClientRect().top;
+    var anchorTop = anchor.getBoundingClientRect().top;
+    var delta = anchorTop - hostTop;
+    if (delta > 0.5) {
+      el.scrollTo({ top: el.scrollTop + delta, left: 0, behavior: "auto" });
+    }
   }
 
   /** Сброс прокрутки списка карточек вверх (с учётом отступа до sticky-head). */
@@ -1505,7 +1522,33 @@
 
   /** Сброс прокрутки Полезности: карточка рисунка / Описание под полем Каталог. */
   function schedulePolezCardsScroll(content) {
-    scheduleCardsScroll(getPolezCardsScrollEl(content));
+    var el = getPolezCardsScrollEl(content);
+    if (!el) return;
+
+    function apply() {
+      applyPolezCardsScrollAlign(el, content);
+    }
+
+    apply();
+    requestAnimationFrame(function () {
+      apply();
+      requestAnimationFrame(apply);
+    });
+    setTimeout(apply, 0);
+    setTimeout(apply, 50);
+    setTimeout(apply, 120);
+    setTimeout(apply, 400);
+    setTimeout(apply, 800);
+
+    el.querySelectorAll("img").forEach(function (img) {
+      if (img.complete) return;
+      var onDone = function () {
+        apply();
+        setTimeout(apply, 80);
+      };
+      img.addEventListener("load", onDone, { once: true });
+      img.addEventListener("error", onDone, { once: true });
+    });
   }
 
   function applyNavSectionChange(content, nextSectionKey) {
@@ -3177,16 +3220,25 @@
     }));
     var catalogLabel = catalogKey === POLEZ_ALL ? "Весь список" : (rows.filter(function (r) { return r.key === catalogKey; })[0] || {}).label || "Весь список";
 
-    content.innerHTML =
-      '<div class="btca-l1-tab btca-l1-polez">' +
-      '<div class="btca-l1-sticky-head">' +
+    var polezRoot = content.querySelector("[data-btca-polez-root]");
+    if (!polezRoot) {
+      content.innerHTML =
+        '<div class="btca-l1-tab btca-l1-polez" data-btca-polez-root>' +
+        '<div class="btca-l1-sticky-head" data-btca-polez-head></div>' +
+        '<div class="btca-l1-tab-body btca-l1-polez-cards" data-btca-polez-cards></div></div>';
+      polezRoot = content.querySelector("[data-btca-polez-root]");
+    }
+
+    var polezHead = polezRoot.querySelector("[data-btca-polez-head]");
+    polezHead.innerHTML =
       '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
       '<div class="btca-l1-polez-catalog-col">' +
       '<span class="btca-l1-field-label btca-l1-field-label--center">Каталог</span>' +
       filterFaceHtml(catalogLabel, { wide: true, dataAttr: "data-btca-polez-catalog" }) +
-      "</div></div></div>" +
-      '<div class="btca-l1-tab-body btca-l1-polez-cards">' +
-      visible.map(function (row) {
+      "</div></div>";
+
+    var cardsHost = polezRoot.querySelector("[data-btca-polez-cards]");
+    cardsHost.innerHTML = visible.map(function (row) {
         if (row.key === "links") {
           return '<section class="btca-l1-links-panel"><h3>Ссылки, документы, литература, видео</h3>' +
             state.data.polezLinks.map(function (line) {
@@ -3214,8 +3266,7 @@
             '<span class="btca-l1-pick__text">Описание</span></button></div>'
             : "") +
           '<div class="' + frameClass + '"' + frameAttr + ">" + imageHtml + "</div></div></article>";
-      }).join("") +
-      "</div></div>";
+      }).join("");
 
     content.querySelector("[data-btca-polez-catalog]").addEventListener("click", function (event) {
       openPicker("Каталог", catalogOptions, catalogKey, function (value) {
