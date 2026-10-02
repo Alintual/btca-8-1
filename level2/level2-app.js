@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.184";
+  var VERSION = "8.1.185";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1462,9 +1462,12 @@
     return content ? content.querySelector(".btca-l1-nav-cards") : null;
   }
 
-  /** Сброс прокрутки списка: «Выбрать» видна (одно упражнение) или первое упражнение («Все»). */
-  function scheduleNavCardsScroll(content) {
-    var el = getNavCardsScrollEl(content);
+  function getPolezCardsScrollEl(content) {
+    return content ? content.querySelector(".btca-l1-polez-cards") : null;
+  }
+
+  /** Сброс прокрутки списка карточек вверх (с учётом отступа до sticky-head). */
+  function scheduleCardsScroll(el) {
     if (!el) return;
 
     function apply() {
@@ -1493,6 +1496,16 @@
       img.addEventListener("load", onDone, { once: true });
       img.addEventListener("error", onDone, { once: true });
     });
+  }
+
+  /** Сброс прокрутки списка: «Выбрать» видна (одно упражнение) или первое упражнение («Все»). */
+  function scheduleNavCardsScroll(content) {
+    scheduleCardsScroll(getNavCardsScrollEl(content));
+  }
+
+  /** Сброс прокрутки Полезности: карточка рисунка / Описание под полем Каталог. */
+  function schedulePolezCardsScroll(content) {
+    scheduleCardsScroll(getPolezCardsScrollEl(content));
   }
 
   function applyNavSectionChange(content, nextSectionKey) {
@@ -3230,6 +3243,7 @@
         onSwipeRight: function () { openPolezImagePortrait(key); },
       });
     });
+    schedulePolezCardsScroll(content);
   }
 
   function scrollNavAfterExerciseImageClose() {
@@ -3237,6 +3251,13 @@
     var content = state.root.querySelector("[data-btca-level2-content]");
     if (!content) return;
     scheduleNavCardsScroll(content);
+  }
+
+  function scrollPolezAfterImageClose() {
+    if (!state.root || !state.ui || state.ui.tab !== "polez") return;
+    var content = state.root.querySelector("[data-btca-level2-content]");
+    if (!content) return;
+    schedulePolezCardsScroll(content);
   }
 
   function exerciseImageReturnTo(payload) {
@@ -3375,6 +3396,7 @@
 
     function closePortrait() {
       overlay.remove();
+      scrollPolezAfterImageClose();
     }
     function openLandscape() {
       overlay.remove();
@@ -3405,6 +3427,7 @@
     function closeOverlay() {
       setBazaTableLandscape(false);
       overlay.remove();
+      scrollPolezAfterImageClose();
     }
     setBazaTableLandscape(true);
     overlay.querySelector("[data-btca-overlay-close]").addEventListener("click", closeOverlay);
