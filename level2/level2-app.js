@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.186";
+  var VERSION = "8.1.187";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1463,23 +1463,57 @@
   }
 
   function getPolezCardsScrollEl(content) {
-    return content ? content.querySelector("[data-btca-polez-cards], .btca-l1-polez-cards") : null;
+    return content ? content.querySelector("[data-btca-polez-cards]") : null;
+  }
+
+  /** iOS/WebKit: scrollTop часто игнорируется; overflow-трюк + проход по предкам. */
+  function forceElementScrollTop(el) {
+    if (!el) return;
+    function wipe(node) {
+      if (!node || node.nodeType !== 1) return;
+      var oy = node.style.overflowY;
+      node.style.overflowY = "hidden";
+      node.scrollTop = 0;
+      node.scrollLeft = 0;
+      node.style.overflowY = oy;
+      node.scrollTop = 0;
+      node.scrollLeft = 0;
+    }
+    wipe(el);
+    var node = el.parentElement;
+    while (node && node !== document.documentElement) {
+      if (node.scrollTop || node.scrollLeft || node.scrollHeight > node.clientHeight + 1) wipe(node);
+      node = node.parentElement;
+    }
+    if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }
+
+  /** Новый DOM-узел скролла — гарантированный scrollTop=0 на iOS после длинного списка. */
+  function remountPolezCardsHost(polezRoot, catalogKey) {
+    var prev = polezRoot.querySelector("[data-btca-polez-cards]");
+    var host = document.createElement("div");
+    host.className = "btca-l1-tab-body btca-l1-polez-cards";
+    host.setAttribute("data-btca-polez-cards", "");
+    host.setAttribute("data-btca-polez-catalog-key", String(catalogKey || ""));
+    if (prev) prev.replaceWith(host);
+    else polezRoot.appendChild(host);
+    return host;
   }
 
   /** Подтянуть карточку рисунка к верху области прокрутки (под полем «Каталог»). */
   function applyPolezCardsScrollAlign(el, content) {
     if (!el || !el.isConnected) return;
-    el.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    if (content && content.scrollTop) content.scrollTop = 0;
+    forceElementScrollTop(el);
+    if (content) forceElementScrollTop(content);
     var catalogKey = state.ui.polez.catalogKey;
     if (catalogKey === POLEZ_ALL) return;
-    var anchor = el.querySelector(".btca-l1-nav-card-top") || el.querySelector(".btca-l1-polez-card-inner") || el.querySelector(".btca-l1-polez-card");
-    if (!anchor) return;
-    var hostTop = el.getBoundingClientRect().top;
-    var anchorTop = anchor.getBoundingClientRect().top;
-    var delta = anchorTop - hostTop;
-    if (delta > 0.5) {
-      el.scrollTo({ top: el.scrollTop + delta, left: 0, behavior: "auto" });
+    var card = el.querySelector(".btca-l1-polez-card");
+    if (!card) return;
+    var delta = card.getBoundingClientRect().top - el.getBoundingClientRect().top;
+    if (Math.abs(delta) > 1) {
+      el.scrollTop = Math.max(0, el.scrollTop + delta);
     }
   }
 
@@ -1537,6 +1571,7 @@
     setTimeout(apply, 0);
     setTimeout(apply, 50);
     setTimeout(apply, 120);
+    setTimeout(apply, 250);
     setTimeout(apply, 400);
     setTimeout(apply, 800);
 
@@ -3231,13 +3266,17 @@
 
     var polezHead = polezRoot.querySelector("[data-btca-polez-head]");
     polezHead.innerHTML =
-      '<div class="btca-l1-toolbar btca-l1-toolbar-second">' +
+      '<div class="btca-l1-toolbar btca-l1-toolbar--polez">' +
       '<div class="btca-l1-polez-catalog-col">' +
       '<span class="btca-l1-field-label btca-l1-field-label--center">Каталог</span>' +
       filterFaceHtml(catalogLabel, { wide: true, dataAttr: "data-btca-polez-catalog" }) +
       "</div></div>";
 
     var cardsHost = polezRoot.querySelector("[data-btca-polez-cards]");
+    var prevKey = cardsHost ? cardsHost.getAttribute("data-btca-polez-catalog-key") : null;
+    if (!cardsHost || prevKey !== String(catalogKey)) {
+      cardsHost = remountPolezCardsHost(polezRoot, catalogKey);
+    }
     cardsHost.innerHTML = visible.map(function (row) {
         if (row.key === "links") {
           return '<section class="btca-l1-links-panel"><h3>Ссылки, документы, литература, видео</h3>' +
@@ -3308,6 +3347,25 @@
     if (!state.root || !state.ui || state.ui.tab !== "polez") return;
     var content = state.root.querySelector("[data-btca-level2-content]");
     if (!content) return;
+    var polezRoot = content.querySelector("[data-btca-polez-root]");
+    if (polezRoot) {
+      var key = state.ui.polez.catalogKey;
+      var oldHost = polezRoot.querySelector("[data-btca-polez-cards]");
+      var html = oldHost ? oldHost.innerHTML : "";
+      var host = remountPolezCardsHost(polezRoot, key);
+      host.innerHTML = html;
+      content.querySelectorAll("[data-btca-polez-desc]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          openPolezDescription(btn.getAttribute("data-btca-polez-desc"));
+        });
+      });
+      content.querySelectorAll("[data-btca-polez-image-swipe]").forEach(function (frame) {
+        var swipeKey = frame.getAttribute("data-btca-polez-image-swipe");
+        bindHorizontalSwipe(frame, {
+          onSwipeRight: function () { openPolezImagePortrait(swipeKey); },
+        });
+      });
+    }
     schedulePolezCardsScroll(content);
   }
 
