@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.305:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.305:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.306:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.306:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -45,8 +45,8 @@
     '<a href="https://cloud.mail.ru/public/Ye3r/ZYwpjB9uz">Подробное описание комплекса БТКА</a>\n\n' +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.191";
-  var LEVEL2_MODULE_VERSION = "8.1.191";
+  var LEVEL1_MODULE_VERSION = "8.1.192";
+  var LEVEL2_MODULE_VERSION = "8.1.192";
 
   var CORE_REL_PATHS = [
     "",
@@ -172,10 +172,12 @@
         { run: function () { return loadSlideMenuScript(); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-db.js?v=" + v1)); } },
         { run: function () { return loadLevel1Script(assetPath("level1/level1-app.js?v=" + v1)); } },
-        { run: function () {
-          if (!level1ModuleReady()) throw new Error("Модуль Уровня 1 не инициализирован");
-          return window.BTCA_LEVEL1.boot();
-        } }
+        {
+          run: function () {
+            if (!level1ModuleReady()) throw new Error("Модуль Уровня 1 не инициализирован");
+            return window.BTCA_LEVEL1.boot();
+          }
+        }
       );
     }
     if (!level2ModuleReady()) {
@@ -189,10 +191,12 @@
         { run: function () { return loadLevel2Script(assetPath("level2/level2-db.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-baza.js?v=" + v2)); } },
         { run: function () { return loadLevel2Script(assetPath("level2/level2-app.js?v=" + v2)); } },
-        { run: function () {
-          if (!level2ModuleReady()) throw new Error("Модуль Уровня 2 не инициализирован");
-          return window.BTCA_LEVEL2.boot();
-        } }
+        {
+          run: function () {
+            if (!level2ModuleReady()) throw new Error("Модуль Уровня 2 не инициализирован");
+            return window.BTCA_LEVEL2.boot();
+          }
+        }
       );
     }
 
@@ -272,7 +276,7 @@
   function writeAppliedShellVersion(version) {
     try {
       if (version) localStorage.setItem(APPLIED_SHELL_KEY, String(version));
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function slideMenuReady() {
@@ -293,7 +297,7 @@
     try {
       if (active) sessionStorage.setItem(OFFLINE_PREP_SESSION_KEY, "1");
       else sessionStorage.removeItem(OFFLINE_PREP_SESSION_KEY);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function shouldRunShellUpdateCheck() {
@@ -408,20 +412,20 @@
           localStorage.setItem(MEDIA_STATE_KEY, JSON.stringify(mediaState));
         }
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function invalidatePreparedClientState() {
     try {
       localStorage.removeItem(APP_READY_KEY);
       localStorage.removeItem(MEDIA_STATE_KEY);
-    } catch (_) {}
+    } catch (_) { }
     window.__BTCA_APP_BOOT_READY__ = false;
   }
 
   function purgeGenerationRuntimeCache() {
     if (!("caches" in window)) return Promise.resolve();
-    return caches.delete(getCacheGeneration() + ":runtime").catch(function () {});
+    return caches.delete(getCacheGeneration() + ":runtime").catch(function () { });
   }
 
   function readInstallSession() {
@@ -439,7 +443,7 @@
         INSTALL_SESSION_KEY,
         String(Date.now()) + "-" + Math.random().toString(36).slice(2, 10)
       );
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function resolvePwaShortcutName() {
@@ -460,13 +464,13 @@
     try {
       localStorage.removeItem(APP_READY_KEY);
       localStorage.removeItem(MEDIA_STATE_KEY);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function clearInstallSessionMarker() {
     try {
       localStorage.removeItem(INSTALL_SESSION_KEY);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function clearAllInstallMarkers() {
@@ -516,7 +520,7 @@
         level2ModuleVersion: LEVEL2_MODULE_VERSION,
         preparedAt: new Date().toISOString(),
       }));
-    } catch (_) {}
+    } catch (_) { }
     window.__BTCA_APP_BOOT_READY__ = true;
   }
 
@@ -587,7 +591,7 @@
       }).map(function (name) {
         return caches.delete(name);
       }));
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function flushClientDataBeforeReload() {
@@ -599,8 +603,8 @@
       if (window.BTCA_LEVEL2_DB && window.BTCA_LEVEL2_DB.flushUiState) {
         tasks.push(window.BTCA_LEVEL2_DB.flushUiState());
       }
-    } catch (_) {}
-    return Promise.all(tasks).catch(function () {});
+    } catch (_) { }
+    return Promise.all(tasks).catch(function () { });
   }
 
   function purgeAllShellCachesExceptMedia() {
@@ -611,7 +615,7 @@
       }).map(function (name) {
         return caches.delete(name);
       }));
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function purgeAllInstallCaches() {
@@ -622,15 +626,15 @@
       }).map(function (name) {
         return caches.delete(name);
       }));
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function purgeShellServiceWorkerCaches() {
     if (!("caches" in window)) return Promise.resolve();
     var generation = getCacheGeneration();
     return Promise.all([
-      caches.delete(generation + ":app").catch(function () {}),
-      caches.delete(generation + ":runtime").catch(function () {}),
+      caches.delete(generation + ":app").catch(function () { }),
+      caches.delete(generation + ":runtime").catch(function () { }),
     ]);
   }
 
@@ -648,7 +652,7 @@
           if (registration.waiting) {
             registration.waiting.postMessage({ type: "SKIP_WAITING" });
           }
-          return registration.update().catch(function () {});
+          return registration.update().catch(function () { });
         });
       })
       .then(function () {
@@ -665,7 +669,7 @@
 
   function refreshShellCacheQuietly() {
     if (!("caches" in window)) return Promise.resolve();
-    return cacheCoreAssets(function () {}, 0, 0).catch(function () {});
+    return cacheCoreAssets(function () { }, 0, 0).catch(function () { });
   }
 
   function clearStaleClientState() {
@@ -682,7 +686,7 @@
         sessionStorage.removeItem(shellRefreshAttemptKey(shellParam));
         writeAppliedShellVersion(shellParam);
       }
-    } catch (_) {}
+    } catch (_) { }
 
     if (metaGen && !readAppliedShellVersion()) {
       writeAppliedShellVersion(metaGen);
@@ -709,12 +713,12 @@
       }).map(function (name) {
         return caches.delete(name);
       }));
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function purgeShellInstallCache() {
     if (!("caches" in window)) return Promise.resolve();
-    return caches.delete(INSTALL_CACHE).catch(function () {});
+    return caches.delete(INSTALL_CACHE).catch(function () { });
   }
 
   function unregisterOfflineServiceWorker() {
@@ -722,7 +726,7 @@
     return navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
       if (!registration) return;
       return registration.unregister();
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function deleteAllBtcaCaches() {
@@ -733,7 +737,7 @@
       }).map(function (name) {
         return caches.delete(name);
       }));
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function resetSafariInstallEnvironment() {
@@ -750,7 +754,7 @@
         if (!response || !response.ok) return;
         return cache.put(assetUrl, response);
       })
-      .catch(function () {});
+      .catch(function () { });
   }
 
   function ensureFreshShellAfterDeploy() {
@@ -759,7 +763,7 @@
 
     navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
       if (!registration || !shouldRunShellUpdateCheck()) return;
-      registration.update().catch(function () {});
+      registration.update().catch(function () { });
       if (registration.waiting) {
         registration.waiting.postMessage({ type: "SKIP_WAITING" });
       }
@@ -771,7 +775,7 @@
           window.location.reload();
         });
       });
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function ensureShellUpToDate() {
@@ -780,7 +784,7 @@
     if ("serviceWorker" in navigator) {
       swPromise = navigator.serviceWorker.getRegistration(BTCA_BASE).then(function (registration) {
         if (!registration) return;
-        return registration.update().catch(function () {}).then(function () {
+        return registration.update().catch(function () { }).then(function () {
           if (registration.waiting) {
             registration.waiting.postMessage({ type: "SKIP_WAITING" });
           }
@@ -844,7 +848,7 @@
         }
         try {
           if (remote) sessionStorage.removeItem(shellRefreshAttemptKey(remote));
-        } catch (_) {}
+        } catch (_) { }
         if (remote) writeAppliedShellVersion(remote);
         return false;
       }
@@ -875,7 +879,7 @@
         }
         navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
       });
-    }).catch(function () {});
+    }).catch(function () { });
   }
 
   function cacheHasUnpackedLevel1Media(cache) {
@@ -1502,7 +1506,7 @@
         return;
       }
       if (isApp && level1ModuleFresh() &&
-          document.querySelector('script[data-btca-level1-src="' + src + '"]')) {
+        document.querySelector('script[data-btca-level1-src="' + src + '"]')) {
         resolve();
         return;
       }
@@ -1606,7 +1610,7 @@
         return;
       }
       if (isApp && level2ModuleFresh() &&
-          document.querySelector('script[data-btca-level2-src="' + src + '"]')) {
+        document.querySelector('script[data-btca-level2-src="' + src + '"]')) {
         resolve();
         return;
       }
@@ -1947,7 +1951,6 @@
     var home = document.querySelector(".home");
     var title = document.querySelector(".home__app-title");
     if (!home || !title) return;
-    /* Вынести из .home__intro до скрытия intro — иначе заголовок пропадёт вместе с ним. */
     if (home.firstElementChild !== title) {
       home.insertBefore(title, home.firstElementChild);
     }
@@ -2067,7 +2070,7 @@
     var end = pctEnd == null ? 15 : pctEnd;
     var emitProgress = typeof onProgress === "function"
       ? onProgress
-      : (start !== end ? resolveProgressCallback(onProgress) : function () {});
+      : (start !== end ? resolveProgressCallback(onProgress) : function () { });
     return caches.open(INSTALL_CACHE).then(function (cache) {
       var documentAssets = Array.prototype.slice
         .call(document.querySelectorAll("script[src], link[rel='stylesheet'][href], link[rel='modulepreload'][href]"))
@@ -2144,7 +2147,7 @@
         });
       });
     }).catch(function (error) {
-      return reader.close().catch(function () {}).then(function () {
+      return reader.close().catch(function () { }).then(function () {
         throw error;
       });
     });
