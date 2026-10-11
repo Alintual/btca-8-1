@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.307:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.307:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.308:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.308:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -45,8 +45,8 @@
     '<a href="https://cloud.mail.ru/public/Ye3r/ZYwpjB9uz">Подробное описание комплекса БТКА</a>\n\n' +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.193";
-  var LEVEL2_MODULE_VERSION = "8.1.193";
+  var LEVEL1_MODULE_VERSION = "8.1.194";
+  var LEVEL2_MODULE_VERSION = "8.1.194";
 
   var CORE_REL_PATHS = [
     "",
@@ -1222,11 +1222,12 @@
       renderHomeSplashIndicator(pct);
       return;
     }
+    // Подсказки про ярлык — только при 100% (и в renderReady), не во время загрузки.
     setPanel(
       '<div class="ios-panel__header"><span>' + escapeHtml(title) + "</span><span>" + pct + "%</span></div>" +
       '<div class="progress" aria-label="Прогресс offline-подготовки"><div class="progress__bar" style="width:' + pct + '%"></div></div>' +
       '<p class="prepare-status prepare-status--running">' + escapeHtml(message) + "</p>" +
-      iosInstallGuidanceHtml()
+      (pct >= 100 ? iosInstallGuidanceHtml() : "")
     );
   }
 
