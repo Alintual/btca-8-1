@@ -3,7 +3,7 @@
 
   var DB = window.BTCA_LEVEL2_DB;
   var BAZA = window.BTCA_LEVEL2_BAZA;
-  var VERSION = "8.1.201";
+  var VERSION = "8.1.204";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -1045,7 +1045,7 @@
     var to = period.to;
     var fromLabel = formatIsoDateAsDdMmYyyy(from) || from;
     var toLabel = formatIsoDateAsDdMmYyyy(to) || to;
-    var exercisePart = baza.exercise === "all"
+    var exercisePart = baza.exercise === "all" || baza.exercise === "__foreign_data__"
       ? "по всем упражнениям"
       : "по Упражнению " + labelForExerciseValue(baza.exercise);
     var periodPart = from && to && from === to
@@ -2137,12 +2137,6 @@
           return;
         }
 
-        if (ex !== "all" && ex !== "__foreign_data__") {
-          state.bazaRuleTasks = taskNumbersForExercise(ex);
-        } else {
-          state.bazaRuleTasks = [];
-        }
-
         return refreshBazaRowsWithReconcile();
       });
     });
@@ -2158,6 +2152,40 @@
     return exercise === "__foreign_data__" ? "all" : exercise;
   }
 
+  /** Номера задач с реальными данными (ok/sets > 0), не пустые слоты Формы. */
+  function tasksWithDataFromBazaResult(result) {
+    var seen = {};
+    (result && result.rows ? result.rows : []).forEach(function (r) {
+      var t = Number(r.task);
+      if (!Number.isFinite(t) || t < 1) return;
+      var ok = r.ok == null ? null : Number(r.ok);
+      var sets = r.sets == null ? null : Number(r.sets);
+      if ((ok != null && Number.isFinite(ok) && ok > 0) || (sets != null && Number.isFinite(sets) && sets > 0)) {
+        seen[t] = true;
+      }
+    });
+    var fromRows = Object.keys(seen).map(Number).sort(function (a, b) { return a - b; });
+    if (fromRows.length) return fromRows;
+    return (result && result.tasks ? result.tasks : [])
+      .map(Number)
+      .filter(function (n) { return Number.isFinite(n) && n >= 1; })
+      .sort(function (a, b) { return a - b; });
+  }
+
+  function applyBazaTasksFromQuery(queryEx, result) {
+    if (queryEx === "all") {
+      state.bazaRuleTasks = [];
+      return;
+    }
+    var tasks = tasksWithDataFromBazaResult(result);
+    state.bazaRuleTasks = tasks;
+    var tk = String(state.ui.baza.task || "all");
+    if (tk !== "all" && tasks.indexOf(Number(tk)) < 0) {
+      state.ui.baza.task = "all";
+      applyUiPatch({ baza: { task: "all" } });
+    }
+  }
+
   function refreshBazaRows() {
     var baza = state.ui.baza;
     var queryEx = bazaExerciseForQuery(baza.exercise);
@@ -2169,6 +2197,7 @@
       task: "all",
     }).then(function (result) {
       state.bazaRows = result.rows || [];
+      applyBazaTasksFromQuery(queryEx, result);
       if (!BAZA || queryEx === "all") {
         state.bazaExpandedRows = [];
         return result;
@@ -2192,12 +2221,15 @@
     if (!isBazaExerciseSelectionValid(ex, src)) {
       state.ui.baza.exercise = "all";
       state.ui.baza.task = "all";
+      state.bazaRuleTasks = [];
       applyUiPatch({ baza: { exercise: "all", task: "all" } });
       return true;
     }
     if (state.bazaExpandedRows.length > 0) return false;
+    if ((state.bazaRows || []).length > 0) return false;
     state.ui.baza.exercise = "all";
     state.ui.baza.task = "all";
+    state.bazaRuleTasks = [];
     applyUiPatch({ baza: { exercise: "all", task: "all" } });
     return true;
   }
@@ -2214,7 +2246,7 @@
       DIAG.mountBazaDiagram(
         root,
         state.bazaExpandedRows,
-        taskNumbersForExercise(baza.exercise),
+        state.bazaRuleTasks.slice(),
         baza.task,
         fallback
       );

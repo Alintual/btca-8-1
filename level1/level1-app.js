@@ -2,7 +2,7 @@
   "use strict";
 
   var DB = window.BTCA_LEVEL1_DB;
-  var VERSION = "8.1.201";
+  var VERSION = "8.1.204";
   var BRANDING_UP = "branding/up.png";
   var BRANDING_BAZA = "branding/baza.png";
   var TRAILING_SLOT_W = 112;
@@ -779,7 +779,7 @@
     var to = period.to;
     var fromLabel = formatIsoDateAsDdMmYyyy(from) || from;
     var toLabel = formatIsoDateAsDdMmYyyy(to) || to;
-    var exercisePart = baza.exercise === "all"
+    var exercisePart = baza.exercise === "all" || baza.exercise === "__foreign_data__"
       ? "по всем упражнениям"
       : "по Упражнению " + labelForExerciseValue(baza.exercise);
     var periodPart = from && to && from === to
@@ -1700,19 +1700,48 @@
         return;
       }
 
-      if (ex !== "all") {
-        state.bazaRuleTasks = taskNumbersForExercise(ex);
-      } else {
-        state.bazaRuleTasks = [];
-      }
-
       return refreshBazaRows();
     });
   }
 
+  /** Номера задач с реальными данными (ok/sets > 0), не пустые слоты Формы. */
+  function tasksWithDataFromBazaResult(result) {
+    var seen = {};
+    (result && result.rows ? result.rows : []).forEach(function (r) {
+      var t = Number(r.task);
+      if (!Number.isFinite(t) || t < 1) return;
+      var ok = r.ok == null ? null : Number(r.ok);
+      var sets = r.sets == null ? null : Number(r.sets);
+      if ((ok != null && Number.isFinite(ok) && ok > 0) || (sets != null && Number.isFinite(sets) && sets > 0)) {
+        seen[t] = true;
+      }
+    });
+    var fromRows = Object.keys(seen).map(Number).sort(function (a, b) { return a - b; });
+    if (fromRows.length) return fromRows;
+    return (result && result.tasks ? result.tasks : [])
+      .map(Number)
+      .filter(function (n) { return Number.isFinite(n) && n >= 1; })
+      .sort(function (a, b) { return a - b; });
+  }
+
+  function applyBazaTasksFromQuery(exercise, result) {
+    if (!exercise || exercise === "all" || exercise === "__foreign_data__") {
+      state.bazaRuleTasks = [];
+      return;
+    }
+    var tasks = tasksWithDataFromBazaResult(result);
+    state.bazaRuleTasks = tasks;
+    var tk = String(state.ui.baza.task || "all");
+    if (tk !== "all" && tasks.indexOf(Number(tk)) < 0) {
+      state.ui.baza.task = "all";
+      applyUiPatch({ baza: { task: "all" } });
+    }
+  }
+
   function refreshBazaRows() {
     var baza = state.ui.baza;
-    if (baza.exercise === "all") {
+    if (baza.exercise === "all" || baza.exercise === "__foreign_data__") {
+      state.bazaRuleTasks = [];
       state.bazaRows = [];
       state.bazaExpandedRows = [];
       return Promise.resolve({ rows: [] });
@@ -1724,6 +1753,7 @@
       task: "all",
     }).then(function (result) {
       var rawRows = result.rows || [];
+      applyBazaTasksFromQuery(baza.exercise, result);
       state.bazaExpandedRows = expandBazaRowsL1(rawRows, baza.exercise);
       if (baza.task === "all") {
         state.bazaRows = rawRows;
