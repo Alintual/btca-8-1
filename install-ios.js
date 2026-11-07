@@ -2,8 +2,8 @@
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.319:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.319:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.320:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.320:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -48,8 +48,8 @@
     "\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.205";
-  var LEVEL2_MODULE_VERSION = "8.1.205";
+  var LEVEL1_MODULE_VERSION = "8.1.206";
+  var LEVEL2_MODULE_VERSION = "8.1.206";
 
   var CORE_REL_PATHS = [
     "",
@@ -1951,17 +1951,6 @@
     }
   }
 
-  function ensureInstalledHomeTitle() {
-    var home = document.querySelector(".home");
-    var title = document.querySelector(".home__app-title");
-    if (!home || !title) return;
-    if (home.firstElementChild !== title) {
-      home.insertBefore(title, home.firstElementChild);
-    }
-    title.removeAttribute("hidden");
-    home.setAttribute("aria-labelledby", "btca-installed-header");
-  }
-
   function renderInstalledHome(options) {
     options = options || {};
     var preserveSplash = Boolean(options.preserveSplash);
@@ -1969,12 +1958,33 @@
     var menu = document.querySelector(".platform-menu");
     var panel = getEls().panel;
     var footer = document.querySelector(".footer");
+    var home = document.querySelector(".home");
 
     document.body.classList.add("btca-installed-mode");
     document.body.classList.remove("btca-screen-mode", "btca-level1-mode", "btca-level2-mode");
 
-    ensureInstalledHomeTitle();
-    if (intro) intro.setAttribute("hidden", "hidden");
+    // Стартовый экран PWA: заголовок + дата версии над логотипом (как в 10.1).
+    if (intro) {
+      intro.removeAttribute("hidden");
+      var titleEl = intro.querySelector(".eyebrow:not(.eyebrow--release):not(.eyebrow--levels)");
+      if (titleEl) {
+        titleEl.textContent = "СИСТЕМА ТРЕНИРОВОК БТКА 8.1";
+        titleEl.removeAttribute("hidden");
+      }
+      var releaseEl = intro.querySelector(".eyebrow--release");
+      if (releaseEl) {
+        // 8.1: дата всегда с загрузочной страницы (ручная), не из динамического claim.
+        releaseEl.removeAttribute("hidden");
+      }
+      var levelsEl = intro.querySelector(".eyebrow--levels");
+      if (levelsEl) levelsEl.setAttribute("hidden", "hidden");
+      var appTitle = intro.querySelector("#app-title");
+      if (appTitle) appTitle.setAttribute("hidden", "hidden");
+      Array.prototype.forEach.call(intro.querySelectorAll("p:not(.eyebrow)"), function (p) {
+        p.setAttribute("hidden", "hidden");
+      });
+    }
+    if (home) home.setAttribute("aria-labelledby", "btca-installed-header");
     if (panel && !preserveSplash) {
       panel.className = "ios-panel";
       panel.innerHTML = "";

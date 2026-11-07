@@ -2,7 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="btca-cache-version" content="btca-web-8.1.319" />
+    <meta name="btca-cache-version" content="btca-web-8.1.320" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a4854" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -441,8 +441,42 @@ body:not(.btca-installed-mode) .home__tagline-slot .home__phrase2-line2 {
   }
 }
 
+/* PWA start: заголовок и версия над логотипом. */
+.btca-installed-mode .home {
+  display: flex;
+  flex-direction: column;
+}
+
 .btca-installed-mode .home__intro {
-  margin-top: calc(-162rem / 17);
+  order: -1;
+  margin-top: max(8px, env(safe-area-inset-top));
+  margin-bottom: 10px;
+}
+
+/* PWA start: only system title + release date (same typeface/size). */
+.btca-installed-mode .home__intro .eyebrow--levels,
+.btca-installed-mode .home__intro #app-title,
+.btca-installed-mode .home__intro > p:not(.eyebrow) {
+  display: none !important;
+}
+
+.btca-installed-mode .home__intro .eyebrow {
+  margin-bottom: 4px;
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.btca-installed-mode .home__intro .eyebrow--release {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: #c8e2e6;
+  font-size: 1.1rem;
+  font-weight: inherit;
+  font-family: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .home__intro {
@@ -614,17 +648,6 @@ code {
   min-height: calc(100vh - 56px);
 }
 
-.btca-installed-mode .home__app-title {
-  margin: 0 0 calc(10rem / 17);
-  padding: 0 calc(16rem / 17);
-  color: #ffffff;
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 500;
-  letter-spacing: normal;
-  line-height: 1.25;
-  text-transform: none;
-}
 
 .btca-installed-mode .home__tagline-outer,
 .btca-installed-mode .home__phrase {
@@ -3723,10 +3746,6 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   .btca-installed-mode .home__hero {
     height: calc(382rem / 17);
   }
-
-  .btca-installed-mode .home__intro {
-    margin-top: calc(-148rem / 17);
-  }
 }
     </style>
     <title>BTCA 8.1 Web</title>
@@ -3778,7 +3797,7 @@ body.btca-apple-comfort.btca-landscape-mode #root {
 
           <div class="home__intro">
             <p class="eyebrow home__app-title" id="btca-installed-header">Система тренировок БТКА 8.1</p>
-            <p class="eyebrow eyebrow--release">версия от 06.11.2026</p>
+            <p class="eyebrow eyebrow--release">версия от 07.11.2026</p>
             <p class="eyebrow eyebrow--levels">
               <span>|&nbsp;&nbsp;Уровень 1 - Начальный&nbsp;&nbsp;|</span>
               <span>|&nbsp;&nbsp;Уровень 2 - Базовый&nbsp;&nbsp;|</span>
@@ -3848,8 +3867,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
   "use strict";
 
   var BTCA_BASE = "/btca-8-1/";
-  var INSTALL_CACHE = "btca-web-8.1.319:static-install";
-  var MEDIA_CACHE = "btca-web-8.1.319:static-media";
+  var INSTALL_CACHE = "btca-web-8.1.320:static-install";
+  var MEDIA_CACHE = "btca-web-8.1.320:static-media";
   var MEDIA_PROBE_RE = /offline-unpacked\/level1\/exercises\/[^/]+\.(jpe?g|png|webp|gif)$/i;
   var MEDIA_STATE_KEY = "btca-web:static-media-state";
   var APP_READY_KEY = "btca-web:app-ready";
@@ -3894,8 +3913,8 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     "\n" +
     "Copyright © Юрий Алинт (Андрей Юрьев) 2026";
   var installedHomeSnapshot = "";
-  var LEVEL1_MODULE_VERSION = "8.1.205";
-  var LEVEL2_MODULE_VERSION = "8.1.205";
+  var LEVEL1_MODULE_VERSION = "8.1.206";
+  var LEVEL2_MODULE_VERSION = "8.1.206";
 
   var CORE_REL_PATHS = [
     "",
@@ -5797,17 +5816,6 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     }
   }
 
-  function ensureInstalledHomeTitle() {
-    var home = document.querySelector(".home");
-    var title = document.querySelector(".home__app-title");
-    if (!home || !title) return;
-    if (home.firstElementChild !== title) {
-      home.insertBefore(title, home.firstElementChild);
-    }
-    title.removeAttribute("hidden");
-    home.setAttribute("aria-labelledby", "btca-installed-header");
-  }
-
   function renderInstalledHome(options) {
     options = options || {};
     var preserveSplash = Boolean(options.preserveSplash);
@@ -5815,12 +5823,33 @@ body.btca-apple-comfort.btca-landscape-mode #root {
     var menu = document.querySelector(".platform-menu");
     var panel = getEls().panel;
     var footer = document.querySelector(".footer");
+    var home = document.querySelector(".home");
 
     document.body.classList.add("btca-installed-mode");
     document.body.classList.remove("btca-screen-mode", "btca-level1-mode", "btca-level2-mode");
 
-    ensureInstalledHomeTitle();
-    if (intro) intro.setAttribute("hidden", "hidden");
+    // Стартовый экран PWA: заголовок + дата версии над логотипом (как в 10.1).
+    if (intro) {
+      intro.removeAttribute("hidden");
+      var titleEl = intro.querySelector(".eyebrow:not(.eyebrow--release):not(.eyebrow--levels)");
+      if (titleEl) {
+        titleEl.textContent = "СИСТЕМА ТРЕНИРОВОК БТКА 8.1";
+        titleEl.removeAttribute("hidden");
+      }
+      var releaseEl = intro.querySelector(".eyebrow--release");
+      if (releaseEl) {
+        // 8.1: дата всегда с загрузочной страницы (ручная), не из динамического claim.
+        releaseEl.removeAttribute("hidden");
+      }
+      var levelsEl = intro.querySelector(".eyebrow--levels");
+      if (levelsEl) levelsEl.setAttribute("hidden", "hidden");
+      var appTitle = intro.querySelector("#app-title");
+      if (appTitle) appTitle.setAttribute("hidden", "hidden");
+      Array.prototype.forEach.call(intro.querySelectorAll("p:not(.eyebrow)"), function (p) {
+        p.setAttribute("hidden", "hidden");
+      });
+    }
+    if (home) home.setAttribute("aria-labelledby", "btca-installed-header");
     if (panel && !preserveSplash) {
       panel.className = "ios-panel";
       panel.innerHTML = "";
